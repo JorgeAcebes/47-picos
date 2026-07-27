@@ -71,7 +71,7 @@ export function AuthDialog({ onClose }: { onClose: () => void }) {
         className="auth-dialog"
         role="dialog"
         aria-modal="true"
-        aria-label="Acceso a 52 Picos"
+        aria-label="Acceso a 47 Picos"
       >
         <button className="icon-button" aria-label="Cerrar" onClick={onClose}>
           <IconClose />

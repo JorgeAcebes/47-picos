@@ -250,7 +250,7 @@ export function SummitTracker() {
         <a className="brand" href="#inicio">
           <IconMountain className="brand-icon" />
           <span>
-            52 <b>PICOS</b>
+            47 <b>PICOS</b>
           </span>
         </a>
         <nav>
@@ -278,15 +278,14 @@ export function SummitTracker() {
       {/* ── Hero ────────────────────────── */}
       <section id="inicio" className="hero">
         <div>
-          <span className="eyebrow">UN RETO, 52 TERRITORIOS</span>
+          <span className="eyebrow">UN RETO, 47 PICOS</span>
           <h1>
             Sube alto.
             <br />
             <em>Déjalo escrito.</em>
           </h1>
           <p>
-            El mapa personal para conquistar el techo de cada provincia
-            española, Ceuta y Melilla.
+            El mapa para conquistar el techo de cada provincia española.
           </p>
           <div className="hero-actions">
             <a className="button button--green" href="#mapa">
@@ -306,7 +305,7 @@ export function SummitTracker() {
           <span className="mountain-art">△</span>
           <strong>
             {ascents.length}
-            <small>/52</small>
+            <small>/47</small>
           </strong>
           <span>cimas conquistadas</span>
           <div className="progress">
@@ -362,29 +361,15 @@ export function SummitTracker() {
             una cima cada vez.
           </h2>
         </div>
-        <div className="summary-grid">
-          <p>
-            <b>52</b>
-            <span>territorios</span>
-          </p>
-          <p>
-            <b>47</b>
-            <span>cumbres distintas</span>
-          </p>
-          <p>
-            <b>3.718</b>
-            <span>metros en el Teide</span>
-          </p>
-        </div>
       </section>
 
       {/* ── Peak list ───────────────────── */}
       <section className="peak-list-section">
         <div className="section-heading">
           <div>
-            <span className="eyebrow">TODAS LAS CUMBRES</span>
-            <h2>52 techos provinciales</h2>
-            <p>Ordenados por altitud, de mayor a menor.</p>
+            <span className="eyebrow">52 Territorios - 47 Picos</span>
+            <h2>Todas las cumbres</h2>
+            <p>Ordenadas por altitud, de mayor a menor.</p>
           </div>
         </div>
         <div className="peak-list-grid">
@@ -416,7 +401,7 @@ export function SummitTracker() {
       {/* ── Footer ──────────────────────── */}
       <footer className="site-footer">
         <span>
-          52 Picos · Datos de altitudes según{" "}
+          47 Picos · Datos de altitudes según{" "}
           <a
             href="https://es.wikipedia.org/wiki/Anexo:Puntos_m%C3%A1s_altos_de_las_provincias_de_Espa%C3%B1a"
             target="_blank"

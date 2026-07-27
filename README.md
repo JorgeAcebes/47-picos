@@ -1,8 +1,8 @@
-# 52 Picos
+# 47 Picos
 
 Aplicación web personal y multiusuario para registrar el techo de las 50 provincias españolas, Ceuta y Melilla. Incluye mapa interactivo, marcadores, sombreado de provincias completadas, autenticación por correo y galería de fotos por ascensión.
 
-## Publicarlo gratis
+--- 
 
 La combinación elegida es **Supabase + Vercel**: Supabase guarda cuentas, progreso y fotos; Vercel publica la aplicación en una URL pública. Ambos tienen plan gratuito para este proyecto.
 
