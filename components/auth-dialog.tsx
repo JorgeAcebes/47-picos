@@ -38,11 +38,12 @@ export function AuthDialog({ onClose }: { onClose: () => void }) {
       setBusy(false);
       if (result.error) {
         const errText = result.error.message || "";
+        const errCode = ("code" in result.error ? (result.error as { code?: string }).code : "") || "";
         if (errText.toLowerCase().includes("failed to fetch")) {
           setMessage(
-            "Error de conexión ('Failed to fetch'). Comprueba si tienes un bloqueador de anuncios (uBlock, Brave Shields, AdGuard) o una extensión de privacidad bloqueando Supabase."
+            "Error de conexión con Supabase. Comprueba tu conexión a internet o si tienes un bloqueador de anuncios activo."
           );
-        } else if (errText.toLowerCase().includes("rate limit")) {
+        } else if (errText.toLowerCase().includes("rate limit") || errCode === "over_email_send_rate_limit") {
           setMessage("Límite de correos alcanzado en Supabase. Espera unos minutos antes de volver a intentarlo.");
         } else {
           setMessage(errText);
@@ -55,13 +56,7 @@ export function AuthDialog({ onClose }: { onClose: () => void }) {
     } catch (err: unknown) {
       setBusy(false);
       const errMsg = err instanceof Error ? err.message : String(err);
-      if (errMsg.toLowerCase().includes("failed to fetch")) {
-        setMessage(
-          "Error de conexión ('Failed to fetch'). Desactiva el bloqueador de anuncios para esta página o revisa tu conexión a internet."
-        );
-      } else {
-        setMessage(errMsg);
-      }
+      setMessage(errMsg);
     }
   }
 
