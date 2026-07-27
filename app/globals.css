@@ -23,6 +23,17 @@
   --transition: 0.22s ease;
 }
 
+/* ── Countries mode purple tokens ──────── */
+.mode-countries {
+  --ink: #2a1f3d;
+  --pine: #5b3a8c;
+  --sage: #9570c7;
+  --paper: #faf8fc;
+  --sand: #f0e8f4;
+  --line: #ddd4e8;
+  --muted: #6b5f7a;
+}
+
 /* ── Reset ──────────────────────────────── */
 *,
 *::before,
@@ -150,6 +161,49 @@ nav {
   margin-right: 34px;
 }
 
+/* ── Mode selector ─────────────────────── */
+.mode-selector {
+  display: flex;
+  gap: 3px;
+  margin-left: 24px;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 6px;
+  padding: 3px;
+}
+
+.mode-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 7px 14px;
+  border-radius: 4px;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+
+.mode-tab:hover {
+  color: var(--ink);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.mode-tab--active {
+  background: white;
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.mode-tab-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
 nav a {
   color: var(--muted);
   text-decoration: none;
@@ -212,6 +266,16 @@ nav a:hover::after {
 .button--green:hover {
   background: #184a3f;
   box-shadow: 0 4px 14px rgba(36, 95, 82, 0.3);
+}
+
+.button--purple {
+  background: #5b3a8c;
+  color: white;
+}
+
+.button--purple:hover {
+  background: #4a2d73;
+  box-shadow: 0 4px 14px rgba(91, 58, 140, 0.35);
 }
 
 .button--quiet {
@@ -626,13 +690,50 @@ nav a:hover::after {
 /* ── Footer ─────────────────────────────── */
 .site-footer {
   border-top: 1px solid var(--line);
-  padding: 28px clamp(22px, 8vw, 126px);
+  padding: 24px clamp(22px, 8vw, 126px);
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
   color: var(--muted);
   font-size: 12px;
   background: var(--paper);
+}
+
+.footer-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  width: 100%;
+}
+
+.footer-center {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.footer-icon {
+  display: block;
+  transition: opacity 0.2s;
+}
+
+.footer-icon:hover {
+  opacity: 0.7;
+}
+
+.footer-bottom {
+  border-top: 1px solid var(--line);
+  margin-top: 20px;
+  padding-top: 20px;
+  text-align: center;
+}
+
+.footer-disclaimer {
+  font-size: 11px;
+  line-height: 1.6;
+  color: #7b9187;
 }
 
 .site-footer a {
@@ -710,6 +811,13 @@ nav a:hover::after {
   font-size: 14px;
   color: var(--muted);
   margin: 0.1em 0 21px;
+}
+
+.country-capital {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 24px;
+  color: var(--pine);
+  margin-top: 19px;
 }
 
 .info-panel > p:not(.range) {
@@ -1081,8 +1189,14 @@ nav a:hover::after {
   color: var(--ink);
 }
 
+.peak-list-item .item-info {
+  flex: 1;
+  text-align: left;
+}
+
 .peak-list-item .item-alt {
-  margin-left: auto;
+  flex: 0 0 auto;
+  text-align: right;
   font-family: "Playfair Display", serif;
   font-size: 16px;
   color: var(--pine);
@@ -1262,13 +1376,185 @@ nav a:hover::after {
   }
 
   .site-footer {
-    flex-direction: column;
-    gap: 6px;
-    text-align: center;
     padding: 22px 18px;
+  }
+
+  .footer-top {
+    flex-direction: column;
+    gap: 16px;
+    text-align: center;
   }
 
   .peak-list-grid {
     grid-template-columns: 1fr;
   }
+
+  .mode-selector {
+    display: none;
+  }
+}
+
+/* ─────────────────────────────────────────────
+   Countries mode — Purple overrides
+   ───────────────────────────────────────────── */
+.mode-countries .topbar {
+  background: rgba(250, 248, 252, 0.94);
+}
+
+.mode-countries .brand-icon {
+  color: var(--sage);
+}
+
+.mode-countries .hero {
+  background: linear-gradient(135deg, #ede6f3 0%, #f5f2f9 55%, #e6e0ed 100%);
+}
+
+.mode-countries .hero h1 em {
+  color: #9570c7;
+}
+
+.mode-countries .hero-stat {
+  border-left-color: #b8a5d0;
+}
+
+.mode-countries .mountain-art {
+  color: #d0c4e0;
+  font-size: 160px;
+}
+
+.mode-countries .progress span {
+  background: #9570c7;
+}
+
+.mode-countries .hero-stat b {
+  color: #6b4fa0;
+}
+
+.mode-countries .challenge-summary {
+  background: #352551;
+}
+
+.mode-countries .challenge-summary .eyebrow {
+  color: #c3b3d9;
+}
+
+.mode-countries .summary-grid p {
+  border-left-color: #6b5290;
+}
+
+.mode-countries .summary-grid span {
+  color: #b8a5cc;
+}
+
+.mode-countries .legend-pin {
+  background: #5b3a8c;
+}
+
+.mode-countries .legend-done {
+  background: #9570c7;
+}
+
+.mode-countries .map {
+  border-color: #ccc4d9;
+  background: #e0dce8;
+}
+
+.mode-countries .map-loading {
+  background: linear-gradient(90deg, #e4dee8 25%, #efe8f5 50%, #e4dee8 75%);
+  background-size: 400px 100%;
+}
+
+.mode-countries .summit-pin {
+  background: #4a2878;
+  box-shadow: 0 2px 5px rgba(74, 40, 120, 0.37);
+}
+
+.mode-countries .summit-pin:hover {
+  box-shadow: 0 4px 10px rgba(74, 40, 120, 0.45);
+}
+
+.mode-countries .summit-pin--done {
+  background: #9570c7;
+}
+
+.mode-countries .info-panel {
+  background: #fcfaff;
+}
+
+.mode-countries .altitude {
+  color: #5b3a8c;
+}
+
+.mode-countries .completed-card {
+  border-left-color: #9570c7;
+  background: #f1ecf8;
+}
+
+.mode-countries .completed-card span {
+  color: #5b3a8c;
+}
+
+.mode-countries .pending-card {
+  border-color: #c7a857;
+  background: #fef9e8;
+}
+
+.mode-countries .peak-list-item:hover {
+  border-color: #9570c7;
+  background: #f7f3fb;
+}
+
+.mode-countries .peak-list-item--done {
+  border-color: #9570c7;
+  background: #f1ecf8;
+}
+
+.mode-countries .peak-list-item--done .item-check {
+  background: #9570c7;
+  border-color: #9570c7;
+}
+
+.mode-countries .peak-list-item .item-alt {
+  color: #5b3a8c;
+  font-family: "DM Sans", sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.mode-countries .toast {
+  background: #352551;
+}
+
+.mode-countries .modal-backdrop {
+  background: rgba(42, 31, 61, 0.53);
+}
+
+.mode-countries .leaflet-popup-content-wrapper {
+  box-shadow: 0 8px 24px rgba(42, 31, 61, 0.2);
+}
+
+.mode-countries nav a:hover {
+  color: #5b3a8c;
+}
+
+.mode-countries nav a::after {
+  background: #5b3a8c;
+}
+
+.mode-countries .account-avatar {
+  background: #5b3a8c;
+}
+
+.mode-countries .button--outline {
+  border-color: #5b3a8c;
+  color: #5b3a8c;
+}
+
+.mode-countries .button--outline:hover {
+  background: #5b3a8c;
+  color: white;
+}
+
+.mode-countries .site-footer a {
+  color: #5b3a8c;
 }
