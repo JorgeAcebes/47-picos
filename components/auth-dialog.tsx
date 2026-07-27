@@ -21,23 +21,47 @@ export function AuthDialog({ onClose }: { onClose: () => void }) {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!supabase) return;
+    if (!supabase) {
+      setMessage("Supabase no está configurado. Verifica las variables de entorno.");
+      return;
+    }
     setBusy(true);
     setMessage("");
-    const result = isRegister
-      ? await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: window.location.origin },
-        })
-      : await supabase.auth.signInWithPassword({ email, password });
-    setBusy(false);
-    if (result.error) {
-      setMessage(result.error.message);
-    } else if (isRegister) {
-      setMessage("Revisa tu correo para confirmar la cuenta.");
-    } else {
-      onClose();
+    try {
+      const result = isRegister
+        ? await supabase.auth.signUp({
+            email,
+            password,
+            options: { emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined },
+          })
+        : await supabase.auth.signInWithPassword({ email, password });
+      setBusy(false);
+      if (result.error) {
+        const errText = result.error.message || "";
+        if (errText.toLowerCase().includes("failed to fetch")) {
+          setMessage(
+            "Error de conexión ('Failed to fetch'). Comprueba si tienes un bloqueador de anuncios (uBlock, Brave Shields, AdGuard) o una extensión de privacidad bloqueando Supabase."
+          );
+        } else if (errText.toLowerCase().includes("rate limit")) {
+          setMessage("Límite de correos alcanzado en Supabase. Espera unos minutos antes de volver a intentarlo.");
+        } else {
+          setMessage(errText);
+        }
+      } else if (isRegister) {
+        setMessage("¡Cuenta creada! Revisa tu correo para confirmarla.");
+      } else {
+        onClose();
+      }
+    } catch (err: unknown) {
+      setBusy(false);
+      const errMsg = err instanceof Error ? err.message : String(err);
+      if (errMsg.toLowerCase().includes("failed to fetch")) {
+        setMessage(
+          "Error de conexión ('Failed to fetch'). Desactiva el bloqueador de anuncios para esta página o revisa tu conexión a internet."
+        );
+      } else {
+        setMessage(errMsg);
+      }
     }
   }
 
