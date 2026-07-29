@@ -400,6 +400,37 @@ export function SummitTracker({ mode }: Props) {
     );
   }
 
+  async function deleteAscent() {
+    if (!supabase || !session || !selected) return;
+    const confirmMessage = isPeaks
+      ? "¿Seguro que quieres eliminar esta ascensión?"
+      : "¿Seguro que quieres eliminar la visita a este país?";
+    if (!window.confirm(confirmMessage)) return;
+
+    setSaving(true);
+    setNotice("");
+
+    const deleteResult = await supabase
+      .from("ascents")
+      .delete()
+      .match({ user_id: session.user.id, summit_id: selected.id });
+
+    if (deleteResult.error) {
+      setNotice(deleteResult.error.message);
+      setSaving(false);
+      return;
+    }
+
+    setAscents((previous) => previous.filter((a) => a.summit_id !== selected.id));
+    setSaving(false);
+    setRecordOpen(false);
+    setNotice(
+      isPeaks
+        ? "Ascensión eliminada."
+        : "País eliminado de tu lista."
+    );
+  }
+
   async function signOut() {
     await supabase?.auth.signOut();
     setSelected(null);
@@ -777,13 +808,14 @@ export function SummitTracker({ mode }: Props) {
                 />
                 No recuerdo la fecha
               </label>
-              <input
-                type="date"
-                value={climbDate ? (climbDate.toISOString().slice(0, 10)) : ""}
-                onChange={(e) => setClimbDate(e.target.value ? new Date(e.target.value) : new Date())}
-                disabled={isDateUnknown}
-                max={new Date().toISOString().slice(0, 10)}
-              />
+              {!isDateUnknown && (
+                <input
+                  type="date"
+                  value={climbDate ? (climbDate.toISOString().slice(0, 10)) : ""}
+                  onChange={(e) => setClimbDate(e.target.value ? new Date(e.target.value) : new Date())}
+                  max={new Date().toISOString().slice(0, 10)}
+                />
+              )}
             </label>
 
             <label className="field-label">
@@ -829,6 +861,16 @@ export function SummitTracker({ mode }: Props) {
             >
               {saving ? "Guardando…" : "Guardar en mi mapa"}
             </button>
+            {selectedAscent && (
+              <button
+                className="button button--quiet button--wide"
+                style={{ marginTop: 8, color: "var(--danger, #a34f3d)" }}
+                disabled={saving}
+                onClick={deleteAscent}
+              >
+                Eliminar registro
+              </button>
+            )}
           </section>
         </div>
       )}
