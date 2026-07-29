@@ -8,7 +8,6 @@ import { peaks, type Peak } from "@/data/peaks";
 import { countries, type Country } from "@/data/countries";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { AuthDialog } from "./auth-dialog";
-import { AccountDialog } from "./account-dialog";
 
 const SpainMap = dynamic(
   () => import("./spain-map").then((module) => module.SpainMap),
@@ -100,6 +99,30 @@ function IconGlobe({ className }: { className?: string }) {
   );
 }
 
+function IconSun() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="5" />
+      <line x1="12" y1="1" x2="12" y2="3" />
+      <line x1="12" y1="21" x2="12" y2="23" />
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+      <line x1="1" y1="12" x2="3" y2="12" />
+      <line x1="21" y1="12" x2="23" y2="12" />
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+    </svg>
+  );
+}
+
+function IconMoon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </svg>
+  );
+}
+
 function IconClose({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -144,8 +167,24 @@ export function SummitTracker({ mode }: Props) {
   const [photos, setPhotos] = useState<SummitPhoto[]>([]);
   const [selected, setSelected] = useState<SelectedItem | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
-  const [accountOpen, setAccountOpen] = useState(false);
+  const [isDark, setIsDark] = useState(false);
   const [recordOpen, setRecordOpen] = useState(false);
+
+  useEffect(() => {
+    setIsDark(document.documentElement.classList.contains("theme-dark"));
+  }, []);
+
+  function toggleTheme() {
+    const nextDark = !isDark;
+    setIsDark(nextDark);
+    if (nextDark) {
+      document.documentElement.classList.add("theme-dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("theme-dark");
+      localStorage.setItem("theme", "light");
+    }
+  }
   const [climbDate, setClimbDate] = useState(
     new Date().toISOString().slice(0, 10),
   );
@@ -313,7 +352,7 @@ export function SummitTracker({ mode }: Props) {
   function onFilesChanged(event: ChangeEvent<HTMLInputElement>) {
     const nextFiles = Array.from(event.target.files ?? []);
     setFiles(nextFiles);
-    if (nextFiles[0]?.lastModified)
+    if (!isDateUnknown && nextFiles[0]?.lastModified)
       setClimbDate(
         new Date(nextFiles[0].lastModified).toISOString().slice(0, 10),
       );
@@ -388,7 +427,6 @@ export function SummitTracker({ mode }: Props) {
   async function signOut() {
     await supabase?.auth.signOut();
     setSelected(null);
-    setAccountOpen(false);
   }
 
   function closePanel() {
@@ -452,22 +490,27 @@ export function SummitTracker({ mode }: Props) {
           <a href="#mapa">Mapa</a>
           <a href="#reto">El reto</a>
         </nav>
-        {session ? (
-          <button className="account-button" onClick={() => setAccountOpen(true)}>
-            <span className="account-avatar">
-              {session.user.user_metadata?.avatar || session.user.email?.slice(0, 1).toUpperCase()}
-            </span>
-            <span>{session.user.email?.split("@")[0]}</span>
-            <small>Gestionar</small>
+        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          <button className="icon-button" onClick={toggleTheme} aria-label="Cambiar tema">
+            {isDark ? <IconSun /> : <IconMoon />}
           </button>
-        ) : (
-          <button
-            className="button button--outline"
-            onClick={() => setAuthOpen(true)}
-          >
-            Entrar / Registrarme
-          </button>
-        )}
+          {session ? (
+            <button className="account-button" onClick={signOut}>
+              <span className="account-avatar">
+                {session.user.email?.slice(0, 1).toUpperCase()}
+              </span>
+              <span>{session.user.email?.split("@")[0]}</span>
+              <small>Salir</small>
+            </button>
+          ) : (
+            <button
+              className="button button--outline"
+              onClick={() => setAuthOpen(true)}
+            >
+              Entrar / Registrarme
+            </button>
+          )}
+        </div>
       </header>
 
       {/* ── Hero ────────────────────────── */}
@@ -743,12 +786,13 @@ export function SummitTracker({ mode }: Props) {
                 />
                 No recuerdo la fecha
               </label>
-              <input
-                type="date"
-                value={climbDate}
-                onChange={(e) => setClimbDate(e.target.value)}
-                disabled={isDateUnknown}
-              />
+              {!isDateUnknown && (
+                <input
+                  type="date"
+                  value={climbDate}
+                  onChange={(e) => setClimbDate(e.target.value)}
+                />
+              )}
             </label>
 
             <label className="field-label">
@@ -759,10 +803,12 @@ export function SummitTracker({ mode }: Props) {
                 multiple
                 onChange={onFilesChanged}
               />
-              <span className="input-help">
-                Al elegirlas se propone automáticamente la fecha de captura de la
-                primera foto; puedes modificarla.
-              </span>
+              {!isDateUnknown && (
+                <span className="input-help">
+                  Al elegirlas se propone automáticamente la fecha de captura de la
+                  primera foto; puedes modificarla.
+                </span>
+              )}
             </label>
 
             {files.length > 0 && (
@@ -798,9 +844,6 @@ export function SummitTracker({ mode }: Props) {
 
       {/* ── Auth dialog ─────────────────── */}
       {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} />}
-
-      {/* ── Account dialog ──────────────── */}
-      {accountOpen && session && <AccountDialog user={session.user} onClose={() => setAccountOpen(false)} onSignOut={signOut} />}
 
       {/* ── Toast ───────────────────────── */}
       {notice && (

@@ -1419,32 +1419,7 @@ nav a:hover::after {
   }
 
   .mode-selector {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    z-index: 100;
-    background: var(--paper);
-    border-top: 1px solid var(--line);
-    padding: 8px 16px;
-    border-radius: 0;
-    box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
-    display: flex;
-    justify-content: space-around;
-  }
-  
-  .mode-selector .mode-tab {
-    flex: 1;
-    justify-content: center;
-  }
-  
-  .topbar nav, .topbar .account-button small {
     display: none;
-  }
-  
-  body {
-    padding-bottom: 60px;
   }
 }
 
