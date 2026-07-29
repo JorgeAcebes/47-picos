@@ -9,6 +9,11 @@ import { countries, type Country } from "@/data/countries";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { AuthDialog } from "./auth-dialog";
 
+import DatePicker, { registerLocale } from "react-datepicker";
+import { es } from "date-fns/locale/es";
+import "react-datepicker/dist/react-datepicker.css";
+registerLocale("es", es);
+
 const SpainMap = dynamic(
   () => import("./spain-map").then((module) => module.SpainMap),
   {
@@ -176,27 +181,8 @@ export function SummitTracker({ mode }: Props) {
   const [photos, setPhotos] = useState<SummitPhoto[]>([]);
   const [selected, setSelected] = useState<SelectedItem | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
-  const [isDark, setIsDark] = useState(false);
   const [recordOpen, setRecordOpen] = useState(false);
-
-  useEffect(() => {
-    setIsDark(document.documentElement.classList.contains("theme-dark"));
-  }, []);
-
-  function toggleTheme() {
-    const nextDark = !isDark;
-    setIsDark(nextDark);
-    if (nextDark) {
-      document.documentElement.classList.add("theme-dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("theme-dark");
-      localStorage.setItem("theme", "light");
-    }
-  }
-  const [climbDate, setClimbDate] = useState(
-    new Date().toISOString().slice(0, 10),
-  );
+  const [climbDate, setClimbDate] = useState<Date | null>(new Date());
   const [isDateUnknown, setIsDateUnknown] = useState(false);
   const [notes, setNotes] = useState("");
   const [files, setFiles] = useState<File[]>([]);
@@ -335,21 +321,28 @@ export function SummitTracker({ mode }: Props) {
   }, [openInformation]);
 
   const openRecord = useCallback(
-    (item: SelectedItem) => {
+    (item?: SelectedItem | null) => {
       if (!session) {
         setAuthOpen(true);
         return;
       }
-      setSelected(item);
-      const date = modeAscents.find((a) => a.summit_id === item.id)?.achieved_on;
-      setClimbDate(date && date !== "1900-01-01" ? date : new Date().toISOString().slice(0, 10));
-      setIsDateUnknown(date === "1900-01-01");
-      setNotes(modeAscents.find((a) => a.summit_id === item.id)?.notes ?? "");
-      setFiles([]);
-      setNotice("");
       setRecordOpen(true);
+      if (!item) {
+        setClimbDate(new Date());
+        setIsDateUnknown(false);
+        setNotes("");
+        setFiles([]);
+      } else {
+        setSelected(item);
+        const date = modeAscents.find((a) => a.summit_id === item.id)?.achieved_on;
+        setClimbDate(date && date !== "1900-01-01" ? new Date(date) : new Date());
+        setIsDateUnknown(date === "1900-01-01");
+        setNotes(modeAscents.find((a) => a.summit_id === item.id)?.notes ?? "");
+        setFiles([]);
+      }
+      setNotice("");
     },
-    [session, modeAscents],
+    [session, modeAscents]
   );
 
   const openPeakRecord = useCallback((peak: Peak) => {
@@ -364,16 +357,14 @@ export function SummitTracker({ mode }: Props) {
     const nextFiles = Array.from(event.target.files ?? []);
     setFiles(nextFiles);
     if (!isDateUnknown && nextFiles[0]?.lastModified)
-      setClimbDate(
-        new Date(nextFiles[0].lastModified).toISOString().slice(0, 10),
-      );
+      setClimbDate(new Date(nextFiles[0].lastModified));
   }
 
   async function saveAscent() {
     if (!supabase || !session || !selected) return;
     setSaving(true);
     setNotice("");
-    const finalDate = isDateUnknown ? "1900-01-01" : climbDate;
+    const finalDate = isDateUnknown ? "1900-01-01" : (climbDate?.toISOString().slice(0, 10) ?? new Date().toISOString().slice(0, 10));
     const ascentResult = await supabase.from("ascents").upsert(
       {
         user_id: session.user.id,
@@ -500,11 +491,6 @@ export function SummitTracker({ mode }: Props) {
         <nav>
           <a href="#mapa">Mapa</a>
           <a href="#reto">El reto</a>
-        </nav>
-        <div className="topbar-actions">
-          <button className="icon-button" onClick={toggleTheme} aria-label="Cambiar tema">
-            {isDark ? <IconSun /> : <IconMoon />}
-          </button>
           {session ? (
             <button className="account-button" onClick={signOut}>
               <span className="account-avatar">
@@ -521,7 +507,7 @@ export function SummitTracker({ mode }: Props) {
               Entrar / Registrarme
             </button>
           )}
-        </div>
+        </nav>
       </header>
 
       {/* ── Hero ────────────────────────── */}
@@ -625,14 +611,13 @@ export function SummitTracker({ mode }: Props) {
             <h2>{modeListTitle}</h2>
             <p>{modeListSubtitle}</p>
           </div>
-          <div style={{ position: "relative", width: "100%", maxWidth: "300px", marginTop: "16px" }}>
-            <IconSearch className="footer-icon" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--muted)", width: "16px", height: "16px", pointerEvents: "none" }} />
+          <div className="search-input-container">
+            <IconSearch className="search-icon" />
             <input 
               type="text" 
               placeholder={isPeaks ? "Buscar pico o provincia..." : "Buscar país o capital..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ paddingLeft: "36px" }}
             />
           </div>
         </div>
@@ -806,20 +791,24 @@ export function SummitTracker({ mode }: Props) {
             </p>
 
             <label className="field-label" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {isPeaks ? "Fecha de la ascensión / fotos" : "Fecha de la visita / fotos"}
               <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: "normal" }}>
                 <input
                   type="checkbox"
                   checked={isDateUnknown}
                   onChange={(e) => setIsDateUnknown(e.target.checked)}
                 />
-                No recuerdo la fecha
               </label>
+              <span>{isPeaks ? "¿Cuándo alcanzaste la cima?" : "¿Cuándo visitaste el país?"}</span>
               {!isDateUnknown && (
-                <input
-                  type="date"
-                  value={climbDate}
-                  onChange={(e) => setClimbDate(e.target.value)}
+                <DatePicker
+                  selected={climbDate}
+                  onChange={(date: Date | null) => setClimbDate(date)}
+                  locale="es"
+                  dateFormat="dd/MM/yyyy"
+                  showYearDropdown
+                  scrollableYearDropdown
+                  yearDropdownItemNumber={15}
+                  maxDate={new Date()}
                 />
               )}
             </label>
