@@ -448,22 +448,7 @@ export function SummitTracker({ mode }: Props) {
         </a>
 
         {/* ── Mode selector ──────────────── */}
-        <div className="mode-selector">
-          <button
-            className={`mode-tab ${isPeaks ? "mode-tab--active" : ""}`}
-            onClick={() => switchMode("peaks")}
-          >
-            <IconMountain className="mode-tab-icon" />
-            47 Picos
-          </button>
-          <button
-            className={`mode-tab ${!isPeaks ? "mode-tab--active" : ""}`}
-            onClick={() => switchMode("countries")}
-          >
-            <IconGlobe className="mode-tab-icon" />
-            196 Países
-          </button>
-        </div>
+        {/* Movido a la sección del mapa */}
 
         <nav>
           <a href="#mapa">Mapa</a>
@@ -538,6 +523,24 @@ export function SummitTracker({ mode }: Props) {
 
       {/* ── Map ─────────────────────────── */}
       <section id="mapa" className="map-section">
+        {/* ── Mode selector ──────────────── */}
+        <div className="mode-selector">
+          <button
+            className={`mode-tab ${isPeaks ? "mode-tab--active" : ""}`}
+            onClick={() => switchMode("peaks")}
+          >
+            <IconMountain className="mode-tab-icon" />
+            47 Picos
+          </button>
+          <button
+            className={`mode-tab ${!isPeaks ? "mode-tab--active" : ""}`}
+            onClick={() => switchMode("countries")}
+          >
+            <IconGlobe className="mode-tab-icon" />
+            196 Países
+          </button>
+        </div>
+
         <div className="section-heading">
           <div>
             <span className="eyebrow">TU PROGRESO</span>
@@ -591,7 +594,7 @@ export function SummitTracker({ mode }: Props) {
           <div className="search-input-container">
             <IconSearch className="search-icon" />
             <input 
-              type="text" 
+              type="search" 
               placeholder={isPeaks ? "Buscar pico o provincia..." : "Buscar país o capital..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}

@@ -157,6 +157,7 @@ img {
 
 nav {
   display: flex;
+  align-items: center;
   gap: 30px;
   margin-left: auto;
   margin-right: 34px;
@@ -182,16 +183,38 @@ nav {
 
 .search-input-container input {
   padding-left: 36px;
+  width: 100%;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  padding-right: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: white;
+  outline: none;
+  font-family: inherit;
+  font-size: 14px;
+  transition: border-color var(--transition);
+}
+
+.search-input-container input:focus {
+  border-color: var(--pine);
+}
+
+.search-input-container input::-webkit-search-decoration,
+.search-input-container input::-webkit-search-cancel-button,
+.search-input-container input::-webkit-search-results-button,
+.search-input-container input::-webkit-search-results-decoration {
+  -webkit-appearance: none;
 }
 
 /* ── Mode selector ─────────────────────── */
 .mode-selector {
-  display: flex;
+  display: inline-flex;
   gap: 3px;
-  margin-left: 24px;
   background: rgba(0, 0, 0, 0.04);
   border-radius: 6px;
-  padding: 3px;
+  padding: 4px;
+  margin-bottom: 24px;
 }
 
 .mode-tab {
@@ -452,9 +475,13 @@ nav a:hover::after {
 }
 
 .hero-stat strong {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
   font-family: "Playfair Display", Georgia, serif;
   font-size: 54px;
   line-height: 1;
+  white-space: nowrap;
 }
 
 .hero-stat strong small {
@@ -1209,6 +1236,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   border: 1px solid var(--line);
   border-radius: 2px;
   font-size: 13px;
+  text-align: left;
   transition: border-color var(--transition), background var(--transition);
   cursor: pointer;
 }
@@ -1436,7 +1464,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   }
 
   .mode-selector {
-    display: none;
+    display: flex;
   }
 }
 
