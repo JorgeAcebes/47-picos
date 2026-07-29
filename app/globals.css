@@ -34,6 +34,35 @@
   --muted: #6b5f7a;
 }
 
+/* ── Theme Dark ─────────────────────────── */
+.theme-dark {
+  --ink: #f0eadc;
+  --pine: #66b59d;
+  --sage: #458266;
+  --paper: #121c1a;
+  --sand: #182824;
+  --line: #2b3e39;
+  --muted: #8ea39c;
+  --amber: #f2c974;
+  --amber-bg: #2a2212;
+  --danger: #e27560;
+}
+
+.theme-dark.mode-countries {
+  --ink: #f0e8f4;
+  --pine: #a788db;
+  --sage: #815bb8;
+  --paper: #16121c;
+  --sand: #231d2b;
+  --line: #3b3248;
+  --muted: #a093b1;
+}
+
+.theme-dark .topbar { background: rgba(18, 28, 26, 0.94); }
+.theme-dark.mode-countries .topbar { background: rgba(22, 18, 28, 0.94); }
+.theme-dark .hero { background: var(--paper); }
+.theme-dark.mode-countries .hero { background: var(--paper); }
+
 /* ── Reset ──────────────────────────────── */
 *,
 *::before,
@@ -1390,7 +1419,32 @@ nav a:hover::after {
   }
 
   .mode-selector {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 100;
+    background: var(--paper);
+    border-top: 1px solid var(--line);
+    padding: 8px 16px;
+    border-radius: 0;
+    box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
+    display: flex;
+    justify-content: space-around;
+  }
+  
+  .mode-selector .mode-tab {
+    flex: 1;
+    justify-content: center;
+  }
+  
+  .topbar nav, .topbar .account-button small {
     display: none;
+  }
+  
+  body {
+    padding-bottom: 60px;
   }
 }
 

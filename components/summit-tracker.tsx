@@ -8,6 +8,7 @@ import { peaks, type Peak } from "@/data/peaks";
 import { countries, type Country } from "@/data/countries";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { AuthDialog } from "./auth-dialog";
+import { AccountDialog } from "./account-dialog";
 
 const SpainMap = dynamic(
   () => import("./spain-map").then((module) => module.SpainMap),
@@ -71,6 +72,7 @@ function countryToItem(country: Country): SelectedItem {
 }
 
 function formatDate(date: string) {
+  if (date === "1900-01-01") return "Fecha desconocida";
   return new Intl.DateTimeFormat("es-ES", {
     day: "numeric",
     month: "long",
@@ -142,10 +144,12 @@ export function SummitTracker({ mode }: Props) {
   const [photos, setPhotos] = useState<SummitPhoto[]>([]);
   const [selected, setSelected] = useState<SelectedItem | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const [recordOpen, setRecordOpen] = useState(false);
   const [climbDate, setClimbDate] = useState(
     new Date().toISOString().slice(0, 10),
   );
+  const [isDateUnknown, setIsDateUnknown] = useState(false);
   const [notes, setNotes] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
@@ -287,10 +291,9 @@ export function SummitTracker({ mode }: Props) {
         return;
       }
       setSelected(item);
-      setClimbDate(
-        modeAscents.find((a) => a.summit_id === item.id)?.achieved_on ??
-        new Date().toISOString().slice(0, 10),
-      );
+      const date = modeAscents.find((a) => a.summit_id === item.id)?.achieved_on;
+      setClimbDate(date && date !== "1900-01-01" ? date : new Date().toISOString().slice(0, 10));
+      setIsDateUnknown(date === "1900-01-01");
       setNotes(modeAscents.find((a) => a.summit_id === item.id)?.notes ?? "");
       setFiles([]);
       setNotice("");
@@ -320,11 +323,12 @@ export function SummitTracker({ mode }: Props) {
     if (!supabase || !session || !selected) return;
     setSaving(true);
     setNotice("");
+    const finalDate = isDateUnknown ? "1900-01-01" : climbDate;
     const ascentResult = await supabase.from("ascents").upsert(
       {
         user_id: session.user.id,
         summit_id: selected.id,
-        achieved_on: climbDate,
+        achieved_on: finalDate,
         notes: notes || null,
       },
       { onConflict: "user_id,summit_id" },
@@ -355,7 +359,7 @@ export function SummitTracker({ mode }: Props) {
           summit_id: selected.id,
           storage_path: path,
           public_url: data.publicUrl,
-          taken_on: climbDate,
+          taken_on: finalDate,
         })
         .select()
         .single();
@@ -366,7 +370,7 @@ export function SummitTracker({ mode }: Props) {
         (a) => a.summit_id !== selected.id,
       );
       return [
-        { summit_id: selected.id, achieved_on: climbDate, notes: notes || null },
+        { summit_id: selected.id, achieved_on: finalDate, notes: notes || null },
         ...withoutSelected,
       ];
     });
@@ -384,6 +388,7 @@ export function SummitTracker({ mode }: Props) {
   async function signOut() {
     await supabase?.auth.signOut();
     setSelected(null);
+    setAccountOpen(false);
   }
 
   function closePanel() {
@@ -448,12 +453,12 @@ export function SummitTracker({ mode }: Props) {
           <a href="#reto">El reto</a>
         </nav>
         {session ? (
-          <button className="account-button" onClick={signOut}>
+          <button className="account-button" onClick={() => setAccountOpen(true)}>
             <span className="account-avatar">
-              {session.user.email?.slice(0, 1).toUpperCase()}
+              {session.user.user_metadata?.avatar || session.user.email?.slice(0, 1).toUpperCase()}
             </span>
             <span>{session.user.email?.split("@")[0]}</span>
-            <small>Salir</small>
+            <small>Gestionar</small>
           </button>
         ) : (
           <button
@@ -728,12 +733,21 @@ export function SummitTracker({ mode }: Props) {
               {selected.label} · {selected.subtitle}
             </p>
 
-            <label className="field-label">
+            <label className="field-label" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {isPeaks ? "Fecha de la ascensión / fotos" : "Fecha de la visita / fotos"}
+              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: "normal" }}>
+                <input
+                  type="checkbox"
+                  checked={isDateUnknown}
+                  onChange={(e) => setIsDateUnknown(e.target.checked)}
+                />
+                No recuerdo la fecha
+              </label>
               <input
                 type="date"
                 value={climbDate}
                 onChange={(e) => setClimbDate(e.target.value)}
+                disabled={isDateUnknown}
               />
             </label>
 
@@ -784,6 +798,9 @@ export function SummitTracker({ mode }: Props) {
 
       {/* ── Auth dialog ─────────────────── */}
       {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} />}
+
+      {/* ── Account dialog ──────────────── */}
+      {accountOpen && session && <AccountDialog user={session.user} onClose={() => setAccountOpen(false)} onSignOut={signOut} />}
 
       {/* ── Toast ───────────────────────── */}
       {notice && (
