@@ -132,6 +132,15 @@ function IconClose({ className }: { className?: string }) {
   );
 }
 
+function IconSearch({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  );
+}
+
 function IconCheck() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -191,6 +200,8 @@ export function SummitTracker({ mode }: Props) {
   const [isDateUnknown, setIsDateUnknown] = useState(false);
   const [notes, setNotes] = useState("");
   const [files, setFiles] = useState<File[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedPhotoFiles, setSelectedPhotoFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
@@ -490,7 +501,7 @@ export function SummitTracker({ mode }: Props) {
           <a href="#mapa">Mapa</a>
           <a href="#reto">El reto</a>
         </nav>
-        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+        <div className="topbar-actions">
           <button className="icon-button" onClick={toggleTheme} aria-label="Cambiar tema">
             {isDark ? <IconSun /> : <IconMoon />}
           </button>
@@ -614,9 +625,27 @@ export function SummitTracker({ mode }: Props) {
             <h2>{modeListTitle}</h2>
             <p>{modeListSubtitle}</p>
           </div>
+          <div style={{ position: "relative", width: "100%", maxWidth: "300px", marginTop: "16px" }}>
+            <IconSearch className="footer-icon" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--muted)", width: "16px", height: "16px", pointerEvents: "none" }} />
+            <input 
+              type="text" 
+              placeholder={isPeaks ? "Buscar pico o provincia..." : "Buscar país o capital..."}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ paddingLeft: "36px" }}
+            />
+          </div>
         </div>
         <div className="peak-list-grid">
-          {sortedItems.map((item) => {
+          {sortedItems.filter(item => {
+            if (!searchQuery) return true;
+            const q = searchQuery.toLowerCase();
+            return (
+              item.title.toLowerCase().includes(q) ||
+              (item.label && item.label.toLowerCase().includes(q)) ||
+              (item.detail && item.detail.toLowerCase().includes(q))
+            );
+          }).map((item) => {
             const done = modeAscents.some((a) => a.summit_id === item.id);
             return (
               <button

@@ -43,9 +43,33 @@
   --sand: #182824;
   --line: #2b3e39;
   --muted: #8ea39c;
-  --amber: #f2c974;
+  --amber: #f8db94;
   --amber-bg: #2a2212;
   --danger: #e27560;
+}
+
+.theme-dark .pending-card {
+  color: #d1b466;
+}
+
+.theme-dark .hero h1 em {
+  color: var(--amber);
+}
+
+.theme-dark.mode-countries .hero h1 em {
+  color: #b8a5d0;
+}
+
+.theme-dark .peak-list-item--done {
+  background: rgba(69, 130, 102, 0.15);
+}
+
+.theme-dark .peak-list-item--done:hover {
+  background: rgba(69, 130, 102, 0.25);
+}
+
+.theme-dark.mode-countries .peak-list-item--done {
+  background: rgba(129, 91, 184, 0.15);
 }
 
 .theme-dark.mode-countries {
@@ -188,6 +212,13 @@ nav {
   gap: 30px;
   margin-left: auto;
   margin-right: 34px;
+}
+
+.topbar-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-left: auto;
 }
 
 /* ── Mode selector ─────────────────────── */
@@ -1071,16 +1102,43 @@ nav a:hover::after {
   gap: 6px;
 }
 
-.auth-form input,
-.field-label input,
-.field-label textarea {
-  border: 1px solid #cbd6ce;
-  background: white;
-  padding: 10px 11px;
-  border-radius: 2px;
+.auth-form input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="date"],
+textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--paper);
   color: var(--ink);
-  font-size: 14px;
-  transition: border-color var(--transition), outline-color var(--transition);
+  transition: all var(--transition);
+}
+
+/* ── Modern Date Picker ────────────────── */
+input[type="date"] {
+  position: relative;
+  padding-right: 40px;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  opacity: 0.5;
+  filter: invert(0.2);
+  transition: opacity var(--transition);
+}
+
+.theme-dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
 }
 
 .auth-form input:focus,
@@ -1226,8 +1284,8 @@ nav a:hover::after {
 .peak-list-item .item-alt {
   flex: 0 0 auto;
   text-align: right;
-  font-family: "Playfair Display", serif;
-  font-size: 16px;
+  font-size: 14px;
+  font-weight: 500;
   color: var(--pine);
   white-space: nowrap;
 }
