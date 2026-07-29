@@ -9,10 +9,7 @@ import { countries, type Country } from "@/data/countries";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { AuthDialog } from "./auth-dialog";
 
-import DatePicker, { registerLocale } from "react-datepicker";
-import { es } from "date-fns/locale/es";
-import "react-datepicker/dist/react-datepicker.css";
-registerLocale("es", es);
+
 
 const SpainMap = dynamic(
   () => import("./spain-map").then((module) => module.SpainMap),
@@ -771,26 +768,22 @@ export function SummitTracker({ mode }: Props) {
             </p>
 
             <label className="field-label" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {isPeaks ? "Fecha de la ascensión / fotos" : "Fecha de la visita / fotos"}
               <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: "normal" }}>
                 <input
                   type="checkbox"
                   checked={isDateUnknown}
                   onChange={(e) => setIsDateUnknown(e.target.checked)}
                 />
+                No recuerdo la fecha
               </label>
-              <span>{isPeaks ? "¿Cuándo alcanzaste la cima?" : "¿Cuándo visitaste el país?"}</span>
-              {!isDateUnknown && (
-                <DatePicker
-                  selected={climbDate}
-                  onChange={(date: Date | null) => setClimbDate(date)}
-                  locale="es"
-                  dateFormat="dd/MM/yyyy"
-                  showYearDropdown
-                  scrollableYearDropdown
-                  yearDropdownItemNumber={15}
-                  maxDate={new Date()}
-                />
-              )}
+              <input
+                type="date"
+                value={climbDate ? (climbDate.toISOString().slice(0, 10)) : ""}
+                onChange={(e) => setClimbDate(e.target.value ? new Date(e.target.value) : new Date())}
+                disabled={isDateUnknown}
+                max={new Date().toISOString().slice(0, 10)}
+              />
             </label>
 
             <label className="field-label">
