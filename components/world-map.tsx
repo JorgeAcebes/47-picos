@@ -7,6 +7,7 @@ import {
   TileLayer,
   Marker,
   useMap,
+  useMapEvents,
 } from "react-leaflet";
 import type { Path } from "leaflet";
 import type { FeatureCollection, Position } from "geojson";
@@ -42,6 +43,7 @@ function fixAntimeridian(geo: FeatureCollection) {
 
 type Props = {
   completed: Set<string>;
+  wishlist: Set<string>;
   onInformation: (country: Country) => void;
   onComplete: (country: Country) => void;
 };
@@ -60,7 +62,22 @@ function FitWorld() {
   return null;
 }
 
-export function WorldMap({ completed, onInformation, onComplete }: Props) {
+function MapZoomListener() {
+  const map = useMapEvents({
+    zoomend: () => {
+      const zoom = map.getZoom();
+      const container = map.getContainer();
+      container.setAttribute("data-zoom", zoom.toString());
+    },
+  });
+  useEffect(() => {
+    const container = map.getContainer();
+    container.setAttribute("data-zoom", map.getZoom().toString());
+  }, [map]);
+  return null;
+}
+
+export function WorldMap({ completed, wishlist, onInformation, onComplete }: Props) {
   const [geo, setGeo] = useState<FeatureCollection | null>(null);
 
   useEffect(() => {
@@ -91,6 +108,12 @@ export function WorldMap({ completed, onInformation, onComplete }: Props) {
         iconSize: [28, 28],
         iconAnchor: [14, 14],
       }),
+      wishlist: L.divIcon({
+        className: "",
+        html: '<span class="summit-pin summit-pin--wishlist">★</span>',
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+      }),
     }),
     [],
   );
@@ -103,6 +126,7 @@ export function WorldMap({ completed, onInformation, onComplete }: Props) {
       maxZoom={7}
     >
       <FitWorld />
+      <MapZoomListener />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -147,7 +171,7 @@ export function WorldMap({ completed, onInformation, onComplete }: Props) {
           <Marker
             key={c.id}
             position={c.coordinates}
-            icon={completed.has(c.id) ? icons.done : icons.todo}
+            icon={completed.has(c.id) ? icons.done : wishlist.has(c.id) ? icons.wishlist : icons.todo}
             eventHandlers={{
               click: () => onInformation(c),
             }}

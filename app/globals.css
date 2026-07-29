@@ -648,6 +648,30 @@ nav a:hover::after {
   font-weight: 700;
 }
 
+.summit-pin--wishlist {
+  background: var(--amber);
+  color: white;
+  font-size: 16px;
+  font-weight: 700;
+  border-color: var(--amber-bg);
+}
+
+/* ── Dynamic map zoom scaling ──────────────── */
+.map[data-zoom="2"] .summit-pin { opacity: 0; pointer-events: none; transform: scale(0.3); }
+.map[data-zoom="3"] .summit-pin { opacity: 0.2; transform: scale(0.45); }
+.map[data-zoom="4"] .summit-pin { opacity: 0.5; transform: scale(0.65); }
+.map[data-zoom="5"] .summit-pin { opacity: 0.8; transform: scale(0.85); }
+.map[data-zoom="6"] .summit-pin,
+.map[data-zoom="7"] .summit-pin,
+.map[data-zoom="8"] .summit-pin,
+.map[data-zoom="9"] .summit-pin,
+.map[data-zoom="10"] .summit-pin { opacity: 1; transform: scale(1); }
+
+.map .summit-pin:hover {
+  opacity: 1 !important;
+  transform: scale(1.15) !important;
+}
+
 .leaflet-popup-content-wrapper {
   border-radius: 4px;
   box-shadow: 0 8px 24px rgba(21, 54, 43, 0.2);

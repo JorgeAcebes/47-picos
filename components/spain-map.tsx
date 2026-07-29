@@ -8,6 +8,7 @@ import {
   Popup,
   TileLayer,
   useMap,
+  useMapEvents,
 } from "react-leaflet";
 import type { FeatureCollection } from "geojson";
 import { useEffect, useMemo, useState } from "react";
@@ -18,6 +19,7 @@ const PROVINCES_URL =
 
 type Props = {
   completed: Set<string>;
+  wishlist: Set<string>;
   onInformation: (peak: Peak) => void;
   onComplete: (peak: Peak) => void;
 };
@@ -32,6 +34,21 @@ function FitSpain() {
       ],
       { padding: [12, 12] },
     );
+  }, [map]);
+  return null;
+}
+
+function MapZoomListener() {
+  const map = useMapEvents({
+    zoomend: () => {
+      const zoom = map.getZoom();
+      const container = map.getContainer();
+      container.setAttribute("data-zoom", zoom.toString());
+    },
+  });
+  useEffect(() => {
+    const container = map.getContainer();
+    container.setAttribute("data-zoom", map.getZoom().toString());
   }, [map]);
   return null;
 }
@@ -60,6 +77,12 @@ export function SpainMap({ completed, onInformation, onComplete }: Props) {
         iconSize: [28, 28],
         iconAnchor: [14, 14],
       }),
+      wishlist: L.divIcon({
+        className: "",
+        html: '<span class="summit-pin summit-pin--wishlist">★</span>',
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+      }),
     }),
     [],
   );
@@ -72,6 +95,7 @@ export function SpainMap({ completed, onInformation, onComplete }: Props) {
       maxZoom={10}
     >
       <FitSpain />
+      <MapZoomListener />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -119,7 +143,7 @@ export function SpainMap({ completed, onInformation, onComplete }: Props) {
         <Marker
           key={peak.id}
           position={peak.coordinates}
-          icon={completed.has(peak.code) ? markerIcons.done : markerIcons.todo}
+          icon={completed.has(peak.code) ? markerIcons.done : wishlist.has(peak.code) ? markerIcons.wishlist : markerIcons.todo}
         >
           <Popup className="peak-popup" closeButton={false}>
             <div className="popup-content">

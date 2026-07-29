@@ -27,7 +27,7 @@ const WorldMap = dynamic(
   },
 );
 
-type Ascent = { summit_id: string; achieved_on: string; notes: string | null };
+type Ascent = { summit_id: string; achieved_on: string; notes: string | null; is_wishlist: boolean };
 type SummitPhoto = {
   id: string;
   summit_id: string;
@@ -202,15 +202,20 @@ export function SummitTracker({ mode }: Props) {
     [ascents, validIds],
   );
 
+  const completedModeAscents = useMemo(
+    () => modeAscents.filter((a) => !a.is_wishlist),
+    [modeAscents],
+  );
+
   // Contar únicas
   const achievedCount = useMemo(() => {
-    if (!isPeaks) return modeAscents.length;
+    if (!isPeaks) return completedModeAscents.length;
     // Para picos, contamos los nombres únicos ya que hay provincias que comparten cima
     const uniquePeakNames = new Set(
-      modeAscents.map((a) => peaks.find((p) => p.id === a.summit_id)?.name).filter(Boolean)
+      completedModeAscents.map((a) => peaks.find((p) => p.id === a.summit_id)?.name).filter(Boolean)
     );
     return uniquePeakNames.size;
-  }, [isPeaks, modeAscents]);
+  }, [isPeaks, completedModeAscents]);
 
   /* ── Auto-dismiss toast ───────────────── */
   useEffect(() => {
@@ -240,7 +245,7 @@ export function SummitTracker({ mode }: Props) {
       const [ascentResult, photoResult] = await Promise.all([
         supabase
           .from("ascents")
-          .select("summit_id, achieved_on, notes")
+          .select("summit_id, achieved_on, notes, is_wishlist")
           .order("achieved_on", { ascending: false }),
         supabase
           .from("summit_photos")
@@ -259,6 +264,17 @@ export function SummitTracker({ mode }: Props) {
     () =>
       new Set(
         ascents
+          .filter((a) => !a.is_wishlist)
+          .map((a) => peaks.find((p) => p.id === a.summit_id)?.code)
+          .filter(Boolean) as string[],
+      ),
+    [ascents],
+  );
+  const wishlistPeakCodes = useMemo(
+    () =>
+      new Set(
+        ascents
+          .filter((a) => a.is_wishlist)
           .map((a) => peaks.find((p) => p.id === a.summit_id)?.code)
           .filter(Boolean) as string[],
       ),
@@ -267,7 +283,11 @@ export function SummitTracker({ mode }: Props) {
 
   // Completed set for WorldMap (country ids)
   const completedCountryIds = useMemo(
-    () => new Set(ascents.filter((a) => a.summit_id.startsWith("country-")).map((a) => a.summit_id)),
+    () => new Set(ascents.filter((a) => a.summit_id.startsWith("country-") && !a.is_wishlist).map((a) => a.summit_id)),
+    [ascents],
+  );
+  const wishlistCountryIds = useMemo(
+    () => new Set(ascents.filter((a) => a.summit_id.startsWith("country-") && a.is_wishlist).map((a) => a.summit_id)),
     [ascents],
   );
 
@@ -334,6 +354,51 @@ export function SummitTracker({ mode }: Props) {
       setClimbDate(new Date(nextFiles[0].lastModified));
   }
 
+  async function saveWishlist() {
+    if (!supabase || !session || !selected) {
+      setAuthOpen(true);
+      return;
+    }
+    setNotice("");
+    const existing = modeAscents.find((a) => a.summit_id === selected.id);
+
+    if (existing?.is_wishlist) {
+      const deleteResult = await supabase
+        .from("ascents")
+        .delete()
+        .match({ user_id: session.user.id, summit_id: selected.id });
+
+      if (deleteResult.error) {
+        setNotice(deleteResult.error.message);
+        return;
+      }
+      setAscents((previous) => previous.filter((a) => a.summit_id !== selected.id));
+      setNotice("Eliminado de tu lista de deseos.");
+    } else {
+      const finalDate = new Date().toISOString().slice(0, 10);
+      const ascentResult = await supabase.from("ascents").upsert(
+        {
+          user_id: session.user.id,
+          summit_id: selected.id,
+          achieved_on: finalDate,
+          notes: null,
+          is_wishlist: true,
+        },
+        { onConflict: "user_id,summit_id" },
+      );
+
+      if (ascentResult.error) {
+        setNotice(ascentResult.error.message);
+        return;
+      }
+      setAscents((previous) => [
+        { summit_id: selected.id, achieved_on: finalDate, notes: null, is_wishlist: true },
+        ...previous.filter((a) => a.summit_id !== selected.id),
+      ]);
+      setNotice("¡Añadido a tu lista de deseos!");
+    }
+  }
+
   async function saveAscent() {
     if (!supabase || !session || !selected) return;
     setSaving(true);
@@ -345,6 +410,7 @@ export function SummitTracker({ mode }: Props) {
         summit_id: selected.id,
         achieved_on: finalDate,
         notes: notes || null,
+        is_wishlist: false,
       },
       { onConflict: "user_id,summit_id" },
     );
@@ -385,7 +451,7 @@ export function SummitTracker({ mode }: Props) {
         (a) => a.summit_id !== selected.id,
       );
       return [
-        { summit_id: selected.id, achieved_on: finalDate, notes: notes || null },
+        { summit_id: selected.id, achieved_on: finalDate, notes: notes || null, is_wishlist: false },
         ...withoutSelected,
       ];
     });
@@ -591,12 +657,14 @@ export function SummitTracker({ mode }: Props) {
         {isPeaks ? (
           <SpainMap
             completed={completedPeakCodes}
+            wishlist={wishlistPeakCodes}
             onInformation={openPeakInformation}
             onComplete={openPeakRecord}
           />
         ) : (
           <WorldMap
             completed={completedCountryIds}
+            wishlist={wishlistCountryIds}
             onInformation={openCountryInformation}
             onComplete={openCountryRecord}
           />
@@ -639,7 +707,7 @@ export function SummitTracker({ mode }: Props) {
               (item.detail && item.detail.toLowerCase().includes(q))
             );
           }).map((item) => {
-            const done = modeAscents.some((a) => a.summit_id === item.id);
+            const done = completedModeAscents.some((a) => a.summit_id === item.id);
             return (
               <button
                 key={item.id}
@@ -714,11 +782,15 @@ export function SummitTracker({ mode }: Props) {
           )}
           <p>{selected.note}</p>
 
-          {selectedAscent ? (
+          {selectedAscent && !selectedAscent.is_wishlist ? (
             <div className="completed-card">
               <span>✓ {isPeaks ? "Ascensión registrada" : "Visita registrada"}</span>
               <b>{formatDate(selectedAscent.achieved_on)}</b>
               {selectedAscent.notes && <p>&ldquo;{selectedAscent.notes}&rdquo;</p>}
+            </div>
+          ) : selectedAscent && selectedAscent.is_wishlist ? (
+            <div className="pending-card" style={{ background: "var(--amber-bg)", color: "#a67c29", borderColor: "#ecd9a5" }}>
+              ★ En tu lista de deseos
             </div>
           ) : (
             <div className="pending-card">
@@ -733,10 +805,19 @@ export function SummitTracker({ mode }: Props) {
               className={`button ${isPeaks ? "button--green" : "button--purple"} button--wide`}
               onClick={() => openRecord(selected)}
             >
-              {selectedAscent
+              {selectedAscent && !selectedAscent.is_wishlist
                 ? "Editar registro y fotos"
                 : isPeaks ? "Marcar como completado" : "Marcar como visitado"}
             </button>
+            {(!selectedAscent || selectedAscent.is_wishlist) && (
+              <button
+                className="button button--quiet button--wide"
+                style={{ marginTop: 8 }}
+                onClick={() => saveWishlist()}
+              >
+                {selectedAscent?.is_wishlist ? "Quitar de mi lista de deseos" : "Añadir a mi lista de deseos"}
+              </button>
+            )}
           </div>
 
           <div className="photo-section">
