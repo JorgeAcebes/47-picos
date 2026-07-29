@@ -34,22 +34,6 @@
   --muted: #6b5f7a;
 }
 
-}
-
-.theme-dark.mode-countries {
-  --ink: #f0e8f4;
-  --pine: #a788db;
-  --sage: #815bb8;
-  --paper: #16121c;
-  --sand: #231d2b;
-  --line: #3b3248;
-  --muted: #a093b1;
-}
-
-.theme-dark .topbar { background: rgba(18, 28, 26, 0.94); }
-.theme-dark.mode-countries .topbar { background: rgba(22, 18, 28, 0.94); }
-.theme-dark .hero { background: var(--paper); }
-.theme-dark.mode-countries .hero { background: var(--paper); }
 
 /* ── Reset ──────────────────────────────── */
 *,
@@ -1110,10 +1094,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   opacity: 0.5;
   filter: invert(0.2);
   transition: opacity var(--transition);
-}
-
-.theme-dark input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(0.8);
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator:hover {
