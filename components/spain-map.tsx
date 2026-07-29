@@ -53,7 +53,7 @@ function MapZoomListener() {
   return null;
 }
 
-export function SpainMap({ completed, onInformation, onComplete }: Props) {
+export function SpainMap({ completed, wishlist, onInformation, onComplete }: Props) {
   const [geo, setGeo] = useState<FeatureCollection | null>(null);
 
   useEffect(() => {
