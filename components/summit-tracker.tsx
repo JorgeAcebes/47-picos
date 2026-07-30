@@ -650,6 +650,9 @@ export function SummitTracker({ mode }: Props) {
               <i className="legend-pin">{isPeaks ? "▲" : "◆"}</i> Pendiente
             </span>
             <span>
+              <i className="legend-wishlist">★</i> Quiero ir
+            </span>
+            <span>
               <i className="legend-done">✓</i> {isPeaks ? "Completada" : "Visitado"}
             </span>
           </div>
@@ -708,10 +711,11 @@ export function SummitTracker({ mode }: Props) {
             );
           }).map((item) => {
             const done = completedModeAscents.some((a) => a.summit_id === item.id);
+            const wish = modeAscents.some((a) => a.summit_id === item.id && a.is_wishlist);
             return (
               <button
                 key={item.id}
-                className={`peak-list-item${done ? " peak-list-item--done" : ""}`}
+                className={`peak-list-item${done ? " peak-list-item--done" : wish ? " peak-list-item--wishlist" : ""}`}
                 onClick={() => openInformation(item)}
               >
                 <span className="item-check">{done && <IconCheck />}</span>

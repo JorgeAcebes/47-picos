@@ -137,11 +137,12 @@ export function WorldMap({ completed, wishlist, onInformation, onComplete }: Pro
           style={(f) => {
             const country = f ? resolveCountryFromFeature(f as any) : undefined;
             const isDone = country ? completed.has(country.id) : false;
+            const isWishlist = country ? wishlist.has(country.id) : false;
             return {
-              color: isDone ? "#4a2878" : "#9b8ab8",
+              color: isDone ? "#4a2878" : isWishlist ? "#d2a54b" : "#9b8ab8",
               weight: 1.15,
-              fillColor: isDone ? "#7b52ab" : "#ece5f3",
-              fillOpacity: isDone ? 0.83 : 0.55,
+              fillColor: isDone ? "#7b52ab" : isWishlist ? "#ecd9a5" : "#ece5f3",
+              fillOpacity: isDone ? 0.83 : isWishlist ? 0.83 : 0.55,
             };
           }}
           onEachFeature={(f, layer) => {
@@ -151,15 +152,17 @@ export function WorldMap({ completed, wishlist, onInformation, onComplete }: Pro
               layer.on("click", () => onInformation(country));
 
               layer.on("mouseover", () => {
+                const isWishlist = wishlist.has(country.id);
                 (layer as Path).setStyle({
                   weight: 2.5,
-                  fillOpacity: completed.has(country.id) ? 0.9 : 0.75,
+                  fillOpacity: completed.has(country.id) ? 0.9 : isWishlist ? 0.9 : 0.75,
                 });
               });
               layer.on("mouseout", () => {
+                const isWishlist = wishlist.has(country.id);
                 (layer as Path).setStyle({
                   weight: 1.15,
-                  fillOpacity: completed.has(country.id) ? 0.83 : 0.55,
+                  fillOpacity: completed.has(country.id) ? 0.83 : isWishlist ? 0.83 : 0.55,
                 });
               });
             }

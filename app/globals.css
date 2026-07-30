@@ -577,6 +577,7 @@ nav a:hover::after {
 }
 
 .legend-pin,
+.legend-wishlist,
 .legend-done {
   font-style: normal;
   width: 20px;
@@ -587,6 +588,11 @@ nav a:hover::after {
   color: white;
   background: var(--pine);
   font-size: 10px;
+}
+
+.legend-wishlist {
+  background: var(--amber);
+  font-size: 12px;
 }
 
 .legend-done {
@@ -1273,6 +1279,10 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 .peak-list-item--done {
   border-color: var(--sage);
   background: #eff6ee;
+}
+
+.peak-list-item--wishlist {
+  background: #fcf9f1;
 }
 
 .peak-list-item .item-province {

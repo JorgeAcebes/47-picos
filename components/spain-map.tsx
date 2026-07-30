@@ -106,11 +106,12 @@ export function SpainMap({ completed, wishlist, onInformation, onComplete }: Pro
           style={(feature) => {
             const code = String(feature?.properties?.Codigo ?? "");
             const isDone = completed.has(code);
+            const isWishlist = wishlist.has(code);
             return {
-              color: isDone ? "#245f52" : "#8bb8ae",
+              color: isDone ? "#245f52" : isWishlist ? "#d2a54b" : "#8bb8ae",
               weight: 1.15,
-              fillColor: isDone ? "#5c9b7d" : "#e7f1ea",
-              fillOpacity: isDone ? 0.83 : 0.72,
+              fillColor: isDone ? "#5c9b7d" : isWishlist ? "#ecd9a5" : "#e7f1ea",
+              fillOpacity: isDone ? 0.83 : isWishlist ? 0.83 : 0.72,
               // Smooth transition on polygon hover
             };
           }}
@@ -124,15 +125,17 @@ export function SpainMap({ completed, wishlist, onInformation, onComplete }: Pro
 
               // Hover effect on province polygons
               layer.on("mouseover", () => {
+                const isWishlist = wishlist.has(peak.code);
                 (layer as L.Path).setStyle({
                   weight: 2.5,
-                  fillOpacity: completed.has(peak.code) ? 0.9 : 0.85,
+                  fillOpacity: completed.has(peak.code) ? 0.9 : isWishlist ? 0.9 : 0.85,
                 });
               });
               layer.on("mouseout", () => {
+                const isWishlist = wishlist.has(peak.code);
                 (layer as L.Path).setStyle({
                   weight: 1.15,
-                  fillOpacity: completed.has(peak.code) ? 0.83 : 0.72,
+                  fillOpacity: completed.has(peak.code) ? 0.83 : isWishlist ? 0.83 : 0.72,
                 });
               });
             }
