@@ -82,6 +82,25 @@ function formatDate(date: string) {
 }
 
 /* ── SVG icon components ────────────────── */
+function IconLogo({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 52 L36 12 L48 32 Z" fill="url(#logoGradGreen)"/>
+      <path d="M24 60 L44 26 L60 52 Z" fill="url(#logoGradPurple)" style={{ mixBlendMode: 'multiply' }}/>
+      <defs>
+        <linearGradient id="logoGradGreen" x1="12" y1="12" x2="48" y2="52">
+          <stop stopColor="#5c9b7d"/>
+          <stop offset="1" stopColor="#245f52"/>
+        </linearGradient>
+        <linearGradient id="logoGradPurple" x1="24" y1="26" x2="60" y2="60">
+          <stop stopColor="#9570c7"/>
+          <stop offset="1" stopColor="#5b3a8c"/>
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
 function IconMountain({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -532,10 +551,7 @@ export function SummitTracker({ mode }: Props) {
       {/* ── Topbar ──────────────────────── */}
       <header className="topbar">
         <a className="brand" href={isPeaks ? "#inicio" : "#inicio"}>
-          {isPeaks
-            ? <IconMountain className="brand-icon" />
-            : <IconGlobe className="brand-icon" />
-          }
+          <IconLogo className="brand-icon" />
           <span>
             {modeLabelShort} <b>{modeLabelBold}</b>
           </span>
