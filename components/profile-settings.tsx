@@ -108,7 +108,7 @@ export function ProfileSettings({ session, onClose }: { session: Session; onClos
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         </button>
-        <h2 style={{ marginBottom: "1.5rem" }}>Configuración de Perfil</h2>
+        <h2 style={{ marginBottom: "1.5rem", textAlign: "center" }}>Perfil</h2>
         
         {loading ? (
           <p>Cargando...</p>
@@ -165,7 +165,7 @@ export function ProfileSettings({ session, onClose }: { session: Session; onClos
             
             <p style={{ fontSize: "0.85rem", color: "#666", marginTop: "-0.5rem", marginBottom: "1rem" }}>
               {isPublic 
-                ? "Cualquiera podrá buscarte y ver tu actividad. (Aparecerás en Recomendados)" 
+                ? "Cualquiera podrá buscarte y ver tu actividad." 
                 : "Solo los usuarios que aceptes podrán ver tu actividad."}
             </p>
 
@@ -191,10 +191,6 @@ export function ProfileSettings({ session, onClose }: { session: Session; onClos
               <label htmlFor="share_notes">Mostrar mis notas</label>
             </div>
             
-            <p style={{ fontSize: "0.85rem", color: "#666", marginTop: "-0.5rem" }}>
-              Aplica a tus conexiones aceptadas y a todo el mundo si tu perfil es público.
-            </p>
-
             {error && <p style={{ color: "red", margin: 0, fontSize: "0.9rem" }}>{error}</p>}
             {success && <p style={{ color: "green", margin: 0, fontSize: "0.9rem" }}>{success}</p>}
             

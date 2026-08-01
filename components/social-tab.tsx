@@ -32,6 +32,9 @@ export function SocialTab() {
   
   // A mapping of profile id to connection status
   const [connections, setConnections] = useState<Record<string, ConnectionStatus>>({});
+  const [followerStatuses, setFollowerStatuses] = useState<Record<string, ConnectionStatus>>({});
+  
+  const hasPendingRequests = Object.values(followerStatuses).includes('pending');
   
   useEffect(() => {
     if (!supabase) return;
@@ -91,6 +94,13 @@ export function SocialTab() {
         
       if (followerConns) {
         const followerIds = followerConns.map(c => c.follower_id);
+        
+        const fStatusMap: Record<string, ConnectionStatus> = {};
+        for (const conn of followerConns) {
+          fStatusMap[conn.follower_id] = conn.status;
+        }
+        setFollowerStatuses(fStatusMap);
+
         if (followerIds.length > 0) {
           const { data: followerProfiles } = await supabase!
             .from('profiles')
@@ -131,11 +141,12 @@ export function SocialTab() {
       setSearchResults([]);
       return;
     }
+    const cleanSearchQuery = searchQuery.replace(/^@/, '');
     const delay = setTimeout(async () => {
       const { data } = await supabase!
         .from("profiles")
         .select("*")
-        .ilike("username", `%${searchQuery}%`)
+        .ilike("username", `%${cleanSearchQuery}%`)
         .limit(20);
       if (data) setSearchResults(data);
     }, 300);
@@ -156,6 +167,12 @@ export function SocialTab() {
       
     if (!error) {
       setConnections(prev => ({ ...prev, [profileId]: newStatus }));
+      const profileToAdd = searchResults.find(p => p.id === profileId) || 
+                           recommended.find(p => p.id === profileId) || 
+                           followers.find(p => p.id === profileId);
+      if (profileToAdd && !following.find(p => p.id === profileId)) {
+        setFollowing(prev => [...prev, profileToAdd]);
+      }
     }
   }
 
@@ -179,9 +196,61 @@ export function SocialTab() {
     }
   }
 
-  function renderProfileItem(profile: Profile) {
+  async function acceptRequest(profileId: string) {
+    if (!session || !supabase) return;
+    const { error } = await supabase
+      .from('connections')
+      .update({ status: 'accepted' })
+      .eq('follower_id', profileId)
+      .eq('following_id', session.user.id);
+      
+    if (!error) {
+      setFollowerStatuses(prev => ({ ...prev, [profileId]: 'accepted' }));
+    }
+  }
+
+  async function rejectRequest(profileId: string) {
+    if (!session || !supabase) return;
+    const { error } = await supabase
+      .from('connections')
+      .delete()
+      .eq('follower_id', profileId)
+      .eq('following_id', session.user.id);
+      
+    if (!error) {
+      setFollowerStatuses(prev => {
+        const next = { ...prev };
+        delete next[profileId];
+        return next;
+      });
+      setFollowers(prev => prev.filter(p => p.id !== profileId));
+    }
+  }
+
+  async function removeFollower(profileId: string, username: string) {
+    if (!window.confirm(`¿Quieres eliminar a @${username} de tus seguidores?`)) return;
+    
+    if (!session || !supabase) return;
+    const { error } = await supabase
+      .from('connections')
+      .delete()
+      .eq('follower_id', profileId)
+      .eq('following_id', session.user.id);
+      
+    if (!error) {
+      setFollowerStatuses(prev => {
+        const next = { ...prev };
+        delete next[profileId];
+        return next;
+      });
+      setFollowers(prev => prev.filter(p => p.id !== profileId));
+    }
+  }
+
+  function renderProfileItem(profile: Profile, context: 'discover' | 'followers' | 'following') {
     const isMe = session?.user.id === profile.id;
-    const status = connections[profile.id];
+    const followingStatus = connections[profile.id];
+    const followerStatus = followerStatuses[profile.id];
     
     return (
       <div key={profile.id} className="peak-list-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', marginBottom: '0.5rem', background: '#fff', borderRadius: '8px' }}>
@@ -200,13 +269,24 @@ export function SocialTab() {
         </Link>
         
         {!isMe && session && (
-          <div>
-            {status === 'accepted' ? (
-              <button className="button button--outline" onClick={() => unfollow(profile.id, profile.username)}>Siguiendo</button>
-            ) : status === 'pending' ? (
-              <button className="button button--outline" onClick={() => unfollow(profile.id, profile.username)}>Pendiente</button>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            {context === 'followers' ? (
+              followerStatus === 'pending' ? (
+                <>
+                  <button className="button button--green" onClick={() => acceptRequest(profile.id)}>Aceptar</button>
+                  <button className="button button--outline" onClick={() => rejectRequest(profile.id)}>Rechazar</button>
+                </>
+              ) : (
+                <button className="button button--outline" onClick={() => removeFollower(profile.id, profile.username)}>Eliminar</button>
+              )
             ) : (
-              <button className="button button--purple" onClick={() => connect(profile.id, profile.is_public)}>Conectar</button>
+              followingStatus === 'accepted' ? (
+                <button className="button button--outline" onClick={() => unfollow(profile.id, profile.username)}>Siguiendo</button>
+              ) : followingStatus === 'pending' ? (
+                <button className="button button--outline" onClick={() => unfollow(profile.id, profile.username)}>Pendiente</button>
+              ) : (
+                <button className="button button--purple" onClick={() => connect(profile.id, profile.is_public)}>Conectar</button>
+              )
             )}
           </div>
         )}
@@ -222,7 +302,20 @@ export function SocialTab() {
         </Link>
         <nav>
           <Link href={mapLink}>Mapa</Link>
-          <Link href="/social" style={{ fontWeight: 'bold' }}>Social</Link>
+          <Link href="/social" style={{ fontWeight: 'bold', position: 'relative' }}>
+            Social
+            {hasPendingRequests && (
+              <span style={{ 
+                position: 'absolute', 
+                top: '0', 
+                right: '-10px', 
+                width: '8px', 
+                height: '8px', 
+                backgroundColor: 'red', 
+                borderRadius: '50%' 
+              }} />
+            )}
+          </Link>
           {session ? (
             <button className="account-button" onClick={() => setProfileOpen(true)}>
               {myProfile?.avatar_url ? (
@@ -272,7 +365,7 @@ export function SocialTab() {
               <div>
                 <h3>Resultados de búsqueda</h3>
                 {searchResults.length > 0 ? (
-                  searchResults.map(renderProfileItem)
+                  searchResults.map(p => renderProfileItem(p, 'discover'))
                 ) : (
                   <p>No se encontraron usuarios.</p>
                 )}
@@ -282,7 +375,7 @@ export function SocialTab() {
                 <h3>Recomendados para ti</h3>
                 {session ? (
                   recommended.length > 0 ? (
-                    recommended.map(renderProfileItem)
+                    recommended.map(p => renderProfileItem(p, 'discover'))
                   ) : (
                     <p>No hay recomendaciones por ahora. ¡Busca y conecta con tus primeros amigos!</p>
                   )
@@ -299,7 +392,7 @@ export function SocialTab() {
             <h3>Tus Seguidores</h3>
             {session ? (
               followers.length > 0 ? (
-                followers.map(renderProfileItem)
+                followers.map(p => renderProfileItem(p, 'followers'))
               ) : (
                 <p>Aún no tienes seguidores.</p>
               )
@@ -314,7 +407,7 @@ export function SocialTab() {
             <h3>Siguiendo</h3>
             {session ? (
               following.length > 0 ? (
-                following.map(renderProfileItem)
+                following.map(p => renderProfileItem(p, 'following'))
               ) : (
                 <p>No sigues a nadie todavía.</p>
               )
