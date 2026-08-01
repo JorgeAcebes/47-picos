@@ -20,6 +20,7 @@ export function SocialTab() {
   const [session, setSession] = useState<Session | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [myProfile, setMyProfile] = useState<Profile | null>(null);
   const [mapLink, setMapLink] = useState("/");
   
   const [searchQuery, setSearchQuery] = useState("");
@@ -42,6 +43,14 @@ export function SocialTab() {
     
     return () => listener.subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (session && !profileOpen) {
+      supabase?.from("profiles").select("*").eq("id", session.user.id).single().then(({ data }) => {
+        if (data) setMyProfile(data);
+      });
+    }
+  }, [session, profileOpen]);
 
   useEffect(() => {
     if (!session || !supabase) return;
@@ -165,10 +174,14 @@ export function SocialTab() {
           <Link href="/social" style={{ fontWeight: 'bold' }}>Social</Link>
           {session ? (
             <button className="account-button" onClick={() => setProfileOpen(true)}>
-              <span className="account-avatar">
-                {session.user.email?.slice(0, 1).toUpperCase()}
-              </span>
-              <span>{session.user.email?.split("@")[0]}</span>
+              {myProfile?.avatar_url ? (
+                <img src={myProfile.avatar_url} alt="Mi Perfil" className="account-avatar" style={{ objectFit: "cover" }} />
+              ) : (
+                <span className="account-avatar">
+                  {myProfile?.username?.slice(0, 1).toUpperCase() || session.user.email?.slice(0, 1).toUpperCase()}
+                </span>
+              )}
+              <span>{myProfile?.username || session.user.email?.split("@")[0]}</span>
               <small>Perfil</small>
             </button>
           ) : (
@@ -183,7 +196,7 @@ export function SocialTab() {
         <div className="section-heading">
           <div>
             <span className="eyebrow">RED SOCIAL</span>
-            <h2>Encuentra a otros montañeros</h2>
+            <h2>Encuentra a otros usuarios</h2>
             <p>Busca usuarios y conecta con ellos para ver sus progresos.</p>
           </div>
         </div>

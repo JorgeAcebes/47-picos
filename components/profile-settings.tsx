@@ -92,6 +92,9 @@ export function ProfileSettings({ session, onClose }: { session: Session; onClos
       setError(error.message.includes("unique") ? "Ese nombre de usuario ya está en uso." : error.message);
     } else {
       setSuccess("Perfil guardado correctamente.");
+      setTimeout(() => {
+        onClose();
+      }, 750);
     }
     setSaving(false);
   }
@@ -136,15 +139,18 @@ export function ProfileSettings({ session, onClose }: { session: Session; onClos
             </div>
 
             <div>
-              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>Nombre de usuario (@)</label>
-              <input 
-                type="text" 
-                value={username} 
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="tu_usuario"
-                style={{ width: "100%", padding: "0.5rem", borderRadius: "4px", border: "1px solid #ccc" }}
-                required
-              />
+              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>Nombre de usuario</label>
+              <div style={{ position: "relative" }}>
+                <span style={{ position: "absolute", left: "0.5rem", top: "50%", transform: "translateY(-50%)", color: "#666" }}>@</span>
+                <input 
+                  type="text" 
+                  value={username} 
+                  onChange={(e) => setUsername(e.target.value.replace(/^@/, ''))}
+                  placeholder="tu_usuario"
+                  style={{ width: "100%", padding: "0.5rem 0.5rem 0.5rem 1.7rem", borderRadius: "4px", border: "1px solid #ccc" }}
+                  required
+                />
+              </div>
             </div>
             
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>

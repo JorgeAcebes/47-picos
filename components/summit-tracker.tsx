@@ -177,6 +177,7 @@ export function SummitTracker({ mode, targetProfile }: Props) {
   const isReadOnly = !!targetProfile;
 
   const [session, setSession] = useState<Session | null>(null);
+  const [myProfile, setMyProfile] = useState<{username: string; avatar_url: string | null} | null>(null);
   const [ascents, setAscents] = useState<Ascent[]>([]);
   const [photos, setPhotos] = useState<SummitPhoto[]>([]);
   const [selected, setSelected] = useState<SelectedItem | null>(null);
@@ -279,12 +280,12 @@ export function SummitTracker({ mode, targetProfile }: Props) {
       }
       const targetId = targetProfile ? targetProfile.id : session.user.id;
       const [ascentResult, photoResult] = await Promise.all([
-        supabase
+        supabase!
           .from("ascents")
           .select("summit_id, achieved_on, notes, is_wishlist")
           .eq("user_id", targetId)
           .order("achieved_on", { ascending: false }),
-        supabase
+        supabase!
           .from("summit_photos")
           .select("id, summit_id, public_url, taken_on, created_at")
           .eq("user_id", targetId)
@@ -292,9 +293,18 @@ export function SummitTracker({ mode, targetProfile }: Props) {
       ]);
       if (ascentResult.data) setAscents(ascentResult.data as Ascent[]);
       if (photoResult.data) setPhotos(photoResult.data as SummitPhoto[]);
+
+      if (!isReadOnly && !profileOpen) {
+        const { data: profile } = await supabase!
+          .from("profiles")
+          .select("username, avatar_url")
+          .eq("id", session.user.id)
+          .single();
+        if (profile) setMyProfile(profile);
+      }
     }
     loadProgress();
-  }, [session]);
+  }, [session, profileOpen, isReadOnly, targetProfile]);
 
   /* ── Derived state ────────────────────── */
   // Completed set for SpainMap (province codes)
@@ -585,10 +595,14 @@ export function SummitTracker({ mode, targetProfile }: Props) {
           <a href="/social">Social</a>
           {session ? (
             <button className="account-button" onClick={() => setProfileOpen(true)}>
-              <span className="account-avatar">
-                {session.user.email?.slice(0, 1).toUpperCase()}
-              </span>
-              <span>{session.user.email?.split("@")[0]}</span>
+              {myProfile?.avatar_url ? (
+                <img src={myProfile.avatar_url} alt="Mi Perfil" className="account-avatar" style={{ objectFit: "cover" }} />
+              ) : (
+                <span className="account-avatar">
+                  {myProfile?.username?.slice(0, 1).toUpperCase() || session.user.email?.slice(0, 1).toUpperCase()}
+                </span>
+              )}
+              <span>{myProfile?.username || session.user.email?.split("@")[0]}</span>
               <small>Perfil</small>
             </button>
           ) : (
