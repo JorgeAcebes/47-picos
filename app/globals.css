@@ -1474,7 +1474,16 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   }
 
   .topbar nav {
+    gap: 12px;
+    margin-right: 0;
+  }
+
+  .topbar nav a[href="#reto"] {
     display: none;
+  }
+
+  .topbar nav a {
+    font-size: 13px;
   }
 
   .brand {

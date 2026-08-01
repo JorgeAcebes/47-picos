@@ -26,6 +26,9 @@ export function SocialTab() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Profile[]>([]);
   const [recommended, setRecommended] = useState<Profile[]>([]);
+  const [followers, setFollowers] = useState<Profile[]>([]);
+  const [following, setFollowing] = useState<Profile[]>([]);
+  const [activeTab, setActiveTab] = useState<'discover' | 'followers' | 'following'>('discover');
   
   // A mapping of profile id to connection status
   const [connections, setConnections] = useState<Record<string, ConnectionStatus>>({});
@@ -56,17 +59,45 @@ export function SocialTab() {
     if (!session || !supabase) return;
     
     async function fetchConnections() {
-      const { data } = await supabase!
+      // Fetch who I am following
+      const { data: followingConns } = await supabase!
         .from('connections')
         .select('following_id, status')
         .eq('follower_id', session!.user.id);
         
-      if (data) {
+      if (followingConns) {
         const connMap: Record<string, ConnectionStatus> = {};
-        for (const conn of data) {
+        for (const conn of followingConns) {
           connMap[conn.following_id] = conn.status;
         }
         setConnections(connMap);
+        
+        // Fetch profiles for following
+        const followingIds = followingConns.map(c => c.following_id);
+        if (followingIds.length > 0) {
+          const { data: followingProfiles } = await supabase!
+            .from('profiles')
+            .select('*')
+            .in('id', followingIds);
+          if (followingProfiles) setFollowing(followingProfiles);
+        }
+      }
+
+      // Fetch my followers
+      const { data: followerConns } = await supabase!
+        .from('connections')
+        .select('follower_id, status')
+        .eq('following_id', session!.user.id);
+        
+      if (followerConns) {
+        const followerIds = followerConns.map(c => c.follower_id);
+        if (followerIds.length > 0) {
+          const { data: followerProfiles } = await supabase!
+            .from('profiles')
+            .select('*')
+            .in('id', followerIds);
+          if (followerProfiles) setFollowers(followerProfiles);
+        }
       }
     }
     
@@ -128,6 +159,26 @@ export function SocialTab() {
     }
   }
 
+  async function unfollow(profileId: string, username: string) {
+    if (!window.confirm(`¿Quieres dejar de seguir a @${username}?`)) return;
+    
+    if (!session || !supabase) return;
+    const { error } = await supabase
+      .from('connections')
+      .delete()
+      .eq('follower_id', session.user.id)
+      .eq('following_id', profileId);
+      
+    if (!error) {
+      setConnections(prev => {
+        const next = { ...prev };
+        delete next[profileId];
+        return next;
+      });
+      setFollowing(prev => prev.filter(p => p.id !== profileId));
+    }
+  }
+
   function renderProfileItem(profile: Profile) {
     const isMe = session?.user.id === profile.id;
     const status = connections[profile.id];
@@ -151,9 +202,9 @@ export function SocialTab() {
         {!isMe && session && (
           <div>
             {status === 'accepted' ? (
-              <button className="button button--outline" disabled>Siguiendo</button>
+              <button className="button button--outline" onClick={() => unfollow(profile.id, profile.username)}>Siguiendo</button>
             ) : status === 'pending' ? (
-              <button className="button button--outline" disabled>Pendiente</button>
+              <button className="button button--outline" onClick={() => unfollow(profile.id, profile.username)}>Pendiente</button>
             ) : (
               <button className="button button--purple" onClick={() => connect(profile.id, profile.is_public)}>Conectar</button>
             )}
@@ -186,7 +237,7 @@ export function SocialTab() {
             </button>
           ) : (
             <button className="button button--outline" onClick={() => setAuthOpen(true)}>
-              Entrar / Registrarme
+              Entrar
             </button>
           )}
         </nav>
@@ -201,34 +252,74 @@ export function SocialTab() {
           </div>
         </div>
 
-        <input 
-          type="search"
-          placeholder="Buscar por @usuario..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid #ccc', fontSize: '1rem', marginBottom: '2rem' }}
-        />
+        <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+          <button className={`button ${activeTab === 'discover' ? 'button--green' : 'button--outline'}`} style={{ flex: 1 }} onClick={() => setActiveTab('discover')}>Descubrir</button>
+          <button className={`button ${activeTab === 'followers' ? 'button--green' : 'button--outline'}`} style={{ flex: 1 }} onClick={() => setActiveTab('followers')}>Seguidores</button>
+          <button className={`button ${activeTab === 'following' ? 'button--green' : 'button--outline'}`} style={{ flex: 1 }} onClick={() => setActiveTab('following')}>Siguiendo</button>
+        </div>
 
-        {searchQuery.length >= 2 ? (
-          <div>
-            <h3>Resultados de búsqueda</h3>
-            {searchResults.length > 0 ? (
-              searchResults.map(renderProfileItem)
+        {activeTab === 'discover' && (
+          <>
+            <input 
+              type="search"
+              placeholder="Buscar por @usuario..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid #ccc', fontSize: '1rem', marginBottom: '2rem' }}
+            />
+
+            {searchQuery.length >= 2 ? (
+              <div>
+                <h3>Resultados de búsqueda</h3>
+                {searchResults.length > 0 ? (
+                  searchResults.map(renderProfileItem)
+                ) : (
+                  <p>No se encontraron usuarios.</p>
+                )}
+              </div>
             ) : (
-              <p>No se encontraron usuarios.</p>
+              <div>
+                <h3>Recomendados para ti</h3>
+                {session ? (
+                  recommended.length > 0 ? (
+                    recommended.map(renderProfileItem)
+                  ) : (
+                    <p>No hay recomendaciones por ahora. ¡Busca y conecta con tus primeros amigos!</p>
+                  )
+                ) : (
+                  <p>Inicia sesión para ver recomendaciones basadas en tus conexiones.</p>
+                )}
+              </div>
             )}
-          </div>
-        ) : (
+          </>
+        )}
+
+        {activeTab === 'followers' && (
           <div>
-            <h3>Recomendados para ti</h3>
+            <h3>Tus Seguidores</h3>
             {session ? (
-              recommended.length > 0 ? (
-                recommended.map(renderProfileItem)
+              followers.length > 0 ? (
+                followers.map(renderProfileItem)
               ) : (
-                <p>No hay recomendaciones por ahora. ¡Busca y conecta con tus primeros amigos!</p>
+                <p>Aún no tienes seguidores.</p>
               )
             ) : (
-              <p>Inicia sesión para ver recomendaciones basadas en tus conexiones.</p>
+              <p>Inicia sesión para ver tus seguidores.</p>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'following' && (
+          <div>
+            <h3>Siguiendo</h3>
+            {session ? (
+              following.length > 0 ? (
+                following.map(renderProfileItem)
+              ) : (
+                <p>No sigues a nadie todavía.</p>
+              )
+            ) : (
+              <p>Inicia sesión para ver a quién sigues.</p>
             )}
           </div>
         )}

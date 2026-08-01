@@ -23,6 +23,7 @@ export function ProfileView({ username }: { username: string }) {
   const [authOpen, setAuthOpen] = useState(false);
   const [error, setError] = useState("");
   const [mapLink, setMapLink] = useState("/");
+  const [mode, setMode] = useState<"peaks" | "countries">("countries");
 
   useEffect(() => {
     if (!supabase) return;
@@ -153,6 +154,6 @@ export function ProfileView({ username }: { username: string }) {
   }
 
   return (
-    <SummitTracker mode="peaks" targetProfile={{ id: profile.id, username: profile.username }} />
+    <SummitTracker mode={mode} onSwitchMode={setMode} targetProfile={{ id: profile.id, username: profile.username }} />
   );
 }

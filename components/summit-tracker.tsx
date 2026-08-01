@@ -44,7 +44,11 @@ type TargetProfile = {
   username: string;
 };
 
-type Props = { mode: ChallengeMode; targetProfile?: TargetProfile };
+type Props = { 
+  mode: ChallengeMode; 
+  targetProfile?: TargetProfile;
+  onSwitchMode?: (mode: ChallengeMode) => void;
+};
 
 // Tipo unificado para item seleccionado
 type SelectedItem = {
@@ -171,7 +175,7 @@ function IconLinkedin() {
   );
 }
 
-export function SummitTracker({ mode, targetProfile }: Props) {
+export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
   const router = useRouter();
   const isPeaks = mode === "peaks";
   const isReadOnly = !!targetProfile;
@@ -559,7 +563,11 @@ export function SummitTracker({ mode, targetProfile }: Props) {
     if (target === mode) return;
     setSelected(null);
     setRecordOpen(false);
-    router.push(target === "peaks" ? "/" : "/paises");
+    if (onSwitchMode) {
+      onSwitchMode(target);
+    } else {
+      router.push(target === "peaks" ? "/" : "/paises");
+    }
   }
 
   // Sorted items for the list
@@ -590,8 +598,17 @@ export function SummitTracker({ mode, targetProfile }: Props) {
         {/* Movido a la sección del mapa */}
 
         <nav>
-          <a href="#mapa">Mapa</a>
-          <a href="#reto">El reto</a>
+          {isReadOnly ? (
+            <>
+              <a href="/paises">Mapa</a>
+              <a href="/">El reto</a>
+            </>
+          ) : (
+            <>
+              <a href="#mapa">Mapa</a>
+              <a href="#reto">El reto</a>
+            </>
+          )}
           <a href="/social">Social</a>
           {session ? (
             <button className="account-button" onClick={() => setProfileOpen(true)}>
@@ -610,7 +627,7 @@ export function SummitTracker({ mode, targetProfile }: Props) {
               className="button button--outline"
               onClick={() => setAuthOpen(true)}
             >
-              Entrar / Registrarme
+              Entrar
             </button>
           )}
         </nav>
