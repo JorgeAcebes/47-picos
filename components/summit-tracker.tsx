@@ -8,6 +8,7 @@ import { peaks, type Peak } from "@/data/peaks";
 import { countries, type Country } from "@/data/countries";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { AuthDialog } from "./auth-dialog";
+import { ProfileSettings } from "./profile-settings";
 
 
 
@@ -38,7 +39,12 @@ type SummitPhoto = {
 
 type ChallengeMode = "peaks" | "countries";
 
-type Props = { mode: ChallengeMode };
+type TargetProfile = {
+  id: string;
+  username: string;
+};
+
+type Props = { mode: ChallengeMode; targetProfile?: TargetProfile };
 
 // Tipo unificado para item seleccionado
 type SelectedItem = {
@@ -165,21 +171,24 @@ function IconLinkedin() {
   );
 }
 
-export function SummitTracker({ mode }: Props) {
+export function SummitTracker({ mode, targetProfile }: Props) {
   const router = useRouter();
   const isPeaks = mode === "peaks";
+  const isReadOnly = !!targetProfile;
 
   const [session, setSession] = useState<Session | null>(null);
   const [ascents, setAscents] = useState<Ascent[]>([]);
   const [photos, setPhotos] = useState<SummitPhoto[]>([]);
   const [selected, setSelected] = useState<SelectedItem | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [recordOpen, setRecordOpen] = useState(false);
   const [climbDate, setClimbDate] = useState<Date | null>(new Date());
   const [isDateUnknown, setIsDateUnknown] = useState(false);
   const [notes, setNotes] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [listFilter, setListFilter] = useState<"all" | "done" | "pending" | "wishlist">("all");
   const [selectedPhotoFiles, setSelectedPhotoFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
@@ -236,6 +245,13 @@ export function SummitTracker({ mode }: Props) {
     return uniquePeakNames.size;
   }, [isPeaks, completedModeAscents]);
 
+  /* ── Save Last Path for Social Tab ────── */
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("last_map_path", window.location.pathname);
+    }
+  }, [mode]);
+
   /* ── Auto-dismiss toast ───────────────── */
   useEffect(() => {
     if (!notice) return;
@@ -261,14 +277,17 @@ export function SummitTracker({ mode }: Props) {
         setPhotos([]);
         return;
       }
+      const targetId = targetProfile ? targetProfile.id : session.user.id;
       const [ascentResult, photoResult] = await Promise.all([
         supabase
           .from("ascents")
           .select("summit_id, achieved_on, notes, is_wishlist")
+          .eq("user_id", targetId)
           .order("achieved_on", { ascending: false }),
         supabase
           .from("summit_photos")
           .select("id, summit_id, public_url, taken_on, created_at")
+          .eq("user_id", targetId)
           .order("taken_on", { ascending: false }),
       ]);
       if (ascentResult.data) setAscents(ascentResult.data as Ascent[]);
@@ -563,13 +582,14 @@ export function SummitTracker({ mode }: Props) {
         <nav>
           <a href="#mapa">Mapa</a>
           <a href="#reto">El reto</a>
+          <a href="/social">Social</a>
           {session ? (
-            <button className="account-button" onClick={signOut}>
+            <button className="account-button" onClick={() => setProfileOpen(true)}>
               <span className="account-avatar">
                 {session.user.email?.slice(0, 1).toUpperCase()}
               </span>
               <span>{session.user.email?.split("@")[0]}</span>
-              <small>Salir</small>
+              <small>Perfil</small>
             </button>
           ) : (
             <button
@@ -587,7 +607,9 @@ export function SummitTracker({ mode }: Props) {
         <div>
           <span className="eyebrow">{modeHeroEyebrow}</span>
           <h1>
-            {isPeaks ? (
+            {targetProfile ? (
+              <>El mapa de <br /><em>@{targetProfile.username}</em></>
+            ) : isPeaks ? (
               <>Sube alto.<br /><em>Déjalo escrito.</em></>
             ) : (
               <>Explora el mundo.<br /><em>Márcalo en tu mapa.</em></>
@@ -598,7 +620,7 @@ export function SummitTracker({ mode }: Props) {
             <a className={`button ${isPeaks ? "button--green" : "button--purple"}`} href="#mapa">
               Explorar el mapa
             </a>
-            {!session && (
+            {!session && !targetProfile && (
               <button
                 className="button button--quiet"
                 onClick={() => setAuthOpen(true)}
@@ -620,6 +642,22 @@ export function SummitTracker({ mode }: Props) {
           </div>
           <b>{completion}% de tu reto</b>
         </aside>
+
+        {/* ── Mobile stat card ───────────── */}
+        <div className="hero-stat-mobile">
+          <div className="hero-stat-mobile__numbers">
+            <strong>{achievedCount}</strong>
+            <span className="hero-stat-mobile__sep">/</span>
+            <span className="hero-stat-mobile__total">{totalCount}</span>
+          </div>
+          <div className="hero-stat-mobile__right">
+            <span className="hero-stat-mobile__label">{modeUnit}</span>
+            <div className="progress hero-stat-mobile__progress">
+              <span style={{ width: `${completion}%` }} />
+            </div>
+            <b className="hero-stat-mobile__pct">{completion}%</b>
+          </div>
+        </div>
       </section>
 
       {/* ── Config warning ──────────────── */}
@@ -716,15 +754,53 @@ export function SummitTracker({ mode }: Props) {
             />
           </div>
         </div>
+
+        {/* ── Filter pills ──────────────── */}
+        <div className="list-filters">
+          <button
+            className={`list-filter-pill${listFilter === "all" ? " list-filter-pill--active" : ""}`}
+            onClick={() => setListFilter("all")}
+          >
+            Todos <span className="pill-count">{allItems.length}</span>
+          </button>
+          <button
+            className={`list-filter-pill${listFilter === "done" ? " list-filter-pill--active" : ""}`}
+            onClick={() => setListFilter("done")}
+          >
+            {isPeaks ? "Completadas" : "Visitados"} <span className="pill-count">{completedModeAscents.length}</span>
+          </button>
+          <button
+            className={`list-filter-pill${listFilter === "pending" ? " list-filter-pill--active" : ""}`}
+            onClick={() => setListFilter("pending")}
+          >
+            Pendientes <span className="pill-count">{allItems.length - completedModeAscents.length - modeAscents.filter(a => a.is_wishlist).length}</span>
+          </button>
+          <button
+            className={`list-filter-pill${listFilter === "wishlist" ? " list-filter-pill--active" : ""}`}
+            onClick={() => setListFilter("wishlist")}
+          >
+            Quiero ir <span className="pill-count">{modeAscents.filter(a => a.is_wishlist).length}</span>
+          </button>
+        </div>
         <div className="peak-list-grid">
           {sortedItems.filter(item => {
-            if (!searchQuery) return true;
-            const q = searchQuery.toLowerCase();
-            return (
-              item.title.toLowerCase().includes(q) ||
-              (item.label && item.label.toLowerCase().includes(q)) ||
-              (item.detail && item.detail.toLowerCase().includes(q))
-            );
+            // Text search filter
+            if (searchQuery) {
+              const q = searchQuery.toLowerCase();
+              const matchesText = (
+                item.title.toLowerCase().includes(q) ||
+                (item.label && item.label.toLowerCase().includes(q)) ||
+                (item.detail && item.detail.toLowerCase().includes(q))
+              );
+              if (!matchesText) return false;
+            }
+            // Status filter
+            const done = completedModeAscents.some((a) => a.summit_id === item.id);
+            const wish = modeAscents.some((a) => a.summit_id === item.id && a.is_wishlist);
+            if (listFilter === "done") return done;
+            if (listFilter === "pending") return !done && !wish;
+            if (listFilter === "wishlist") return wish;
+            return true;
           }).map((item) => {
             const done = completedModeAscents.some((a) => a.summit_id === item.id);
             const wish = modeAscents.some((a) => a.summit_id === item.id && a.is_wishlist);
@@ -734,7 +810,10 @@ export function SummitTracker({ mode }: Props) {
                 className={`peak-list-item${done ? " peak-list-item--done" : wish ? " peak-list-item--wishlist" : ""}`}
                 onClick={() => openInformation(item)}
               >
-                <span className="item-check">{done && <IconCheck />}</span>
+                <span className="item-check">
+                  {done && <IconCheck />}
+                  {wish && <span className="item-wish-star">★</span>}
+                </span>
                 <span className="item-info">
                   <span className="item-province">
                     {isPeaks ? item.label : item.detail}
@@ -821,15 +900,17 @@ export function SummitTracker({ mode }: Props) {
           )}
 
           <div className="panel-actions">
-            <button
-              className={`button ${isPeaks ? "button--green" : "button--purple"} button--wide`}
-              onClick={() => openRecord(selected)}
-            >
-              {selectedAscent && !selectedAscent.is_wishlist
-                ? "Editar registro y fotos"
-                : isPeaks ? "Marcar como completado" : "Marcar como visitado"}
-            </button>
-            {(!selectedAscent || selectedAscent.is_wishlist) && (
+            {!isReadOnly && (
+              <button
+                className={`button ${isPeaks ? "button--green" : "button--purple"} button--wide`}
+                onClick={() => openRecord(selected)}
+              >
+                {selectedAscent && !selectedAscent.is_wishlist
+                  ? "Editar registro y fotos"
+                  : isPeaks ? "Marcar como completado" : "Marcar como visitado"}
+              </button>
+            )}
+            {(!selectedAscent || selectedAscent.is_wishlist) && !isReadOnly && (
               <button
                 className="button button--quiet button--wide"
                 style={{ marginTop: 8 }}
@@ -1012,6 +1093,10 @@ export function SummitTracker({ mode }: Props) {
           )}
         </div>
       )}
+
+      {/* ── Modals ──────────────────────── */}
+      {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} />}
+      {profileOpen && session && <ProfileSettings session={session} onClose={() => setProfileOpen(false)} />}
     </main>
   );
 }

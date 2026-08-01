@@ -31,7 +31,7 @@ function IconEyeOff() {
 }
 
 export function AuthDialog({ onClose }: { onClose: () => void }) {
-  const [isRegister, setIsRegister] = useState(false);
+  const [isRegister, setIsRegister] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -46,31 +46,73 @@ export function AuthDialog({ onClose }: { onClose: () => void }) {
     }
     setBusy(true);
     setMessage("");
-    try {
-      const result = isRegister
-        ? await supabase.auth.signUp({
-            email,
-            password,
-            options: { emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined },
-          })
-        : await supabase.auth.signInWithPassword({ email, password });
-      setBusy(false);
-      if (result.error) {
-        const errText = result.error.message || "";
-        const errCode = ("code" in result.error ? (result.error as { code?: string }).code : "") || "";
-        if (errText.toLowerCase().includes("failed to fetch")) {
-          setMessage(
-            "Error de conexión con Supabase. Comprueba tu conexión a internet o si tienes un bloqueador de anuncios activo."
-          );
-        } else if (errText.toLowerCase().includes("rate limit") || errCode === "over_email_send_rate_limit") {
-          setMessage("Límite de correos alcanzado en Supabase. Espera unos minutos antes de volver a intentarlo.");
-        } else {
-          setMessage(errText);
-        }
-      } else if (isRegister) {
-        setMessage("¡Cuenta creada! Revisa tu correo para confirmarla.");
+
+    function handleError(error: { message?: string; code?: string }) {
+      const errText = error.message || "";
+      const errCode = error.code || "";
+      if (errText.toLowerCase().includes("failed to fetch")) {
+        setMessage(
+          "Error de conexión con Supabase. Comprueba tu conexión a internet o si tienes un bloqueador de anuncios activo."
+        );
+      } else if (errText.toLowerCase().includes("rate limit") || errCode === "over_email_send_rate_limit") {
+        setMessage("Límite de correos alcanzado en Supabase. Espera unos minutos antes de volver a intentarlo.");
+      } else if (errText.toLowerCase().includes("invalid login credentials")) {
+        setMessage("Correo o contraseña incorrectos.");
       } else {
-        onClose();
+        setMessage(errText);
+      }
+    }
+
+    try {
+      if (!isRegister) {
+        // Direct sign-in
+        const result = await supabase.auth.signInWithPassword({ email, password });
+        setBusy(false);
+        if (result.error) {
+          handleError(result.error);
+        } else {
+          onClose();
+        }
+      } else {
+        // Sign-up attempt
+        const result = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined },
+        });
+
+        if (result.error) {
+          const errText = (result.error.message || "").toLowerCase();
+          // If user already exists, try signing in automatically
+          if (errText.includes("already registered") || errText.includes("already been registered") || errText.includes("user already registered")) {
+            const signInResult = await supabase.auth.signInWithPassword({ email, password });
+            setBusy(false);
+            if (signInResult.error) {
+              handleError(signInResult.error);
+            } else {
+              onClose();
+            }
+          } else {
+            setBusy(false);
+            handleError(result.error);
+          }
+        } else if (result.data?.user?.identities?.length === 0) {
+          // Supabase returns an empty identities array when the user already exists (email confirmation disabled)
+          const signInResult = await supabase.auth.signInWithPassword({ email, password });
+          setBusy(false);
+          if (signInResult.error) {
+            handleError(signInResult.error);
+          } else {
+            onClose();
+          }
+        } else if (result.data?.session) {
+          // Auto-confirmed: user is already logged in
+          setBusy(false);
+          onClose();
+        } else {
+          setBusy(false);
+          setMessage("¡Cuenta creada! Revisa tu correo para confirmarla.");
+        }
       }
     } catch (err: unknown) {
       setBusy(false);
