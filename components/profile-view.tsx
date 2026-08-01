@@ -42,7 +42,7 @@ export function ProfileView({ username }: { username: string }) {
     if (!supabase) return;
     async function loadData() {
       // 1. Fetch profile by username
-      const { data: profileData, error: profileError } = await supabase
+      const { data: profileData, error: profileError } = await supabase!
         .from("profiles")
         .select("*")
         .eq("username", username)
@@ -63,7 +63,7 @@ export function ProfileView({ username }: { username: string }) {
         setAccess(true);
       } else if (session) {
         // Check connection
-        const { data: connData } = await supabase
+        const { data: connData } = await supabase!
           .from("connections")
           .select("status")
           .eq("follower_id", session.user.id)

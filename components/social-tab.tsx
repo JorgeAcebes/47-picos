@@ -47,7 +47,7 @@ export function SocialTab() {
     if (!session || !supabase) return;
     
     async function fetchConnections() {
-      const { data } = await supabase
+      const { data } = await supabase!
         .from('connections')
         .select('following_id, status')
         .eq('follower_id', session!.user.id);
@@ -62,9 +62,9 @@ export function SocialTab() {
     }
     
     async function fetchRecommended() {
-      const { data: recData } = await supabase.rpc('get_recommended_profiles');
+      const { data: recData } = await supabase!.rpc('get_recommended_profiles');
       
-      const { data: pubData } = await supabase
+      const { data: pubData } = await supabase!
         .from('profiles')
         .select('*')
         .eq('is_public', true)
@@ -92,7 +92,7 @@ export function SocialTab() {
       return;
     }
     const delay = setTimeout(async () => {
-      const { data } = await supabase
+      const { data } = await supabase!
         .from("profiles")
         .select("*")
         .ilike("username", `%${searchQuery}%`)
