@@ -34,7 +34,7 @@ export function SocialTab() {
   const [connections, setConnections] = useState<Record<string, ConnectionStatus>>({});
   const [followerStatuses, setFollowerStatuses] = useState<Record<string, ConnectionStatus>>({});
   
-  const hasPendingRequests = Object.values(followerStatuses).includes('pending');
+  const hasPendingRequests = myProfile && !myProfile.is_public && Object.values(followerStatuses).includes('pending');
   
   useEffect(() => {
     if (!supabase) return;
@@ -304,17 +304,24 @@ export function SocialTab() {
           <Link href={mapLink}>Mapa</Link>
           <Link href="/social" style={{ fontWeight: 'bold', position: 'relative' }}>
             Social
-            {hasPendingRequests && (
-              <span style={{ 
-                position: 'absolute', 
-                top: '0', 
-                right: '-10px', 
-                width: '8px', 
-                height: '8px', 
-                backgroundColor: 'red', 
-                borderRadius: '50%' 
-              }} />
-            )}
+            {hasPendingRequests ? (
+              <span 
+                onClick={(e) => {
+                  e.preventDefault();
+                  setActiveTab('followers');
+                }}
+                style={{ 
+                  position: 'absolute', 
+                  top: '0', 
+                  right: '-10px', 
+                  width: '8px', 
+                  height: '8px', 
+                  backgroundColor: 'red', 
+                  borderRadius: '50%',
+                  cursor: 'pointer'
+                }} 
+              />
+            ) : null}
           </Link>
           {session ? (
             <button className="account-button" onClick={() => setProfileOpen(true)}>
