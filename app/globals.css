@@ -549,6 +549,10 @@ nav a:hover::after {
   margin: auto;
 }
 
+#mapa {
+  scroll-margin-top: 80px;
+}
+
 .section-heading {
   display: flex;
   justify-content: space-between;
@@ -1615,6 +1619,10 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     padding: 36px 16px 48px;
   }
 
+  #mapa {
+    scroll-margin-top: 60px;
+  }
+
   .section-heading {
     align-items: flex-start;
     flex-direction: column;
@@ -1918,4 +1926,175 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 
 .mode-countries .site-footer a {
   color: #5b3a8c;
+}
+
+/* ── PWA Install Prompt ────────────────── */
+@keyframes installSlideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+@keyframes installSlideDown {
+  from { transform: translateY(0);    opacity: 1; }
+  to   { transform: translateY(100%); opacity: 0; }
+}
+
+@keyframes installOverlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes installOverlayOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+.install-prompt-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(20, 40, 35, 0.45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  animation: installOverlayIn 0.3s ease;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.install-prompt-overlay--closing {
+  animation: installOverlayOut 0.28s ease forwards;
+}
+
+.install-prompt-dialog {
+  background: #fffdf8;
+  width: 100%;
+  max-width: 480px;
+  padding: 28px 24px 22px;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -8px 40px rgba(16, 45, 36, 0.25);
+  position: relative;
+  animation: installSlideUp 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.install-prompt-dialog--closing {
+  animation: installSlideDown 0.28s ease forwards;
+}
+
+.install-prompt-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  border: 0;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+
+.install-prompt-close:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: var(--ink);
+}
+
+.install-prompt-icon {
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, #f1ede1, #e8eee6);
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 14px;
+  box-shadow: 0 2px 8px rgba(36, 95, 82, 0.12);
+}
+
+.install-prompt-icon svg {
+  width: 34px;
+  height: 34px;
+}
+
+.install-prompt-title {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 6px;
+  letter-spacing: -0.02em;
+}
+
+.install-prompt-subtitle {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0 0 18px;
+  max-width: 300px;
+}
+
+.install-prompt-btn {
+  margin-bottom: 14px;
+  font-size: 15px !important;
+  padding: 13px 20px !important;
+  border-radius: 12px !important;
+  gap: 10px !important;
+}
+
+.install-prompt-ios-steps {
+  background: #f0f6f2;
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #3c5148;
+}
+
+.install-prompt-ios-steps p {
+  margin: 0;
+}
+
+.install-prompt-share-icon {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  color: #245f52;
+}
+
+.install-prompt-dismiss {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px 0;
+  user-select: none;
+  transition: color var(--transition);
+}
+
+.install-prompt-dismiss:hover {
+  color: var(--ink);
+}
+
+.install-prompt-dismiss input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--pine);
+  cursor: pointer;
+}
+
+/* Hide install prompt on desktop */
+@media (min-width: 701px) {
+  .install-prompt-overlay {
+    display: none;
+  }
 }

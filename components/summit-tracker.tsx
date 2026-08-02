@@ -9,6 +9,7 @@ import { countries, type Country } from "@/data/countries";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { AuthDialog } from "./auth-dialog";
 import { ProfileSettings } from "./profile-settings";
+import { InstallPrompt } from "./install-prompt";
 
 
 
@@ -701,7 +702,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
       )}
 
       {/* ── Map ─────────────────────────── */}
-      <section id="mapa" className="map-section">
+      <section className="map-section">
         {/* ── Mode selector ──────────────── */}
         <div className="mode-selector">
           <button
@@ -720,7 +721,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
           </button>
         </div>
 
-        <div className="section-heading">
+        <div id="mapa" className="section-heading">
           <div>
             <span className="eyebrow">TU PROGRESO</span>
             <h2>{isPeaks ? "Tu mapa de cumbres" : "Tu mapa del mundo"}</h2>
@@ -1128,6 +1129,9 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
       {/* ── Modals ──────────────────────── */}
       {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} />}
       {profileOpen && session && <ProfileSettings session={session} onClose={() => setProfileOpen(false)} />}
+
+      {/* ── PWA Install Prompt ────────── */}
+      <InstallPrompt />
     </main>
   );
 }
