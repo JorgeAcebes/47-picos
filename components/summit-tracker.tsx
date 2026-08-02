@@ -567,7 +567,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
     if (onSwitchMode) {
       onSwitchMode(target);
     } else {
-      router.push(target === "peaks" ? "/" : "/paises");
+      router.push(target === "peaks" ? "/picos" : "/");
     }
   }
 
@@ -601,7 +601,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
         <nav>
           {isReadOnly ? (
             <>
-              <a href="/paises">Mapa</a>
+              <a href="/">Mapa</a>
               <a href="/">El reto</a>
             </>
           ) : (
