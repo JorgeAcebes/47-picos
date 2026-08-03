@@ -365,7 +365,7 @@ export function SocialTab() {
               placeholder="Buscar por @usuario..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid #ccc', fontSize: '1rem', marginBottom: '2rem' }}
+              style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid #ccc', fontSize: '1rem', marginBottom: '1rem' }}
             />
 
             {searchQuery.length >= 2 ? (
@@ -379,6 +379,38 @@ export function SocialTab() {
               </div>
             ) : (
               <div>
+                <div style={{ marginBottom: "0.25rem" }}>
+                  <button
+                    onClick={async () => {
+                      try {
+                        if (navigator.share) {
+                          await navigator.share({
+                            title: '52 Picos',
+                            text: '¡Únete a 52 Picos y descubre nuevas rutas!',
+                            url: window.location.origin
+                          });
+                        } else {
+                          await navigator.clipboard.writeText(window.location.origin);
+                          alert('Enlace copiado al portapapeles');
+                        }
+                      } catch (err) {
+                        console.error('Error compartiendo:', err);
+                      }
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--pine)',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      fontSize: '0.9rem',
+                      padding: 0,
+                      textDecoration: 'underline'
+                    }}
+                  >
+                    Comparte la aplicación
+                  </button>
+                </div>
                 <h3>Recomendados para ti</h3>
                 {session ? (
                   recommended.length > 0 ? (
