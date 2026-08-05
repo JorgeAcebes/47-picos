@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "47 Picos · Alcanza la cima",
-  description: "Registra los techos de las 50 provincias españolas, Ceuta y Melilla.",
+  title: "196 Países · Márcalo en tu mapa",
+  description: "Registra cada país del mundo que has visitado.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

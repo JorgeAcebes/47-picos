@@ -385,8 +385,8 @@ export function SocialTab() {
                       try {
                         if (navigator.share) {
                           await navigator.share({
-                            title: '52 Picos',
-                            text: '¡Únete a 52 Picos y descubre nuevas rutas!',
+                            title: '196 Países',
+                            text: '¡Únete a 196 Países y registra cada uno de los países que visitas!',
                             url: window.location.origin
                           });
                         } else {
