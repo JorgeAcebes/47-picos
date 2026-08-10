@@ -38,6 +38,10 @@ export function AuthDialog({ onClose }: { onClose: () => void }) {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [resetMessage, setResetMessage] = useState("");
+  const [resetBusy, setResetBusy] = useState(false);
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!supabase) {
@@ -121,6 +125,62 @@ export function AuthDialog({ onClose }: { onClose: () => void }) {
     }
   }
 
+  async function submitReset(event: FormEvent) {
+    event.preventDefault();
+    if (!supabase) return;
+    setResetBusy(true);
+    setResetMessage("");
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: typeof window !== "undefined" ? `${window.location.origin}/reset-password` : undefined,
+    });
+    setResetBusy(false);
+    if (error) {
+      setResetMessage(error.message);
+    } else {
+      setResetMessage("Te hemos enviado un correo con las instrucciones para restablecer tu contraseña.");
+    }
+  }
+
+  if (isForgotPassword) {
+    return (
+      <div className="modal-backdrop" role="presentation">
+        <section className="auth-dialog" role="dialog" aria-modal="true">
+          <button className="icon-button" aria-label="Cerrar" onClick={() => setIsForgotPassword(false)}>
+            <IconClose />
+          </button>
+          <span className="eyebrow">RECUPERAR CONTRASEÑA</span>
+          <h2>He olvidado la contraseña</h2>
+          <p>Introduce tu correo y te enviaremos un enlace para restablecerla.</p>
+          <form onSubmit={submitReset} className="auth-form">
+            <label>
+              Correo electrónico
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="nombre@ejemplo.com"
+              />
+            </label>
+            {resetMessage && <p className="form-message">{resetMessage}</p>}
+            <button className="button button--green button--wide" disabled={resetBusy}>
+              {resetBusy ? "Enviando…" : "Enviar enlace"}
+            </button>
+          </form>
+          <button
+            className="link-button"
+            onClick={() => {
+              setIsForgotPassword(false);
+              setResetMessage("");
+            }}
+          >
+            Volver
+          </button>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="modal-backdrop" role="presentation">
       <section
@@ -179,6 +239,23 @@ export function AuthDialog({ onClose }: { onClose: () => void }) {
                 aria-label={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
               >
                 {showPassword ? <IconEyeOff /> : <IconEye />}
+              </button>
+            </div>
+            <div style={{ marginTop: "6px", textAlign: "right" }}>
+              <button
+                type="button"
+                onClick={() => setIsForgotPassword(true)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--muted)",
+                  fontSize: "0.8rem",
+                  cursor: "pointer",
+                  padding: 0,
+                  textDecoration: "underline"
+                }}
+              >
+                He olvidado la contraseña
               </button>
             </div>
           </label>
