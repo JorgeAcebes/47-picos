@@ -36,6 +36,7 @@ type SummitPhoto = {
   public_url: string;
   taken_on: string;
   created_at: string;
+  storage_path: string;
 };
 
 type ChallengeMode = "peaks" | "countries";
@@ -198,8 +199,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
   const [selectedPhotoFiles, setSelectedPhotoFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
-  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
-  const [lightboxCaption, setLightboxCaption] = useState("");
+  const [lightboxPhoto, setLightboxPhoto] = useState<SummitPhoto | null>(null);
 
   // ── Mode config ────────────────────────────
   const allItems = isPeaks
@@ -292,7 +292,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
           .order("achieved_on", { ascending: false }),
         supabase!
           .from("summit_photos")
-          .select("id, summit_id, public_url, taken_on, created_at")
+          .select("id, summit_id, public_url, taken_on, created_at, storage_path")
           .eq("user_id", targetId)
           .order("taken_on", { ascending: false }),
       ]);
@@ -402,6 +402,22 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
 
   function onFilesChanged(event: ChangeEvent<HTMLInputElement>) {
     const nextFiles = Array.from(event.target.files ?? []);
+    
+    if (selectedPhotos.length + nextFiles.length > 3) {
+      setNotice(`Máximo 3 fotos por ${isPeaks ? "pico" : "país"}. Ya tienes ${selectedPhotos.length}.`);
+      event.target.value = "";
+      return;
+    }
+
+    const MAX_MB = 5;
+    for (const file of nextFiles) {
+      if (file.size > MAX_MB * 1024 * 1024) {
+        setNotice(`Cada foto debe ocupar máximo ${MAX_MB} MB.`);
+        event.target.value = "";
+        return;
+      }
+    }
+
     setFiles(nextFiles);
     if (!isDateUnknown && nextFiles[0]?.lastModified)
       setClimbDate(new Date(nextFiles[0].lastModified));
@@ -548,6 +564,33 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
         ? "Ascensión eliminada."
         : "País eliminado de tu lista."
     );
+  }
+
+  async function deletePhoto(photo: SummitPhoto) {
+    if (!supabase || !session) return;
+    if (!window.confirm("¿Seguro que quieres eliminar esta foto?")) return;
+
+    setSaving(true);
+    setNotice("Eliminando foto...");
+
+    const { error: storageError } = await supabase.storage.from("summit-photos").remove([photo.storage_path]);
+    if (storageError) {
+      setNotice(`Error al eliminar la imagen: ${storageError.message}`);
+      setSaving(false);
+      return;
+    }
+
+    const { error: dbError } = await supabase.from("summit_photos").delete().eq("id", photo.id);
+    if (dbError) {
+      setNotice(dbError.message);
+      setSaving(false);
+      return;
+    }
+
+    setPhotos((previous) => previous.filter((p) => p.id !== photo.id));
+    setLightboxPhoto(null);
+    setSaving(false);
+    setNotice("Foto eliminada correctamente.");
   }
 
   async function signOut() {
@@ -962,12 +1005,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
                 {selectedPhotos.map((photo) => (
                   <figure
                     key={photo.id}
-                    onClick={() => {
-                      setLightboxUrl(photo.public_url);
-                      setLightboxCaption(
-                        `${selected.title} · ${formatDate(photo.taken_on)}`,
-                      );
-                    }}
+                    onClick={() => setLightboxPhoto(photo)}
                   >
                     <img
                       src={photo.public_url}
@@ -1100,29 +1138,45 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
       )}
 
       {/* ── Lightbox ────────────────────── */}
-      {lightboxUrl && (
+      {lightboxPhoto && (
         <div
           className="lightbox-backdrop"
-          onClick={() => setLightboxUrl(null)}
+          onClick={() => setLightboxPhoto(null)}
         >
           <button
             className="lightbox-close"
             onClick={(e) => {
               e.stopPropagation();
-              setLightboxUrl(null);
+              setLightboxPhoto(null);
             }}
             aria-label="Cerrar imagen"
           >
             <IconClose />
           </button>
+          {!isReadOnly && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                deletePhoto(lightboxPhoto);
+              }}
+              aria-label="Eliminar foto"
+              title="Eliminar foto"
+              style={{ position: "absolute", top: 20, right: 80, background: "rgba(0,0,0,0.6)", color: "white", border: "none", borderRadius: "50%", padding: "10px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, transition: "background 0.2s" }}
+              onMouseEnter={(e) => e.currentTarget.style.background = "rgba(220,50,50,0.8)"}
+              onMouseLeave={(e) => e.currentTarget.style.background = "rgba(0,0,0,0.6)"}
+            >
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </button>
+          )}
           <img
-            src={lightboxUrl}
-            alt={lightboxCaption}
+            src={lightboxPhoto.public_url}
+            alt={`${isPeaks ? "Ascensión a" : "Visita a"} ${selected?.title}`}
             onClick={(e) => e.stopPropagation()}
           />
-          {lightboxCaption && (
-            <span className="lightbox-caption">{lightboxCaption}</span>
-          )}
+          <span className="lightbox-caption">{selected?.title} · {formatDate(lightboxPhoto.taken_on)}</span>
         </div>
       )}
 
