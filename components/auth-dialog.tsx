@@ -83,11 +83,14 @@ export function AuthDialog({ onClose }: { onClose: () => void }) {
         // Si no tiene '@' o solo lo tiene al principio, asumimos que puede ser un nombre de usuario
         if (!email.includes("@") || email.indexOf("@") === 0) {
           const cleanUsername = email.replace(/^@/, "").toLowerCase();
-          // Llamamos a la función RPC segura que creamos para buscar el email
-          const { data: foundEmail } = await supabase.rpc("get_email_for_login", {
-            p_username: cleanUsername,
-            p_password: password
+          // Llamamos a la función RPC para buscar el email (Supabase usa Argon2 ahora, por lo que no podemos verificar el hash en Postgres nativo)
+          const { data: foundEmail, error } = await supabase.rpc("get_email_for_login", {
+            p_username: cleanUsername
           });
+          
+          if (error) {
+            console.error("Error buscando el usuario:", error);
+          }
           
           if (foundEmail) {
             loginEmail = foundEmail;
