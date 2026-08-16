@@ -51,9 +51,17 @@ export function AuthDialog({ onClose }: { onClose: () => void }) {
     setBusy(true);
     setMessage("");
 
-    function handleError(error: { message?: string; code?: string }) {
-      const errText = error.message || "";
-      const errCode = error.code || "";
+    function handleError(error: any) {
+      let errText = "";
+      if (typeof error?.message === "string") errText = error.message;
+      else if (error?.message) errText = JSON.stringify(error.message);
+      else errText = JSON.stringify(error);
+
+      if (errText === "{}" || !errText) {
+        errText = "Error interno al enviar el correo (revisa la configuración SMTP/Resend).";
+      }
+
+      const errCode = error?.code || "";
       if (errText.toLowerCase().includes("failed to fetch")) {
         setMessage(
           "Error de conexión con Supabase. Comprueba tu conexión a internet o si tienes un bloqueador de anuncios activo."
@@ -70,7 +78,23 @@ export function AuthDialog({ onClose }: { onClose: () => void }) {
     try {
       if (!isRegister) {
         // Direct sign-in
-        const result = await supabase.auth.signInWithPassword({ email, password });
+        let loginEmail = email;
+
+        // Si no tiene '@' o solo lo tiene al principio, asumimos que puede ser un nombre de usuario
+        if (!email.includes("@") || email.indexOf("@") === 0) {
+          const cleanUsername = email.replace(/^@/, "").toLowerCase();
+          // Llamamos a la función RPC segura que creamos para buscar el email
+          const { data: foundEmail } = await supabase.rpc("get_email_for_login", {
+            p_username: cleanUsername,
+            p_password: password
+          });
+          
+          if (foundEmail) {
+            loginEmail = foundEmail;
+          }
+        }
+
+        const result = await supabase.auth.signInWithPassword({ email: loginEmail, password });
         setBusy(false);
         if (result.error) {
           handleError(result.error);
@@ -201,13 +225,13 @@ export function AuthDialog({ onClose }: { onClose: () => void }) {
         </p>
         <form onSubmit={submit} className="auth-form">
           <label>
-            Correo electrónico
+            {isRegister ? "Correo electrónico" : "Correo electrónico o @usuario"}
             <input
-              type="email"
+              type={isRegister ? "email" : "text"}
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="nombre@ejemplo.com"
+              placeholder={isRegister ? "nombre@ejemplo.com" : "nombre@ejemplo.com o @usuario"}
             />
           </label>
           <label>
