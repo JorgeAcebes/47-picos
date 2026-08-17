@@ -91,8 +91,13 @@ export function SpainMap({ completed, wishlist, onInformation, onComplete }: Pro
     <MapContainer
       className="map"
       scrollWheelZoom={true}
-      minZoom={4}
+      minZoom={3}
       maxZoom={10}
+      maxBounds={[
+        [24, -22],
+        [46, 8]
+      ]}
+      maxBoundsViscosity={0.5}
     >
       <FitSpain />
       <MapZoomListener />

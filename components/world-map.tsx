@@ -122,8 +122,13 @@ export function WorldMap({ completed, wishlist, onInformation, onComplete }: Pro
     <MapContainer
       className="map"
       scrollWheelZoom={true}
-      minZoom={2}
+      minZoom={1}
       maxZoom={7}
+      maxBounds={[
+        [-85, -180],
+        [85, 180]
+      ]}
+      maxBoundsViscosity={0.5}
     >
       <FitWorld />
       <MapZoomListener />

@@ -673,6 +673,7 @@ nav a:hover::after {
 }
 
 /* ── Dynamic map zoom scaling ──────────────── */
+.map[data-zoom="1"] .summit-pin,
 .map[data-zoom="2"] .summit-pin { opacity: 0; pointer-events: none; transform: scale(0.3); }
 .map[data-zoom="3"] .summit-pin { opacity: 0.2; transform: scale(0.45); }
 .map[data-zoom="4"] .summit-pin { opacity: 0.5; transform: scale(0.65); }
