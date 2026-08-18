@@ -977,8 +977,8 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
           ) : (
             <div className="pending-card">
               {isPeaks
-                ? "Aún no has registrado esta cima."
-                : "Aún no has registrado este país."}
+                ? (isReadOnly ? "Aún no ha registrado esta cima." : "Aún no has registrado esta cima.")
+                : (isReadOnly ? "Aún no ha registrado este país." : "Aún no has registrado este país.")}
             </div>
           )}
 

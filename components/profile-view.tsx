@@ -154,7 +154,9 @@ export function ProfileView({ username, initialMode = "countries" }: { username:
     );
   }
 
+  const isMe = session?.user.id === profile.id;
+
   return (
-    <SummitTracker mode={mode} onSwitchMode={setMode} targetProfile={{ id: profile.id, username: profile.username }} />
+    <SummitTracker mode={mode} onSwitchMode={setMode} targetProfile={isMe ? undefined : { id: profile.id, username: profile.username }} />
   );
 }
