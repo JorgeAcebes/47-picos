@@ -122,6 +122,7 @@ export function ProfileView({ username }: { username: string }) {
           <nav>
             <Link href={mapLink}>Mapa</Link>
             <Link href="/social">Social</Link>
+            <Link href="/ranking">Ranking</Link>
           </nav>
         </header>
 

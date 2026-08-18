@@ -645,15 +645,14 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
           {isReadOnly ? (
             <>
               <a href="/">Mapa</a>
-              <a href="/">El reto</a>
             </>
           ) : (
             <>
               <a href="#mapa">Mapa</a>
-              <a href="#reto">El reto</a>
             </>
           )}
           <a href="/social">Social</a>
+          <a href="/ranking">Ranking</a>
           {session ? (
             <button className="account-button" onClick={() => setProfileOpen(true)}>
               {myProfile?.avatar_url ? (

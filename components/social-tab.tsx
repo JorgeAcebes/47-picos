@@ -323,6 +323,7 @@ export function SocialTab() {
               />
             ) : null}
           </Link>
+          <Link href="/ranking">Ranking</Link>
           {session ? (
             <button className="account-button" onClick={() => setProfileOpen(true)}>
               {myProfile?.avatar_url ? (
@@ -352,7 +353,7 @@ export function SocialTab() {
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+        <div style={{ display: "flex", gap: "10px", marginBottom: "20px", alignItems: "center" }}>
           <button className={`button ${activeTab === 'discover' ? 'button--green' : 'button--outline'}`} style={{ flex: 1 }} onClick={() => setActiveTab('discover')}>Descubrir</button>
           <button className={`button ${activeTab === 'followers' ? 'button--green' : 'button--outline'}`} style={{ flex: 1 }} onClick={() => setActiveTab('followers')}>Seguidores</button>
           <button className={`button ${activeTab === 'following' ? 'button--green' : 'button--outline'}`} style={{ flex: 1 }} onClick={() => setActiveTab('following')}>Siguiendo</button>
