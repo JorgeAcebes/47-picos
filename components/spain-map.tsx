@@ -89,7 +89,7 @@ export function SpainMap({ completed, wishlist, onInformation, onComplete }: Pro
 
   return (
     <MapContainer
-      className="map"
+      className="map map-spain"
       scrollWheelZoom={true}
       minZoom={3}
       maxZoom={10}

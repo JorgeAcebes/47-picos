@@ -27,8 +27,8 @@ begin
       (p_mode = 'peaks' and a.summit_id not like 'country-%')
     )
   where 
-    -- Si solo seguimos, comprobamos las conexiones
-    (p_following_only = false or p.id in (
+    -- Si solo seguimos, comprobamos las conexiones (incluyéndonos a nosotros mismos)
+    (p_following_only = false or p.id = p_follower or p.id in (
       select following_id from public.connections where follower_id = p_follower and status = 'accepted'
     ))
     and (

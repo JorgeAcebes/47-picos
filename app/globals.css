@@ -684,6 +684,15 @@ nav a:hover::after {
 .map[data-zoom="9"] .summit-pin,
 .map[data-zoom="10"] .summit-pin { opacity: 1; transform: scale(1); }
 
+.map-spain[data-zoom="3"] .summit-pin,
+.map-spain[data-zoom="4"] .summit-pin,
+.map-spain[data-zoom="5"] .summit-pin { opacity: 0; pointer-events: none; transform: scale(0.3); }
+.map-spain[data-zoom="6"] .summit-pin { opacity: 0.5; pointer-events: auto; transform: scale(0.65); }
+.map-spain[data-zoom="7"] .summit-pin,
+.map-spain[data-zoom="8"] .summit-pin,
+.map-spain[data-zoom="9"] .summit-pin,
+.map-spain[data-zoom="10"] .summit-pin { opacity: 1; pointer-events: auto; transform: scale(1); }
+
 .map .summit-pin:hover {
   opacity: 1 !important;
   transform: scale(1.15) !important;

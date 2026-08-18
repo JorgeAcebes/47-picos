@@ -25,7 +25,6 @@ export default function RankingPage() {
   
   const [mode, setMode] = useState<ModeFilter>("countries");
   const [scope, setScope] = useState<ScopeFilter>("all");
-  const [continent, setContinent] = useState<ContinentFilter>("Todos");
   
   const [mapLink, setMapLink] = useState("/");
   const [totalUsersCount, setTotalUsersCount] = useState<number>(0);
@@ -48,6 +47,11 @@ export default function RankingPage() {
     
     if (typeof window !== "undefined") {
       setMapLink(localStorage.getItem("last_map_path") || "/");
+      const savedMode = localStorage.getItem("ranking_mode") as ModeFilter | null;
+      if (savedMode === "countries" || savedMode === "peaks") setMode(savedMode);
+      
+      const savedScope = localStorage.getItem("ranking_scope") as ScopeFilter | null;
+      if (savedScope === "all" || savedScope === "following") setScope(savedScope);
     }
     
     return () => listener.subscription.unsubscribe();
@@ -67,9 +71,6 @@ export default function RankingPage() {
       setLoading(true);
       try {
         let summitIds: string[] | null = null;
-        if (mode === "countries" && continent !== "Todos") {
-          summitIds = countries.filter(c => c.continent === continent).map(c => c.id);
-        }
 
         const { data, error } = await supabase!.rpc("get_user_ranking", {
           p_summit_ids: summitIds,
@@ -94,7 +95,19 @@ export default function RankingPage() {
     if (supabase) {
       fetchRanking();
     }
-  }, [mode, scope, continent, session]);
+  }, [mode, scope, session]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("ranking_mode", mode);
+    }
+  }, [mode]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("ranking_scope", scope);
+    }
+  }, [scope]);
 
   const totalPossible = mode === "peaks" ? 47 : 196;
   const unit = mode === "peaks" ? "picos" : "países";
@@ -201,23 +214,6 @@ export default function RankingPage() {
                 Siguiendo
               </button>
             </div>
-
-            {mode === "countries" && (
-              <div className="list-filters" style={{ margin: 0 }}>
-                {["Todos", "África", "América", "Asia", "Europa", "Oceanía"].map(c => (
-                  <button 
-                    key={c}
-                    className={`list-filter-pill ${continent === c ? 'list-filter-pill--active' : ''}`} 
-                    onClick={() => setContinent(c as ContinentFilter)}
-                    style={{ 
-                      background: continent === c ? '#d4af37' : undefined,
-                      color: continent === c ? 'white' : undefined,
-                      borderColor: continent === c ? '#d4af37' : undefined
-                    }}
-                  >
-                    {c === "Todos" ? "Mundo completo" : c}
-                  </button>
-                ))}
               </div>
             )}
           </div>
