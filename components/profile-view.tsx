@@ -14,7 +14,7 @@ type Profile = {
   is_public: boolean;
 };
 
-export function ProfileView({ username }: { username: string }) {
+export function ProfileView({ username, initialMode = "countries" }: { username: string, initialMode?: "peaks" | "countries" }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -23,7 +23,7 @@ export function ProfileView({ username }: { username: string }) {
   const [authOpen, setAuthOpen] = useState(false);
   const [error, setError] = useState("");
   const [mapLink, setMapLink] = useState("/");
-  const [mode, setMode] = useState<"peaks" | "countries">("countries");
+  const [mode, setMode] = useState<"peaks" | "countries">(initialMode);
 
   useEffect(() => {
     if (!supabase) return;

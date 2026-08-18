@@ -201,6 +201,14 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
   const [notice, setNotice] = useState("");
   const [lightboxPhoto, setLightboxPhoto] = useState<SummitPhoto | null>(null);
 
+  useEffect(() => {
+    if (session) {
+      supabase?.from("profiles").select("username, avatar_url").eq("id", session.user.id).single().then(({ data }) => {
+        if (data) setMyProfile(data);
+      });
+    }
+  }, [session]);
+
   // ── Mode config ────────────────────────────
   const allItems = isPeaks
     ? peaks.map(peakToItem)
@@ -662,8 +670,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
                   {myProfile?.username?.slice(0, 1).toUpperCase() || session.user.email?.slice(0, 1).toUpperCase()}
                 </span>
               )}
-              <span>{myProfile?.username || session.user.email?.split("@")[0]}</span>
-              <small>Perfil</small>
+              <span className="account-username">{myProfile?.username || session.user.email?.split("@")[0]}</span>
             </button>
           ) : (
             <button
@@ -765,12 +772,14 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
 
         <div id="mapa" className="section-heading">
           <div>
-            <span className="eyebrow">TU PROGRESO</span>
-            <h2>{isPeaks ? "Tu mapa de cumbres" : "Tu mapa del mundo"}</h2>
+            <span className="eyebrow">{isReadOnly ? "SU PROGRESO" : "TU PROGRESO"}</span>
+            <h2>{isPeaks 
+              ? (isReadOnly ? "Su mapa de cumbres" : "Tu mapa de cumbres") 
+              : (isReadOnly ? "Su mapa del mundo" : "Tu mapa del mundo")}</h2>
             <p>
               {isPeaks
-                ? "Selecciona cualquier marcador para conocer el pico o registrar una ascensión."
-                : "Haz clic en cualquier país para ver su información o marcarlo como visitado."}
+                ? (isReadOnly ? "Selecciona cualquier marcador para conocer el pico o ver el registro." : "Selecciona cualquier marcador para conocer el pico o registrar una ascensión.")
+                : (isReadOnly ? "Haz clic en cualquier país para ver su información o ver su registro." : "Haz clic en cualquier país para ver su información o marcarlo como visitado.")}
             </p>
           </div>
           <div className="map-legend">

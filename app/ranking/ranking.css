@@ -201,25 +201,22 @@ h1.ranking-hero-title em {
 }
 
 .ranking-avatar {
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: var(--gold-deep);
-  color: #fff;
+  background: #ccc;
+  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
-  font-size: .85rem;
+  font-weight: bold;
   flex-shrink: 0;
-  overflow: hidden;
 }
+.ranking-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 
-.ranking-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
+.ranking-row.rank-gold .ranking-avatar { outline: 2px solid #d4af37; outline-offset: 2px; }
+.ranking-row.rank-silver .ranking-avatar { outline: 2px solid #c0c0c0; outline-offset: 2px; }
+.ranking-row.rank-bronze .ranking-avatar { outline: 2px solid #cd7f32; outline-offset: 2px; }
 
 .ranking-who-name {
   font-weight: 600;
@@ -233,17 +230,26 @@ h1.ranking-hero-title em {
 }
 
 .ranking-bar-track {
-  height: 5px;
-  background: rgba(0,0,0,0.1);
-  border-radius: 3px;
+  height: 10px;
+  background: #e0e0e0;
+  border-radius: 5px;
   overflow: hidden;
+  width: 100%;
 }
-
 .ranking-bar-fill {
   height: 100%;
   background: var(--pine);
-  border-radius: 3px;
+  border-radius: 5px;
+  transition: width 0.3s ease;
 }
+
+.ranking-theme.mode-countries .ranking-bar-fill {
+  background: var(--purple);
+}
+
+.ranking-row.rank-gold .ranking-bar-fill { background: #d4af37 !important; }
+.ranking-row.rank-silver .ranking-bar-fill { background: #c0c0c0 !important; }
+.ranking-row.rank-bronze .ranking-bar-fill { background: #cd7f32 !important; }
 
 .ranking-pct {
   font-size: .8rem;

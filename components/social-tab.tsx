@@ -334,7 +334,6 @@ export function SocialTab() {
                 </span>
               )}
               <span>{myProfile?.username || session.user.email?.split("@")[0]}</span>
-              <small>Perfil</small>
             </button>
           ) : (
             <button className="button button--outline" onClick={() => setAuthOpen(true)}>

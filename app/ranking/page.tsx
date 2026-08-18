@@ -238,10 +238,10 @@ export default function RankingPage() {
                 const currentRank = entry.rank;
                 const medalClass = currentRank === 1 ? ' rank-gold' : currentRank === 2 ? ' rank-silver' : currentRank === 3 ? ' rank-bronze' : '';
                 const pct = Math.round((entry.ascents_count / totalPossible) * 100);
-                const initial = entry.username ? entry.username.substring(0, 2).toUpperCase() : "?";
+                const initial = entry.username ? entry.username.charAt(0).toUpperCase() : "?";
 
                 return (
-                  <Link key={entry.user_id} href={`/perfil/${entry.username}`} className={`ranking-row${medalClass}`} style={{ display: 'grid' }}>
+                  <Link key={entry.user_id} href={`/perfil/${entry.username}?challenge=${mode}`} className={`ranking-row${medalClass}`} style={{ display: 'grid' }}>
                     <div className="ranking-rank-num">{String(currentRank).padStart(2, '0')}</div>
                     <div className="ranking-who">
                       <div className="ranking-avatar">
