@@ -149,7 +149,7 @@ export function SpainMap({ completed, wishlist, onInformation, onComplete }: Pro
       )}
       {Object.values(peakByCode).map((peak) => (
         <Marker
-          key={peak.id}
+          key={peak.code}
           position={peak.coordinates}
           icon={completed.has(peak.code) ? markerIcons.done : wishlist.has(peak.code) ? markerIcons.wishlist : markerIcons.todo}
         >

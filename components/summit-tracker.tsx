@@ -326,8 +326,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
       new Set(
         ascents
           .filter((a) => !a.is_wishlist)
-          .map((a) => peaks.find((p) => p.id === a.summit_id)?.code)
-          .filter(Boolean) as string[],
+          .flatMap((a) => peaks.filter((p) => p.id === a.summit_id).map((p) => p.code))
       ),
     [ascents],
   );
@@ -336,8 +335,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
       new Set(
         ascents
           .filter((a) => a.is_wishlist)
-          .map((a) => peaks.find((p) => p.id === a.summit_id)?.code)
-          .filter(Boolean) as string[],
+          .flatMap((a) => peaks.filter((p) => p.id === a.summit_id).map((p) => p.code))
       ),
     [ascents],
   );
@@ -884,12 +882,12 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
             if (listFilter === "pending") return !done && !wish;
             if (listFilter === "wishlist") return wish;
             return true;
-          }).map((item) => {
+          }).map((item, index) => {
             const done = completedModeAscents.some((a) => a.summit_id === item.id);
             const wish = modeAscents.some((a) => a.summit_id === item.id && a.is_wishlist);
             return (
               <button
-                key={item.id}
+                key={`${item.id}-${index}`}
                 className={`peak-list-item${done ? " peak-list-item--done" : wish ? " peak-list-item--wishlist" : ""}`}
                 onClick={() => openInformation(item)}
               >

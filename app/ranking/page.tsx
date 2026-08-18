@@ -214,8 +214,6 @@ export default function RankingPage() {
                 Siguiendo
               </button>
             </div>
-              </div>
-            )}
           </div>
 
           <div className="ranking-table-head">
