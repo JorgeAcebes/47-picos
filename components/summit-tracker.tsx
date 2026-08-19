@@ -212,6 +212,20 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
     }
   }, [session]);
 
+  // Handle back button to close panels
+  useEffect(() => {
+    const handleHashChange = () => {
+      if (window.location.hash !== "#panel") {
+        setSelected(null);
+        setRecordOpen(false);
+        setProfileOpen(false);
+        setAuthOpen(false);
+      }
+    };
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
+
   // ── Mode config ────────────────────────────
   const allItems = isPeaks
     ? peaks.map(peakToItem)
@@ -440,6 +454,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
 
   /* ── Handlers ─────────────────────────── */
   const openInformation = useCallback((item: SelectedItem) => {
+    window.location.hash = "panel";
     setSelected(item);
     setRecordOpen(false);
     setNotice("");
@@ -456,9 +471,11 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
   const openRecord = useCallback(
     (item?: SelectedItem | null) => {
       if (!session) {
+        window.location.hash = "panel";
         setAuthOpen(true);
         return;
       }
+      window.location.hash = "panel";
       setRecordOpen(true);
       if (!item) {
         setClimbDate(new Date());
@@ -514,6 +531,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
 
   async function saveWishlist() {
     if (!supabase || !session || !selected) {
+      window.location.hash = "panel";
       setAuthOpen(true);
       return;
     }
@@ -616,7 +634,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
     if (uploaded.length) setPhotos((previous) => [...uploaded, ...previous]);
     setFiles([]);
     setSaving(false);
-    setRecordOpen(false);
+    closePanel();
     setNotice(
       isPeaks
         ? "Registro guardado. ¡Una provincia menos en el mapa!"
@@ -647,7 +665,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
 
     setAscents((previous) => previous.filter((a) => a.summit_id !== selected.id));
     setSaving(false);
-    setRecordOpen(false);
+    closePanel();
     setNotice(
       isPeaks
         ? "Ascensión eliminada."
@@ -688,14 +706,19 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
   }
 
   function closePanel() {
-    setSelected(null);
-    setRecordOpen(false);
+    if (window.location.hash === "#panel") {
+      window.history.back();
+    } else {
+      setSelected(null);
+      setRecordOpen(false);
+      setProfileOpen(false);
+      setAuthOpen(false);
+    }
   }
 
   function switchMode(target: ChallengeMode) {
     if (target === mode) return;
-    setSelected(null);
-    setRecordOpen(false);
+    closePanel();
     if (onSwitchMode) {
       onSwitchMode(target);
     } else {
@@ -743,7 +766,10 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
           <a href="/social">Social</a>
           <a href="/ranking">Ranking</a>
           {session ? (
-            <button className="account-button" onClick={() => setProfileOpen(true)}>
+            <button className="account-button" onClick={() => {
+              window.location.hash = "panel";
+              setProfileOpen(true);
+            }}>
               {myProfile?.avatar_url ? (
                 <img src={myProfile.avatar_url} alt="Mi Perfil" className="account-avatar" style={{ objectFit: "cover" }} />
               ) : (
@@ -756,7 +782,10 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
           ) : (
             <button
               className="button button--outline"
-              onClick={() => setAuthOpen(true)}
+              onClick={() => {
+                window.location.hash = "panel";
+                setAuthOpen(true);
+              }}
             >
               Entrar
             </button>
@@ -785,7 +814,10 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
             {!session && !targetProfile && (
               <button
                 className="button button--quiet"
-                onClick={() => setAuthOpen(true)}
+                onClick={() => {
+                  window.location.hash = "panel";
+                  setAuthOpen(true);
+                }}
               >
                 Crear mi registro
               </button>

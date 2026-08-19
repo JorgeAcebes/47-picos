@@ -126,7 +126,7 @@ export function WorldMap({ completed, wishlist, onInformation, onComplete, diffM
       }),
       diffOnlyThem: L.divIcon({
         className: "",
-        html: '<span class="summit-pin summit-pin--diff-only-them">✗</span>',
+        html: '<span class="summit-pin summit-pin--diff-only-them"><svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></span>',
         iconSize: [28, 28],
         iconAnchor: [14, 14],
       }),

@@ -685,17 +685,24 @@ nav a:hover::after {
 .map[data-zoom="9"] .summit-pin,
 .map[data-zoom="10"] .summit-pin { opacity: 1; transform: scale(1); }
 
-/* Reglas base para ocultar *todos* en zoom bajo (3 al 6) */
+/* Reglas base para ocultar *todos* en zoom bajo (3 al 6) - Spain */
 .map-spain[data-zoom="3"] .summit-pin,
 .map-spain[data-zoom="4"] .summit-pin,
 .map-spain[data-zoom="5"] .summit-pin,
 .map-spain[data-zoom="6"] .summit-pin { opacity: 0; pointer-events: none; transform: scale(0.3); }
 
-/* En zoom alto (7 en adelante), mostramos todos los iconos */
+/* En zoom alto (7 en adelante), mostramos todos los iconos - Spain */
 .map-spain[data-zoom="7"] .summit-pin { opacity: 0.8; pointer-events: auto; transform: scale(0.85); }
 .map-spain[data-zoom="8"] .summit-pin,
 .map-spain[data-zoom="9"] .summit-pin,
 .map-spain[data-zoom="10"] .summit-pin { opacity: 1; pointer-events: auto; transform: scale(1); }
+
+/* Retrasar aparición de pines en WorldMap */
+.mode-countries .map[data-zoom="3"] .summit-pin,
+.mode-countries .map[data-zoom="4"] .summit-pin { opacity: 0; pointer-events: none; transform: scale(0.3); }
+.mode-countries .map[data-zoom="5"] .summit-pin { opacity: 0.4; pointer-events: auto; transform: scale(0.65); }
+.mode-countries .map[data-zoom="6"] .summit-pin { opacity: 0.85; pointer-events: auto; transform: scale(0.9); }
+.mode-countries .map[data-zoom="7"] .summit-pin { opacity: 1; pointer-events: auto; transform: scale(1); }
 
 .map .summit-pin:hover {
   opacity: 1 !important;
