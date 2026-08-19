@@ -201,6 +201,8 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
   const [lightboxPhoto, setLightboxPhoto] = useState<SummitPhoto | null>(null);
+  const [diffMode, setDiffMode] = useState(false);
+  const [myAscents, setMyAscents] = useState<Ascent[]>([]);
 
   useEffect(() => {
     if (session) {
@@ -316,6 +318,15 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
           .single();
         if (profile) setMyProfile(profile);
       }
+
+      // Load viewer's own ascents for diff comparison
+      if (isReadOnly && session) {
+        const { data: myData } = await supabase!
+          .from("ascents")
+          .select("summit_id, achieved_on, notes, is_wishlist")
+          .eq("user_id", session.user.id);
+        if (myData) setMyAscents(myData as Ascent[]);
+      }
     }
     loadProgress();
   }, [session, profileOpen, isReadOnly, targetProfile]);
@@ -349,6 +360,74 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
   const wishlistCountryIds = useMemo(
     () => new Set(ascents.filter((a) => a.summit_id.startsWith("country-") && a.is_wishlist).map((a) => a.summit_id)),
     [ascents],
+  );
+
+  /* ── Diff comparison sets ────────────── */
+  const myCompletedPeakCodes = useMemo(
+    () =>
+      new Set(
+        myAscents
+          .filter((a) => !a.is_wishlist)
+          .flatMap((a) => peaks.filter((p) => p.id === a.summit_id).map((p) => p.code))
+      ),
+    [myAscents],
+  );
+  const myCompletedCountryIds = useMemo(
+    () => new Set(myAscents.filter((a) => a.summit_id.startsWith("country-") && !a.is_wishlist).map((a) => a.summit_id)),
+    [myAscents],
+  );
+  const myCompletedIds = useMemo(
+    () => new Set(myAscents.filter((a) => !a.is_wishlist).map((a) => a.summit_id)),
+    [myAscents],
+  );
+
+  // Diff sets for peaks (province codes)
+  const diffPeakOnlyViewer = useMemo(
+    () => new Set([...myCompletedPeakCodes].filter((c) => !completedPeakCodes.has(c))),
+    [myCompletedPeakCodes, completedPeakCodes],
+  );
+  const diffPeakOnlyTarget = useMemo(
+    () => new Set([...completedPeakCodes].filter((c) => !myCompletedPeakCodes.has(c))),
+    [completedPeakCodes, myCompletedPeakCodes],
+  );
+  const diffPeakBoth = useMemo(
+    () => new Set([...completedPeakCodes].filter((c) => myCompletedPeakCodes.has(c))),
+    [completedPeakCodes, myCompletedPeakCodes],
+  );
+
+  // Diff sets for countries (country ids)
+  const diffCountryOnlyViewer = useMemo(
+    () => new Set([...myCompletedCountryIds].filter((c) => !completedCountryIds.has(c))),
+    [myCompletedCountryIds, completedCountryIds],
+  );
+  const diffCountryOnlyTarget = useMemo(
+    () => new Set([...completedCountryIds].filter((c) => !myCompletedCountryIds.has(c))),
+    [completedCountryIds, myCompletedCountryIds],
+  );
+  const diffCountryBoth = useMemo(
+    () => new Set([...completedCountryIds].filter((c) => myCompletedCountryIds.has(c))),
+    [completedCountryIds, myCompletedCountryIds],
+  );
+
+  // Diff sets for the list (summit ids)
+  const diffItemOnlyViewer = useMemo(
+    () => {
+      const targetCompleted = new Set(completedModeAscents.map((a) => a.summit_id));
+      return new Set([...myCompletedIds].filter((id) => validIds.has(id) && !targetCompleted.has(id)));
+    },
+    [myCompletedIds, completedModeAscents, validIds],
+  );
+  const diffItemOnlyTarget = useMemo(
+    () => {
+      return new Set(completedModeAscents.map((a) => a.summit_id).filter((id) => !myCompletedIds.has(id)));
+    },
+    [completedModeAscents, myCompletedIds],
+  );
+  const diffItemBoth = useMemo(
+    () => {
+      return new Set(completedModeAscents.map((a) => a.summit_id).filter((id) => myCompletedIds.has(id)));
+    },
+    [completedModeAscents, myCompletedIds],
   );
 
   const selectedAscent = selected
@@ -772,7 +851,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
           </button>
         </div>
 
-        <div id="mapa" className="section-heading">
+        <div id="mapa" className="section-heading map-heading-row">
           <div>
             <span className="eyebrow">{isReadOnly ? "SU PROGRESO" : "TU PROGRESO"}</span>
             <h2>{isPeaks 
@@ -784,16 +863,51 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
                 : (isReadOnly ? "Haz clic en cualquier país para ver su información o ver su registro." : "Haz clic en cualquier país para ver su información o marcarlo como visitado.")}
             </p>
           </div>
-          <div className="map-legend">
-            <span>
-              <i className="legend-pin">{isPeaks ? "▲" : "◆"}</i> Pendiente
-            </span>
-            <span>
-              <i className="legend-wishlist">★</i> Quiero ir
-            </span>
-            <span>
-              <i className="legend-done">✓</i> {isPeaks ? "Completada" : "Visitado"}
-            </span>
+          <div className="map-legend-area">
+            {isReadOnly && session && (
+              <div className="diff-toggle-wrap">
+                <button
+                  className={`diff-toggle${diffMode ? " diff-toggle--active" : ""}`}
+                  onClick={() => setDiffMode(!diffMode)}
+                  title="Compara tu progreso con el suyo"
+                >
+                  <svg className="diff-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="16" />
+                    <line x1="8" y1="12" x2="16" y2="12" />
+                  </svg>
+                  {diffMode ? "Comparando" : "Comparar conmigo"}
+                </button>
+              </div>
+            )}
+            {diffMode ? (
+              <div className="diff-legend">
+                <span>
+                  <i className="legend-diff-dot legend-diff-dot--only-me" /> Solo tú
+                </span>
+                <span>
+                  <i className="legend-diff-dot legend-diff-dot--only-them" /> Solo @{targetProfile?.username}
+                </span>
+                <span>
+                  <i className="legend-diff-dot legend-diff-dot--both" /> Ambos
+                </span>
+                <span>
+                  <i className="legend-diff-dot legend-diff-dot--none" /> Ninguno
+                </span>
+              </div>
+            ) : (
+              <div className="map-legend">
+                <span>
+                  <i className="legend-pin">{isPeaks ? "▲" : "◆"}</i> Pendiente
+                </span>
+                <span>
+                  <i className="legend-wishlist">★</i> Quiero ir
+                </span>
+                <span>
+                  <i className="legend-done">✓</i> {isPeaks ? "Completada" : "Visitado"}
+                </span>
+              </div>
+            )}
           </div>
         </div>
         {isPeaks ? (
@@ -802,6 +916,10 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
             wishlist={wishlistPeakCodes}
             onInformation={openPeakInformation}
             onComplete={openPeakRecord}
+            diffMode={diffMode}
+            diffOnlyViewer={diffPeakOnlyViewer}
+            diffOnlyTarget={diffPeakOnlyTarget}
+            diffBoth={diffPeakBoth}
           />
         ) : (
           <WorldMap
@@ -809,6 +927,10 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
             wishlist={wishlistCountryIds}
             onInformation={openCountryInformation}
             onComplete={openCountryRecord}
+            diffMode={diffMode}
+            diffOnlyViewer={diffCountryOnlyViewer}
+            diffOnlyTarget={diffCountryOnlyTarget}
+            diffBoth={diffCountryBoth}
           />
         )}
       </section>
@@ -889,15 +1011,42 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
           }).map((item, index) => {
             const done = completedModeAscents.some((a) => a.summit_id === item.id);
             const wish = modeAscents.some((a) => a.summit_id === item.id && a.is_wishlist);
+
+            // Diff class logic
+            let diffClass = "";
+            let diffSymbol: React.ReactNode = null;
+            if (diffMode) {
+              if (diffItemOnlyViewer.has(item.id)) {
+                diffClass = " peak-list-item--diff-only-me";
+                diffSymbol = <IconCheck />;
+              } else if (diffItemOnlyTarget.has(item.id)) {
+                diffClass = " peak-list-item--diff-only-them";
+                diffSymbol = <span style={{ fontSize: 11, fontWeight: 700 }}>✗</span>;
+              } else if (diffItemBoth.has(item.id)) {
+                diffClass = " peak-list-item--diff-both";
+                diffSymbol = <IconCheck />;
+              } else {
+                diffClass = " peak-list-item--diff-none";
+              }
+            }
+
+            const itemClass = diffMode
+              ? `peak-list-item${diffClass}`
+              : `peak-list-item${done ? " peak-list-item--done" : wish ? " peak-list-item--wishlist" : ""}`;
+
             return (
               <button
                 key={`${item.id}-${index}`}
-                className={`peak-list-item${done ? " peak-list-item--done" : wish ? " peak-list-item--wishlist" : ""}`}
+                className={itemClass}
                 onClick={() => openInformation(item)}
               >
                 <span className="item-check">
-                  {done && <IconCheck />}
-                  {wish && <span className="item-wish-star">★</span>}
+                  {diffMode ? diffSymbol : (
+                    <>
+                      {done && <IconCheck />}
+                      {wish && <span className="item-wish-star">★</span>}
+                    </>
+                  )}
                 </span>
                 <span className="item-info">
                   <span className="item-province">

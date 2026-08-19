@@ -2275,3 +2275,233 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   font-weight: bold;
   color: var(--pine);
 }
+
+/* ── Diff comparison mode ──────────────── */
+.diff-toggle-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.diff-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  background: white;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 13px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+
+.diff-toggle:hover {
+  border-color: var(--sage);
+  color: var(--ink);
+  background: #f7faf5;
+}
+
+.diff-toggle--active {
+  background: var(--ink);
+  color: white;
+  border-color: var(--ink);
+}
+
+.diff-toggle--active:hover {
+  background: var(--pine);
+  border-color: var(--pine);
+  color: white;
+}
+
+.mode-countries .diff-toggle:hover {
+  border-color: #9570c7;
+  background: #f7f3fb;
+}
+
+.mode-countries .diff-toggle--active {
+  background: #2a1f3d;
+  border-color: #2a1f3d;
+}
+
+.mode-countries .diff-toggle--active:hover {
+  background: #5b3a8c;
+  border-color: #5b3a8c;
+}
+
+.diff-toggle-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* ── Diff legend ──────────────────────── */
+.diff-legend {
+  display: flex;
+  gap: 14px;
+  color: var(--muted);
+  font-size: 11px;
+  animation: fadeUp 0.25s ease;
+}
+
+.diff-legend span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legend-diff-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.legend-diff-dot--only-me { background: #5c9b7d; }
+.legend-diff-dot--only-them { background: #c75a3a; }
+.legend-diff-dot--both { background: #bcd4c8; }
+.legend-diff-dot--none { background: #ddd8d0; }
+
+.mode-countries .legend-diff-dot--only-me { background: #7b52ab; }
+.mode-countries .legend-diff-dot--both { background: #c5b3da; }
+
+/* ── Diff map pin variants ────────────── */
+.summit-pin--diff-only-me {
+  background: #4a8a6a;
+  border-color: #e6f2eb;
+}
+
+.summit-pin--diff-only-them {
+  background: #c75a3a;
+  border-color: #f8e8e3;
+}
+
+.summit-pin--diff-both {
+  background: #a3c4b3;
+  border-color: #eef5f0;
+}
+
+.summit-pin--diff-none {
+  background: #c4beb5;
+  border-color: #f0ede8;
+  opacity: 0.55;
+}
+
+.mode-countries .summit-pin--diff-only-me {
+  background: #6b42a0;
+  border-color: #ece5f3;
+}
+
+.mode-countries .summit-pin--diff-both {
+  background: #b099cc;
+  border-color: #f0e8f4;
+}
+
+/* ── Diff list item variants ──────────── */
+.peak-list-item--diff-only-me {
+  border-color: #5c9b7d;
+  background: #edf6f0;
+}
+
+.peak-list-item--diff-only-me .item-check {
+  background: #5c9b7d;
+  border-color: #5c9b7d;
+  color: white;
+}
+
+.peak-list-item--diff-only-them {
+  border-color: #c75a3a;
+  background: #fdf0ec;
+}
+
+.peak-list-item--diff-only-them .item-check {
+  background: #c75a3a;
+  border-color: #c75a3a;
+  color: white;
+}
+
+.peak-list-item--diff-both {
+  border-color: #bcd4c8;
+  background: #f4f8f6;
+}
+
+.peak-list-item--diff-both .item-check {
+  background: #bcd4c8;
+  border-color: #bcd4c8;
+  color: white;
+}
+
+.peak-list-item--diff-none {
+  opacity: 0.5;
+}
+
+.mode-countries .peak-list-item--diff-only-me {
+  border-color: #7b52ab;
+  background: #f3edf9;
+}
+
+.mode-countries .peak-list-item--diff-only-me .item-check {
+  background: #7b52ab;
+  border-color: #7b52ab;
+}
+
+.mode-countries .peak-list-item--diff-both {
+  border-color: #c5b3da;
+  background: #f7f2fc;
+}
+
+.mode-countries .peak-list-item--diff-both .item-check {
+  background: #c5b3da;
+  border-color: #c5b3da;
+}
+
+/* ── Diff heading row ─────────────────── */
+.map-heading-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.map-legend-area {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+@media (max-width: 768px) {
+  .map-heading-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .map-legend-area {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap-reverse;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .map-legend-area > .map-legend,
+  .map-legend-area > .diff-legend {
+    order: 0;
+  }
+
+  .map-legend-area > .diff-toggle-wrap {
+    order: 1;
+    margin-left: 0;
+  }
+
+  .diff-legend {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}

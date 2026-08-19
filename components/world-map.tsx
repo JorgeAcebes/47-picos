@@ -46,6 +46,10 @@ type Props = {
   wishlist: Set<string>;
   onInformation: (country: Country) => void;
   onComplete: (country: Country) => void;
+  diffMode?: boolean;
+  diffOnlyViewer?: Set<string>;
+  diffOnlyTarget?: Set<string>;
+  diffBoth?: Set<string>;
 };
 
 function FitWorld() {
@@ -77,7 +81,7 @@ function MapZoomListener() {
   return null;
 }
 
-export function WorldMap({ completed, wishlist, onInformation, onComplete }: Props) {
+export function WorldMap({ completed, wishlist, onInformation, onComplete, diffMode, diffOnlyViewer, diffOnlyTarget, diffBoth }: Props) {
   const [geo, setGeo] = useState<FeatureCollection | null>(null);
 
   useEffect(() => {
@@ -114,9 +118,53 @@ export function WorldMap({ completed, wishlist, onInformation, onComplete }: Pro
         iconSize: [28, 28],
         iconAnchor: [14, 14],
       }),
+      diffOnlyMe: L.divIcon({
+        className: "",
+        html: '<span class="summit-pin summit-pin--diff-only-me">✓</span>',
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+      }),
+      diffOnlyThem: L.divIcon({
+        className: "",
+        html: '<span class="summit-pin summit-pin--diff-only-them">✗</span>',
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+      }),
+      diffBoth: L.divIcon({
+        className: "",
+        html: '<span class="summit-pin summit-pin--diff-both">⬟</span>',
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+      }),
+      diffNone: L.divIcon({
+        className: "",
+        html: '<span class="summit-pin summit-pin--diff-none">◆</span>',
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+      }),
     }),
     [],
   );
+
+  function getDiffIcon(countryId: string) {
+    if (diffOnlyViewer?.has(countryId)) return icons.diffOnlyMe;
+    if (diffOnlyTarget?.has(countryId)) return icons.diffOnlyThem;
+    if (diffBoth?.has(countryId)) return icons.diffBoth;
+    return icons.diffNone;
+  }
+
+  function getDiffGeoStyle(countryId: string) {
+    if (diffOnlyViewer?.has(countryId)) {
+      return { color: "#4a2878", weight: 1.5, fillColor: "#7b52ab", fillOpacity: 0.8 };
+    }
+    if (diffOnlyTarget?.has(countryId)) {
+      return { color: "#8c3a25", weight: 1.5, fillColor: "#c75a3a", fillOpacity: 0.75 };
+    }
+    if (diffBoth?.has(countryId)) {
+      return { color: "#9583ad", weight: 1.15, fillColor: "#c5b3da", fillOpacity: 0.65 };
+    }
+    return { color: "#c4bfb6", weight: 0.8, fillColor: "#e8e4df", fillOpacity: 0.4 };
+  }
 
   return (
     <MapContainer
@@ -138,9 +186,11 @@ export function WorldMap({ completed, wishlist, onInformation, onComplete }: Pro
       />
       {geo && (
         <GeoJSON
+          key={diffMode ? "diff" : "normal"}
           data={geo}
           style={(f) => {
             const country = f ? resolveCountryFromFeature(f as any) : undefined;
+            if (diffMode && country) return getDiffGeoStyle(country.id);
             const isDone = country ? completed.has(country.id) : false;
             const isWishlist = country ? wishlist.has(country.id) : false;
             return {
@@ -157,18 +207,27 @@ export function WorldMap({ completed, wishlist, onInformation, onComplete }: Pro
               layer.on("click", () => onInformation(country));
 
               layer.on("mouseover", () => {
-                const isWishlist = wishlist.has(country.id);
-                (layer as Path).setStyle({
-                  weight: 2.5,
-                  fillOpacity: completed.has(country.id) ? 0.9 : isWishlist ? 0.9 : 0.75,
-                });
+                if (diffMode) {
+                  (layer as Path).setStyle({ weight: 2.5, fillOpacity: 0.9 });
+                } else {
+                  const isWishlist = wishlist.has(country.id);
+                  (layer as Path).setStyle({
+                    weight: 2.5,
+                    fillOpacity: completed.has(country.id) ? 0.9 : isWishlist ? 0.9 : 0.75,
+                  });
+                }
               });
               layer.on("mouseout", () => {
-                const isWishlist = wishlist.has(country.id);
-                (layer as Path).setStyle({
-                  weight: 1.15,
-                  fillOpacity: completed.has(country.id) ? 0.83 : isWishlist ? 0.83 : 0.55,
-                });
+                if (diffMode) {
+                  const ds = getDiffGeoStyle(country.id);
+                  (layer as Path).setStyle({ weight: ds.weight, fillOpacity: ds.fillOpacity });
+                } else {
+                  const isWishlist = wishlist.has(country.id);
+                  (layer as Path).setStyle({
+                    weight: 1.15,
+                    fillOpacity: completed.has(country.id) ? 0.83 : isWishlist ? 0.83 : 0.55,
+                  });
+                }
               });
             }
           }}
@@ -177,9 +236,13 @@ export function WorldMap({ completed, wishlist, onInformation, onComplete }: Pro
       {countries.map((c) => 
         c.coordinates ? (
           <Marker
-            key={c.id}
+            key={`${c.id}-${diffMode ? "d" : "n"}`}
             position={c.coordinates}
-            icon={completed.has(c.id) ? icons.done : wishlist.has(c.id) ? icons.wishlist : icons.todo}
+            icon={
+              diffMode
+                ? getDiffIcon(c.id)
+                : completed.has(c.id) ? icons.done : wishlist.has(c.id) ? icons.wishlist : icons.todo
+            }
             eventHandlers={{
               click: () => onInformation(c),
             }}
