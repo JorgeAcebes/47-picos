@@ -192,6 +192,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
   const [recordOpen, setRecordOpen] = useState(false);
   const [climbDate, setClimbDate] = useState<Date | null>(new Date());
   const [isDateUnknown, setIsDateUnknown] = useState(false);
+  const [isDateModified, setIsDateModified] = useState(false);
   const [notes, setNotes] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -383,6 +384,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
       if (!item) {
         setClimbDate(new Date());
         setIsDateUnknown(false);
+        setIsDateModified(false);
         setNotes("");
         setFiles([]);
       } else {
@@ -390,6 +392,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
         const date = modeAscents.find((a) => a.summit_id === item.id)?.achieved_on;
         setClimbDate(date && date !== "1900-01-01" ? new Date(date) : new Date());
         setIsDateUnknown(date === "1900-01-01");
+        setIsDateModified(!!date && date !== "1900-01-01");
         setNotes(modeAscents.find((a) => a.summit_id === item.id)?.notes ?? "");
         setFiles([]);
       }
@@ -425,8 +428,9 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
     }
 
     setFiles(nextFiles);
-    if (!isDateUnknown && nextFiles[0]?.lastModified)
+    if (!isDateUnknown && !isDateModified && nextFiles[0]?.lastModified) {
       setClimbDate(new Date(nextFiles[0].lastModified));
+    }
   }
 
   async function saveWishlist() {
@@ -1070,7 +1074,10 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
                 <input
                   type="date"
                   value={climbDate ? (climbDate.toISOString().slice(0, 10)) : ""}
-                  onChange={(e) => setClimbDate(e.target.value ? new Date(e.target.value) : new Date())}
+                  onChange={(e) => {
+                    setClimbDate(e.target.value ? new Date(e.target.value) : new Date());
+                    setIsDateModified(true);
+                  }}
                   max={new Date().toISOString().slice(0, 10)}
                 />
               )}
@@ -1084,12 +1091,6 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
                 multiple
                 onChange={onFilesChanged}
               />
-              {!isDateUnknown && (
-                <span className="input-help">
-                  Al elegirlas se propone automáticamente la fecha de captura de la
-                  primera foto; puedes modificarla.
-                </span>
-              )}
             </label>
 
             {files.length > 0 && (
