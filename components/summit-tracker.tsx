@@ -10,6 +10,7 @@ import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { AuthDialog } from "./auth-dialog";
 import { ProfileSettings } from "./profile-settings";
 import { InstallPrompt } from "./install-prompt";
+import { ConfirmModal } from "./confirm-modal";
 
 
 
@@ -193,6 +194,11 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
   const [climbDate, setClimbDate] = useState<Date | null>(new Date());
   const [isDateUnknown, setIsDateUnknown] = useState(false);
   const [isDateModified, setIsDateModified] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    message: string;
+    onConfirm: () => void;
+  } | null>(null);
   const [notes, setNotes] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -642,12 +648,21 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
     );
   }
 
-  async function deleteAscent() {
+  function deleteAscent() {
     if (!supabase || !session || !selected) return;
     const confirmMessage = isPeaks
       ? "¿Seguro que quieres eliminar esta ascensión?"
       : "¿Seguro que quieres eliminar la visita a este país?";
-    if (!window.confirm(confirmMessage)) return;
+      
+    setConfirmConfig({
+      isOpen: true,
+      message: confirmMessage,
+      onConfirm: performDeleteAscent,
+    });
+  }
+
+  async function performDeleteAscent() {
+    if (!supabase || !session || !selected) return;
 
     setSaving(true);
     setNotice("");
@@ -673,10 +688,18 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
     );
   }
 
-  async function deletePhoto(photo: SummitPhoto) {
+  function deletePhoto(photo: SummitPhoto) {
     if (!supabase || !session) return;
-    if (!window.confirm("¿Seguro que quieres eliminar esta foto?")) return;
+    
+    setConfirmConfig({
+      isOpen: true,
+      message: "¿Seguro que quieres eliminar esta foto?",
+      onConfirm: () => performDeletePhoto(photo),
+    });
+  }
 
+  async function performDeletePhoto(photo: SummitPhoto) {
+    if (!supabase || !session) return;
     setSaving(true);
     setNotice("Eliminando foto...");
 
@@ -1371,6 +1394,15 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
       {/* ── Modals ──────────────────────── */}
       {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} />}
       {profileOpen && session && <ProfileSettings session={session} onClose={() => setProfileOpen(false)} />}
+      <ConfirmModal
+        isOpen={!!confirmConfig?.isOpen}
+        message={confirmConfig?.message || ""}
+        onConfirm={() => {
+          if (confirmConfig?.onConfirm) confirmConfig.onConfirm();
+          setConfirmConfig(null);
+        }}
+        onCancel={() => setConfirmConfig(null)}
+      />
 
       {/* ── PWA Install Prompt ────────── */}
       <InstallPrompt />

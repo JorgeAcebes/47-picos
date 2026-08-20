@@ -6,6 +6,7 @@ import type { Session } from "@supabase/supabase-js";
 import Link from "next/link";
 import { AuthDialog } from "./auth-dialog";
 import { ProfileSettings } from "./profile-settings";
+import { ConfirmModal } from "./confirm-modal";
 
 type Profile = {
   id: string;
@@ -33,6 +34,11 @@ export function SocialTab() {
   // A mapping of profile id to connection status
   const [connections, setConnections] = useState<Record<string, ConnectionStatus>>({});
   const [followerStatuses, setFollowerStatuses] = useState<Record<string, ConnectionStatus>>({});
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    message: string;
+    onConfirm: () => void;
+  } | null>(null);
   
   const hasPendingRequests = myProfile && !myProfile.is_public && Object.values(followerStatuses).includes('pending');
   
@@ -176,9 +182,15 @@ export function SocialTab() {
     }
   }
 
-  async function unfollow(profileId: string, username: string) {
-    if (!window.confirm(`¿Quieres dejar de seguir a @${username}?`)) return;
-    
+  function unfollow(profileId: string, username: string) {
+    setConfirmConfig({
+      isOpen: true,
+      message: `¿Quieres dejar de seguir a @${username}?`,
+      onConfirm: () => performUnfollow(profileId),
+    });
+  }
+
+  async function performUnfollow(profileId: string) {
     if (!session || !supabase) return;
     const { error } = await supabase
       .from('connections')
@@ -227,9 +239,15 @@ export function SocialTab() {
     }
   }
 
-  async function removeFollower(profileId: string, username: string) {
-    if (!window.confirm(`¿Quieres eliminar a @${username} de tus seguidores?`)) return;
-    
+  function removeFollower(profileId: string, username: string) {
+    setConfirmConfig({
+      isOpen: true,
+      message: `¿Quieres eliminar a @${username} de tus seguidores?`,
+      onConfirm: () => performRemoveFollower(profileId),
+    });
+  }
+
+  async function performRemoveFollower(profileId: string) {
     if (!session || !supabase) return;
     const { error } = await supabase
       .from('connections')
@@ -459,6 +477,15 @@ export function SocialTab() {
       
       {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} />}
       {profileOpen && session && <ProfileSettings session={session} onClose={() => setProfileOpen(false)} />}
+      <ConfirmModal
+        isOpen={!!confirmConfig?.isOpen}
+        message={confirmConfig?.message || ""}
+        onConfirm={() => {
+          if (confirmConfig?.onConfirm) confirmConfig.onConfirm();
+          setConfirmConfig(null);
+        }}
+        onCancel={() => setConfirmConfig(null)}
+      />
     </main>
   );
 }
