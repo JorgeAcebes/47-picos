@@ -142,7 +142,7 @@ export function WorldMap({ completed, wishlist, onInformation, onComplete, diffM
       }),
       todo: L.divIcon({
         className: "",
-        html: '<span class="summit-pin">◆</span>',
+        html: '<span class="summit-pin">◇</span>',
         iconSize: [28, 28],
         iconAnchor: [14, 14],
       }),
@@ -223,7 +223,13 @@ export function WorldMap({ completed, wishlist, onInformation, onComplete, diffM
     (f: any, layer: L.Layer) => {
       const country = resolveCountryFromFeature(f as any);
       if (country) {
-        layer.bindTooltip(country.name, { sticky: true });
+        const isDone = completedRef.current.has(country.id);
+        const isWishlist = wishlistRef.current.has(country.id);
+        const statusClass = isDone ? "tooltip-done" : isWishlist ? "tooltip-wishlist" : "tooltip-todo";
+        layer.bindTooltip(country.name, { 
+          sticky: true,
+          className: `summit-tooltip ${statusClass}`,
+        });
         layer.on("click", () => onInformationRef.current(country));
 
         layer.on("mouseover", () => {

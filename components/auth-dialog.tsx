@@ -142,7 +142,7 @@ export function AuthDialog({ onClose }: { onClose: () => void }) {
           onClose();
         } else {
           setBusy(false);
-          setMessage("¡Cuenta creada! Revisa tu correo para confirmarla.");
+          setMessage("¡Cuenta creada! Revisa tu correo para confirmarla (revisa la carpeta de Spam si no te llega).");
         }
       }
     } catch (err: unknown) {

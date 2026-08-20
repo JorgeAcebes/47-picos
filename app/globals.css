@@ -596,18 +596,41 @@ nav a:hover::after {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  color: white;
-  background: var(--pine);
+  color: #5c9b7d;
+  background: #e7f1ea;
+  border: 1px solid #8bb8ae;
   font-size: 10px;
+  font-weight: 800;
+}
+
+.mode-countries .legend-pin {
+  color: #5b3a8c;
+  background: #eee8f0;
+  border-color: #9b8ab8;
 }
 
 .legend-wishlist {
-  background: var(--amber);
+  background: #ecd9a5;
+  color: #a67c29;
+  border-color: #d2a54b;
   font-size: 12px;
 }
 
+.mode-countries .legend-wishlist {
+  background: #ecd9a5;
+  color: #a67c29;
+  border-color: #d2a54b;
+}
+
 .legend-done {
-  background: var(--sage);
+  background: #5c9b7d;
+  color: white;
+  border-color: #245f52;
+}
+
+.mode-countries .legend-done {
+  background: #8f6cb5;
+  border-color: #4a2878;
 }
 
 /* ── Map container ──────────────────────── */
@@ -658,32 +681,58 @@ nav a:hover::after {
   place-items: center;
   width: 28px;
   height: 28px;
-  background: #214f44;
-  color: #fff;
-  border: 2px solid var(--paper);
+  background: #e7f1ea;
+  color: #5c9b7d;
+  border: 2px solid #8bb8ae;
   border-radius: 50%;
   font-size: 13px;
-  box-shadow: 0 2px 5px rgba(33, 79, 68, 0.37);
+  font-weight: 800;
+  box-shadow: 0 2px 5px rgba(33, 79, 68, 0.2);
   transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.mode-countries .summit-pin {
+  background: #eee8f0;
+  color: #5b3a8c;
+  border-color: #9b8ab8;
+  box-shadow: 0 2px 5px rgba(74, 40, 120, 0.2);
 }
 
 .summit-pin:hover {
   transform: scale(1.15);
-  box-shadow: 0 4px 10px rgba(33, 79, 68, 0.45);
+  box-shadow: 0 4px 10px rgba(33, 79, 68, 0.35);
+}
+
+.mode-countries .summit-pin:hover {
+  box-shadow: 0 4px 10px rgba(74, 40, 120, 0.35);
 }
 
 .summit-pin--done {
-  background: #6ba081;
-  font-size: 15px;
-  font-weight: 700;
+  background: #5c9b7d !important;
+  color: white !important;
+  border-color: #245f52 !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+}
+
+.mode-countries .summit-pin--done {
+  background: #8f6cb5 !important;
+  border-color: #4a2878 !important;
+  color: white !important;
 }
 
 .summit-pin--wishlist {
-  background: var(--amber);
-  color: white;
-  font-size: 16px;
-  font-weight: 700;
-  border-color: var(--amber-bg);
+  background: #ecd9a5 !important;
+  color: #a67c29 !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  border-color: #d2a54b !important;
+}
+
+.mode-countries .summit-pin--wishlist {
+  background: #ecd9a5 !important;
+  color: #a67c29 !important;
+  border-color: #d2a54b !important;
 }
 
 /* ── Dynamic map zoom scaling ──────────────── */
@@ -726,6 +775,31 @@ nav a:hover::after {
   border-radius: 4px;
   box-shadow: 0 8px 24px rgba(21, 54, 43, 0.2);
 }
+
+/* ── Tooltips (Labels) ──────────────────── */
+.summit-tooltip {
+  color: white;
+  border: none;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Hide the default Leaflet tooltip arrow for cleaner look */
+.summit-tooltip::before {
+  display: none;
+}
+
+/* Peaks */
+.summit-tooltip.tooltip-todo { background: #e7f1ea; color: #245f52; border: 1px solid #8bb8ae; }
+.summit-tooltip.tooltip-done { background: #5c9b7d; color: white; border: 1px solid #245f52; }
+.summit-tooltip.tooltip-wishlist { background: #ecd9a5; color: #a67c29; border: 1px solid #d2a54b; }
+
+/* Countries */
+.mode-countries .summit-tooltip.tooltip-todo { background: #ece5f3; color: #4a2878; border: 1px solid #9b8ab8; }
+.mode-countries .summit-tooltip.tooltip-done { background: #7b52ab; color: white; border: 1px solid #4a2878; }
+.mode-countries .summit-tooltip.tooltip-wishlist { background: #ecd9a5; color: #a67c29; border: 1px solid #d2a54b; }
 
 .leaflet-popup-content {
   margin: 13px 15px;
@@ -1849,14 +1923,6 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   color: #b8a5cc;
 }
 
-.mode-countries .legend-pin {
-  background: #5b3a8c;
-}
-
-.mode-countries .legend-done {
-  background: #9570c7;
-}
-
 .mode-countries .map {
   border-color: #ccc4d9;
   background: #e0dce8;
@@ -1865,19 +1931,6 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 .mode-countries .map-loading {
   background: linear-gradient(90deg, #e4dee8 25%, #efe8f5 50%, #e4dee8 75%);
   background-size: 400px 100%;
-}
-
-.mode-countries .summit-pin {
-  background: #4a2878;
-  box-shadow: 0 2px 5px rgba(74, 40, 120, 0.37);
-}
-
-.mode-countries .summit-pin:hover {
-  box-shadow: 0 4px 10px rgba(74, 40, 120, 0.45);
-}
-
-.mode-countries .summit-pin--done {
-  background: #9570c7;
 }
 
 .mode-countries .info-panel {

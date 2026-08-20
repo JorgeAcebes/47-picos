@@ -930,7 +930,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
             ) : (
               <div className="map-legend">
                 <span>
-                  <i className="legend-pin">{isPeaks ? "▲" : "◆"}</i> Pendiente
+                  <i className="legend-pin">{isPeaks ? "△" : "◇"}</i> Pendiente
                 </span>
                 <span>
                   <i className="legend-wishlist">★</i> Quiero ir

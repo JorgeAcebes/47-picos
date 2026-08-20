@@ -113,7 +113,7 @@ export function SpainMap({ completed, wishlist, onInformation, onComplete, diffM
       }),
       todo: L.divIcon({
         className: "",
-        html: '<span class="summit-pin">▲</span>',
+        html: '<span class="summit-pin">△</span>',
         iconSize: [28, 28],
         iconAnchor: [14, 14],
       }),
@@ -143,7 +143,7 @@ export function SpainMap({ completed, wishlist, onInformation, onComplete, diffM
       }),
       diffNone: L.divIcon({
         className: "",
-        html: '<span class="summit-pin summit-pin--diff-none">▲</span>',
+        html: '<span class="summit-pin summit-pin--diff-none">△</span>',
         iconSize: [28, 28],
         iconAnchor: [14, 14],
       }),
@@ -194,8 +194,13 @@ export function SpainMap({ completed, wishlist, onInformation, onComplete, diffM
     (feature: any, layer: L.Layer) => {
       const peak = peakByCode[String(feature.properties?.Codigo ?? "")];
       if (peak) {
+        const isDone = completedRef.current.has(peak.code);
+        const isWishlist = wishlistRef.current.has(peak.code);
+        const statusClass = isDone ? "tooltip-done" : isWishlist ? "tooltip-wishlist" : "tooltip-todo";
+
         layer.bindTooltip(`${peak.province}: ${peak.name}`, {
           sticky: true,
+          className: `summit-tooltip ${statusClass}`,
         });
         layer.on("click", () => onInformationRef.current(peak));
 
@@ -252,13 +257,13 @@ export function SpainMap({ completed, wishlist, onInformation, onComplete, diffM
       className="map map-spain"
       scrollWheelZoom={true}
       preferCanvas={true}
-      minZoom={3}
+      minZoom={4}
       maxZoom={10}
       maxBounds={[
         [24, -22],
         [46, 8]
       ]}
-      maxBoundsViscosity={0.5}
+      maxBoundsViscosity={1.0}
     >
       <FitSpain />
       <MapZoomListener />
