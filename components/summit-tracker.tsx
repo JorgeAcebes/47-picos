@@ -160,6 +160,15 @@ function IconCheck() {
   );
 }
 
+function IconCamera({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+      <circle cx="12" cy="13" r="4"></circle>
+    </svg>
+  );
+}
+
 function IconGithub() {
   return (
     <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" className="footer-icon">
@@ -1264,16 +1273,19 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
               {selected.label} · {selected.subtitle}
             </p>
 
-            <label className="field-label" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {isPeaks ? "Fecha de la ascensión / fotos" : "Fecha de la visita / fotos"}
-              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: "normal" }}>
-                <input
-                  type="checkbox"
-                  checked={isDateUnknown}
-                  onChange={(e) => setIsDateUnknown(e.target.checked)}
-                />
-                No recuerdo la fecha
-              </label>
+            <div className="field-label" style={{ marginBottom: 18 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <span>{isPeaks ? "Fecha de la ascensión" : "Fecha de la visita"}</span>
+                <label className="custom-toggle">
+                  No recuerdo
+                  <input
+                    type="checkbox"
+                    checked={isDateUnknown}
+                    onChange={(e) => setIsDateUnknown(e.target.checked)}
+                  />
+                  <div className="toggle-switch"></div>
+                </label>
+              </div>
               {!isDateUnknown && (
                 <input
                   type="date"
@@ -1283,19 +1295,27 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
                     setIsDateModified(true);
                   }}
                   max={new Date().toISOString().slice(0, 10)}
+                  style={{ marginTop: 4 }}
                 />
               )}
-            </label>
+            </div>
 
-            <label className="field-label">
-              Añadir fotos
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={onFilesChanged}
-              />
-            </label>
+            <div className="field-label" style={{ marginBottom: 18 }}>
+              <span>Añadir fotos</span>
+              <label className="file-dropzone">
+                <IconCamera />
+                <span className="file-dropzone-text">
+                  <span className="hide-on-mobile">Sube o arrastra tus fotos aquí</span>
+                  <span className="show-on-mobile">Sube tus fotos aquí</span>
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={onFilesChanged}
+                />
+              </label>
+            </div>
 
             {files.length > 0 && (
               <p className="file-count">

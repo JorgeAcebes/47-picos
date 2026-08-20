@@ -1205,15 +1205,47 @@ nav a:hover::after {
   width: 100%;
   position: relative;
   padding: 42px 38px 31px;
-  box-shadow: 0 17px 60px rgba(16, 45, 36, 0.37);
+  box-shadow: 0 24px 48px rgba(16, 45, 36, 0.15);
+  border-radius: 16px;
   animation: fadeScale 0.25s ease;
+  overflow: hidden;
+}
+
+/* Header background for record dialog */
+.record-dialog::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 120px;
+  background: linear-gradient(to bottom, var(--sand) 0%, transparent 100%);
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.mode-countries .record-dialog::before {
+  background: linear-gradient(to bottom, #f0e8f4 0%, transparent 100%);
+}
+
+.record-dialog > *:not(.icon-button) {
+  position: relative;
+  z-index: 1;
+}
+
+.record-dialog .icon-button {
+  z-index: 2;
 }
 
 .auth-dialog h2,
 .record-dialog h2 {
-  font-size: 33px;
-  line-height: 1;
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.1;
   margin-bottom: 8px;
+  letter-spacing: -0.5px;
 }
 
 .auth-dialog > p,
@@ -1326,9 +1358,121 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 }
 
 .file-count {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--pine) !important;
-  margin-top: -6px !important;
+  margin-top: -4px !important;
+  font-weight: 500;
+}
+
+/* ── Modern File Dropzone ──────────────── */
+.file-dropzone {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 16px;
+  border: 1.5px dashed var(--sage);
+  border-radius: 8px;
+  background: rgba(92, 155, 125, 0.04);
+  color: var(--pine);
+  cursor: pointer;
+  transition: all var(--transition);
+  text-align: center;
+}
+
+.file-dropzone:hover {
+  background: rgba(92, 155, 125, 0.08);
+  border-color: var(--pine);
+}
+
+.mode-countries .file-dropzone {
+  border-color: var(--sage);
+  background: rgba(149, 112, 199, 0.04);
+  color: var(--pine);
+}
+
+.mode-countries .file-dropzone:hover {
+  background: rgba(149, 112, 199, 0.08);
+  border-color: var(--pine);
+}
+
+.file-dropzone svg {
+  width: 24px;
+  height: 24px;
+  opacity: 0.8;
+}
+
+.file-dropzone-text {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.file-dropzone input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.show-on-mobile {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .hide-on-mobile {
+    display: none;
+  }
+  .show-on-mobile {
+    display: inline;
+  }
+}
+
+/* ── Custom Toggle ─────────────────────── */
+.custom-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  user-select: none;
+}
+
+.custom-toggle input {
+  display: none;
+}
+
+.toggle-switch {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  background: var(--line);
+  border-radius: 20px;
+  transition: background 0.3s;
+}
+
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.3s;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.custom-toggle input:checked + .toggle-switch {
+  background: var(--pine);
+}
+
+.custom-toggle input:checked + .toggle-switch::after {
+  transform: translateX(16px);
 }
 
 /* ── Toast ──────────────────────────────── */
