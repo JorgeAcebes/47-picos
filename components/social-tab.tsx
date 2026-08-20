@@ -413,8 +413,8 @@ export function SocialTab() {
                 </div>
                 <h3>Recomendados para ti</h3>
                 {session ? (
-                  recommended.length > 0 ? (
-                    recommended.map(p => renderProfileItem(p, 'discover'))
+                  recommended.filter(p => p.id !== session.user.id && !connections[p.id]).length > 0 ? (
+                    recommended.filter(p => p.id !== session.user.id && !connections[p.id]).map(p => renderProfileItem(p, 'discover'))
                   ) : (
                     <p>No hay recomendaciones por ahora. ¡Busca y conecta con tus primeros amigos!</p>
                   )

@@ -167,7 +167,11 @@ export default function RankingPage() {
           <div>
             <span className="eyebrow">EL PODIO</span>
             <h2>Ranking de {mode === "peaks" ? "Alpinistas" : "Viajeros"}</h2>
-            <p>Encuentra tu posición entre los {totalUsersCount || '...'} usuarios totales.</p>
+            <p>
+              {scope === "following"
+                ? `Encuentra tu posición entre las ${loading ? '...' : entries.length} que sigues.`
+                : `Encuentra tu posición entre los ${loading ? '...' : entries.length} usuarios totales.`}
+            </p>
           </div>
         </div>
 
