@@ -169,7 +169,7 @@ export default function RankingPage() {
             <h2>Ranking de {mode === "peaks" ? "Alpinistas" : "Viajeros"}</h2>
             <p>
               {scope === "following"
-                ? `Encuentra tu posición entre las ${loading ? '...' : entries.length} que sigues.`
+                ? `Encuentra tu posición entre las ${loading ? '...' : entries.length} personas que sigues.`
                 : `Encuentra tu posición entre los ${loading ? '...' : entries.length} usuarios totales.`}
             </p>
           </div>
