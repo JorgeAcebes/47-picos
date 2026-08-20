@@ -619,6 +619,8 @@ nav a:hover::after {
   background: #dce8e4;
   z-index: 1;
   border-radius: 2px;
+  will-change: transform;
+  contain: layout style paint;
 }
 
 .map-loading {
@@ -634,6 +636,17 @@ nav a:hover::after {
 /* ── Leaflet overrides ──────────────────── */
 .leaflet-container {
   font-family: "DM Sans", sans-serif;
+}
+
+/* Force GPU compositing for tile and overlay panes to prevent white-flash and jank */
+.leaflet-tile-pane,
+.leaflet-overlay-pane {
+  will-change: transform;
+}
+
+.leaflet-tile {
+  will-change: auto;
+  backface-visibility: hidden;
 }
 
 .leaflet-control-attribution {

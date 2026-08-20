@@ -11,13 +11,35 @@ import {
 } from "react-leaflet";
 import type { Path } from "leaflet";
 import type { FeatureCollection, Position } from "geojson";
-import { useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import { feature } from "topojson-client";
 import type { Topology } from "topojson-specification";
 import { countries, resolveCountryFromFeature, type Country } from "@/data/countries";
 
 const WORLD_TOPO_URL =
   "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+
+// ── Module-level GeoJSON cache ────────────
+let _worldGeoCache: FeatureCollection | null = null;
+let _worldGeoPromise: Promise<FeatureCollection> | null = null;
+
+function fetchWorldGeo(): Promise<FeatureCollection> {
+  if (_worldGeoCache) return Promise.resolve(_worldGeoCache);
+  if (!_worldGeoPromise) {
+    _worldGeoPromise = fetch(WORLD_TOPO_URL)
+      .then((response) => response.json())
+      .then((topology: Topology) => {
+        const countriesGeo = feature(
+          topology,
+          topology.objects.countries as any,
+        ) as unknown as FeatureCollection;
+        fixAntimeridian(countriesGeo);
+        _worldGeoCache = countriesGeo;
+        return countriesGeo;
+      });
+  }
+  return _worldGeoPromise;
+}
 
 function fixAntimeridian(geo: FeatureCollection) {
   const fixRing = (ring: Position[]) => {
@@ -81,21 +103,33 @@ function MapZoomListener() {
   return null;
 }
 
+// ── Pre-filter countries with coordinates (stable list) ──
+const countriesWithCoords = countries.filter((c) => c.coordinates);
+
 export function WorldMap({ completed, wishlist, onInformation, onComplete, diffMode, diffOnlyViewer, diffOnlyTarget, diffBoth }: Props) {
-  const [geo, setGeo] = useState<FeatureCollection | null>(null);
+  const [geo, setGeo] = useState<FeatureCollection | null>(_worldGeoCache);
+
+  // Use refs for values accessed inside Leaflet event handlers
+  const completedRef = useRef(completed);
+  const wishlistRef = useRef(wishlist);
+  const diffModeRef = useRef(diffMode);
+  const diffOnlyViewerRef = useRef(diffOnlyViewer);
+  const diffOnlyTargetRef = useRef(diffOnlyTarget);
+  const diffBothRef = useRef(diffBoth);
+  const onInformationRef = useRef(onInformation);
+
+  completedRef.current = completed;
+  wishlistRef.current = wishlist;
+  diffModeRef.current = diffMode;
+  diffOnlyViewerRef.current = diffOnlyViewer;
+  diffOnlyTargetRef.current = diffOnlyTarget;
+  diffBothRef.current = diffBoth;
+  onInformationRef.current = onInformation;
 
   useEffect(() => {
-    fetch(WORLD_TOPO_URL)
-      .then((response) => response.json())
-      .then((topology: Topology) => {
-        const countriesGeo = feature(
-          topology,
-          topology.objects.countries as any,
-        ) as unknown as FeatureCollection;
-        fixAntimeridian(countriesGeo);
-        setGeo(countriesGeo);
-      })
-      .catch(() => setGeo(null));
+    if (!_worldGeoCache) {
+      fetchWorldGeo().then(setGeo).catch(() => setGeo(null));
+    }
   }, []);
 
   const icons = useMemo(
@@ -153,23 +187,98 @@ export function WorldMap({ completed, wishlist, onInformation, onComplete, diffM
     return icons.diffNone;
   }
 
-  function getDiffGeoStyle(countryId: string) {
-    if (diffOnlyViewer?.has(countryId)) {
+  // ── Stable getDiffGeoStyle (reads from refs) ──
+  const getDiffGeoStyleRef = useCallback((countryId: string) => {
+    if (diffOnlyViewerRef.current?.has(countryId)) {
       return { color: "#4a2878", weight: 1.5, fillColor: "#7b52ab", fillOpacity: 0.8 };
     }
-    if (diffOnlyTarget?.has(countryId)) {
+    if (diffOnlyTargetRef.current?.has(countryId)) {
       return { color: "#8c3a25", weight: 1.5, fillColor: "#c75a3a", fillOpacity: 0.75 };
     }
-    if (diffBoth?.has(countryId)) {
+    if (diffBothRef.current?.has(countryId)) {
       return { color: "#9583ad", weight: 1.15, fillColor: "#c5b3da", fillOpacity: 0.65 };
     }
     return { color: "#c4bfb6", weight: 0.8, fillColor: "#e8e4df", fillOpacity: 0.4 };
-  }
+  }, []);
+
+  // ── Memoized style function ──
+  const geoStyle = useCallback(
+    (f: any) => {
+      const country = f ? resolveCountryFromFeature(f as any) : undefined;
+      if (diffMode && country) return getDiffGeoStyleRef(country.id);
+      const isDone = country ? completed.has(country.id) : false;
+      const isWishlist = country ? wishlist.has(country.id) : false;
+      return {
+        color: isDone ? "#4a2878" : isWishlist ? "#d2a54b" : "#9b8ab8",
+        weight: 1.15,
+        fillColor: isDone ? "#7b52ab" : isWishlist ? "#ecd9a5" : "#ece5f3",
+        fillOpacity: isDone ? 0.83 : isWishlist ? 0.83 : 0.55,
+      };
+    },
+    [completed, wishlist, diffMode, getDiffGeoStyleRef],
+  );
+
+  // ── Stable onEachFeature (uses refs) ──
+  const onEachFeature = useCallback(
+    (f: any, layer: L.Layer) => {
+      const country = resolveCountryFromFeature(f as any);
+      if (country) {
+        layer.bindTooltip(country.name, { sticky: true });
+        layer.on("click", () => onInformationRef.current(country));
+
+        layer.on("mouseover", () => {
+          if (diffModeRef.current) {
+            (layer as Path).setStyle({ weight: 2.5, fillOpacity: 0.9 });
+          } else {
+            const isWishlist = wishlistRef.current.has(country.id);
+            (layer as Path).setStyle({
+              weight: 2.5,
+              fillOpacity: completedRef.current.has(country.id) ? 0.9 : isWishlist ? 0.9 : 0.75,
+            });
+          }
+        });
+        layer.on("mouseout", () => {
+          if (diffModeRef.current) {
+            const ds = getDiffGeoStyleRef(country.id);
+            (layer as Path).setStyle({ weight: ds.weight, fillOpacity: ds.fillOpacity });
+          } else {
+            const isWishlist = wishlistRef.current.has(country.id);
+            (layer as Path).setStyle({
+              weight: 1.15,
+              fillOpacity: completedRef.current.has(country.id) ? 0.83 : isWishlist ? 0.83 : 0.55,
+            });
+          }
+        });
+      }
+    },
+    [getDiffGeoStyleRef],
+  );
+
+  // ── Memoized markers ──
+  const markers = useMemo(
+    () =>
+      countriesWithCoords.map((c) => (
+        <Marker
+          key={`${c.id}-${diffMode ? "d" : "n"}`}
+          position={c.coordinates!}
+          icon={
+            diffMode
+              ? getDiffIcon(c.id)
+              : completed.has(c.id) ? icons.done : wishlist.has(c.id) ? icons.wishlist : icons.todo
+          }
+          eventHandlers={{
+            click: () => onInformation(c),
+          }}
+        />
+      )),
+    [completed, wishlist, diffMode, diffOnlyViewer, diffOnlyTarget, diffBoth, icons, onInformation],
+  );
 
   return (
     <MapContainer
       className="map"
       scrollWheelZoom={true}
+      preferCanvas={true}
       minZoom={1}
       maxZoom={7}
       maxBounds={[
@@ -183,72 +292,19 @@ export function WorldMap({ completed, wishlist, onInformation, onComplete, diffM
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        keepBuffer={6}
+        updateWhenIdle={false}
+        updateWhenZooming={false}
       />
       {geo && (
         <GeoJSON
           key={diffMode ? "diff" : "normal"}
           data={geo}
-          style={(f) => {
-            const country = f ? resolveCountryFromFeature(f as any) : undefined;
-            if (diffMode && country) return getDiffGeoStyle(country.id);
-            const isDone = country ? completed.has(country.id) : false;
-            const isWishlist = country ? wishlist.has(country.id) : false;
-            return {
-              color: isDone ? "#4a2878" : isWishlist ? "#d2a54b" : "#9b8ab8",
-              weight: 1.15,
-              fillColor: isDone ? "#7b52ab" : isWishlist ? "#ecd9a5" : "#ece5f3",
-              fillOpacity: isDone ? 0.83 : isWishlist ? 0.83 : 0.55,
-            };
-          }}
-          onEachFeature={(f, layer) => {
-            const country = resolveCountryFromFeature(f as any);
-            if (country) {
-              layer.bindTooltip(country.name, { sticky: true });
-              layer.on("click", () => onInformation(country));
-
-              layer.on("mouseover", () => {
-                if (diffMode) {
-                  (layer as Path).setStyle({ weight: 2.5, fillOpacity: 0.9 });
-                } else {
-                  const isWishlist = wishlist.has(country.id);
-                  (layer as Path).setStyle({
-                    weight: 2.5,
-                    fillOpacity: completed.has(country.id) ? 0.9 : isWishlist ? 0.9 : 0.75,
-                  });
-                }
-              });
-              layer.on("mouseout", () => {
-                if (diffMode) {
-                  const ds = getDiffGeoStyle(country.id);
-                  (layer as Path).setStyle({ weight: ds.weight, fillOpacity: ds.fillOpacity });
-                } else {
-                  const isWishlist = wishlist.has(country.id);
-                  (layer as Path).setStyle({
-                    weight: 1.15,
-                    fillOpacity: completed.has(country.id) ? 0.83 : isWishlist ? 0.83 : 0.55,
-                  });
-                }
-              });
-            }
-          }}
+          style={geoStyle}
+          onEachFeature={onEachFeature}
         />
       )}
-      {countries.map((c) => 
-        c.coordinates ? (
-          <Marker
-            key={`${c.id}-${diffMode ? "d" : "n"}`}
-            position={c.coordinates}
-            icon={
-              diffMode
-                ? getDiffIcon(c.id)
-                : completed.has(c.id) ? icons.done : wishlist.has(c.id) ? icons.wishlist : icons.todo
-            }
-            eventHandlers={{
-              click: () => onInformation(c),
-            }}
-          />
-        ) : null
-      )}
+      {markers}
     </MapContainer>
   );
 }
