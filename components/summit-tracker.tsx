@@ -1466,7 +1466,10 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
 
       {/* ── Modals ──────────────────────── */}
       {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} />}
-      {profileOpen && session && <ProfileSettings session={session} onProfileUpdate={(p) => setMyProfile(prev => ({...prev, ...p}))} onClose={() => setProfileOpen(false)} />}
+      {profileOpen && session && <ProfileSettings session={session} onProfileUpdate={(p) => {
+        setMyProfile(prev => ({...prev, ...p}));
+        if (p.enable_regions === false) setRegionsMode(false);
+      }} onClose={() => setProfileOpen(false)} />}
       <ConfirmModal
         isOpen={!!confirmConfig?.isOpen}
         message={confirmConfig?.message || ""}

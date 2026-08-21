@@ -276,13 +276,13 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
         const ds = getDiffGeoStyleRef(regionId);
         return {
           ...ds,
-          weight: 0.5,
+          weight: 0.75,
         };
       }
       const isDone = completedRegions?.has(regionId);
       return {
-        color: "#c4bfb6", // Fronteras más finas y suaves
-        weight: 0.5,
+        color: "#a69f93", // Fronteras un poco más marcadas
+        weight: 0.75,
         fillColor: isDone ? "#7b52ab" : "#ece5f3",
         fillOpacity: isDone ? 0.83 : 0.55,
       };
@@ -360,10 +360,10 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
         layer.on("mouseout", () => {
           if (diffModeRef.current) {
             const ds = getDiffGeoStyleRef(regionId);
-            (layer as Path).setStyle({ fillOpacity: ds.fillOpacity, weight: 0.5 });
+            (layer as Path).setStyle({ fillOpacity: ds.fillOpacity, weight: 0.75 });
           } else {
             const isDone = completedRegionsRef.current?.has(regionId);
-            (layer as Path).setStyle({ fillOpacity: isDone ? 0.83 : 0.55, weight: 0.5 });
+            (layer as Path).setStyle({ fillOpacity: isDone ? 0.83 : 0.55, weight: 0.75 });
           }
         });
       }
