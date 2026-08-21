@@ -98,7 +98,7 @@ function formatDate(date: string) {
 function IconLogo({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12 52 L36 12 L48 32 Z" fill="url(#logoGradGreen)"/>
+      <path d="M12 52 L36 12 L48 32.75 Z" fill="url(#logoGradGreen)"/>
       <path d="M24 60 L44 26 L60 52 Z" fill="url(#logoGradPurple)" style={{ mixBlendMode: 'multiply' }}/>
       <defs>
         <linearGradient id="logoGradGreen" x1="12" y1="12" x2="48" y2="52">

@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192" fill="none">
   <rect width="192" height="192" rx="28" fill="#faf8f1"/>
   <g transform="translate(29, 23) scale(2.1)">
-    <path d="M12 52 L36 12 L48 32 Z" fill="url(#g1)"/>
+    <path d="M12 52 L36 12 L48 32.75 Z" fill="url(#g1)"/>
     <path d="M24 60 L44 26 L60 52 Z" fill="url(#g2)"/>
     <defs>
       <linearGradient id="g1" x1="12" y1="12" x2="48" y2="52">
