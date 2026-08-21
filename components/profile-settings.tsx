@@ -153,17 +153,19 @@ export function ProfileSettings({ session, onClose }: { session: Session; onClos
               </div>
             </div>
             
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <input 
-                type="checkbox" 
-                checked={isPublic} 
-                onChange={(e) => setIsPublic(e.target.checked)}
-                id="is_public"
-              />
-              <label htmlFor="is_public">Perfil Público</label>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontWeight: "bold" }}>Perfil Público</span>
+              <label className="custom-toggle">
+                <input 
+                  type="checkbox" 
+                  checked={isPublic} 
+                  onChange={(e) => setIsPublic(e.target.checked)}
+                />
+                <div className="toggle-switch"></div>
+              </label>
             </div>
             
-            <p style={{ fontSize: "0.85rem", color: "#666", marginTop: "-0.5rem", marginBottom: "1rem" }}>
+            <p style={{ fontSize: "0.85rem", color: "#666", marginTop: "0.25rem", marginBottom: "1rem" }}>
               {isPublic 
                 ? "Cualquiera podrá buscarte y ver tu actividad." 
                 : "Solo los usuarios que aceptes podrán ver tu actividad."}
@@ -171,24 +173,28 @@ export function ProfileSettings({ session, onClose }: { session: Session; onClos
 
             <h4 style={{ margin: "0.5rem 0 0 0", fontSize: "0.95rem" }}>Privacidad de datos</h4>
             
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <input 
-                type="checkbox" 
-                checked={sharePhotos} 
-                onChange={(e) => setSharePhotos(e.target.checked)}
-                id="share_photos"
-              />
-              <label htmlFor="share_photos">Mostrar mis fotos</label>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.5rem" }}>
+              <span>Mostrar mis fotos</span>
+              <label className="custom-toggle">
+                <input 
+                  type="checkbox" 
+                  checked={sharePhotos} 
+                  onChange={(e) => setSharePhotos(e.target.checked)}
+                />
+                <div className="toggle-switch"></div>
+              </label>
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <input 
-                type="checkbox" 
-                checked={shareNotes} 
-                onChange={(e) => setShareNotes(e.target.checked)}
-                id="share_notes"
-              />
-              <label htmlFor="share_notes">Mostrar mis notas</label>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.5rem" }}>
+              <span>Mostrar mis notas</span>
+              <label className="custom-toggle">
+                <input 
+                  type="checkbox" 
+                  checked={shareNotes} 
+                  onChange={(e) => setShareNotes(e.target.checked)}
+                />
+                <div className="toggle-switch"></div>
+              </label>
             </div>
             
             {error && <p style={{ color: "red", margin: 0, fontSize: "0.9rem" }}>{error}</p>}
