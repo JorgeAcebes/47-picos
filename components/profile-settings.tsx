@@ -9,12 +9,14 @@ type Profile = {
   username: string;
   avatar_url: string | null;
   is_public: boolean;
+  enable_regions?: boolean;
 };
 
-export function ProfileSettings({ session, onClose }: { session: Session; onClose: () => void }) {
+export function ProfileSettings({ session, onClose, onProfileUpdate }: { session: Session; onClose: () => void; onProfileUpdate?: (profile: any) => void }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [username, setUsername] = useState("");
   const [isPublic, setIsPublic] = useState(true);
+  const [enableRegions, setEnableRegions] = useState(false);
   const [sharePhotos, setSharePhotos] = useState(true);
   const [shareNotes, setShareNotes] = useState(true);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -37,6 +39,7 @@ export function ProfileSettings({ session, onClose }: { session: Session; onClos
         setProfile(data);
         setUsername(data.username);
         setIsPublic(data.is_public);
+        setEnableRegions(data.enable_regions ?? false);
         setSharePhotos(data.share_photos ?? true);
         setShareNotes(data.share_notes ?? true);
         if (data.avatar_url) setAvatarPreview(data.avatar_url);
@@ -78,20 +81,26 @@ export function ProfileSettings({ session, onClose }: { session: Session; onClos
       avatarUrl = data.publicUrl;
     }
 
-    const { error } = await supabase.from("profiles").upsert({
+    const updates = {
       id: session.user.id,
       username: username.toLowerCase(),
       avatar_url: avatarUrl,
       is_public: isPublic,
+      enable_regions: enableRegions,
       share_photos: sharePhotos,
       share_notes: shareNotes,
       updated_at: new Date().toISOString()
-    });
+    };
+
+    const { error } = await supabase.from("profiles").upsert(updates);
 
     if (error) {
       setError(error.message.includes("unique") ? "Ese nombre de usuario ya está en uso." : error.message);
     } else {
       setSuccess("Perfil guardado correctamente.");
+      if (onProfileUpdate) {
+        onProfileUpdate(updates);
+      }
       setTimeout(() => {
         onClose();
       }, 750);
@@ -192,6 +201,20 @@ export function ProfileSettings({ session, onClose }: { session: Session; onClos
                   type="checkbox" 
                   checked={shareNotes} 
                   onChange={(e) => setShareNotes(e.target.checked)}
+                />
+                <div className="toggle-switch"></div>
+              </label>
+            </div>
+            
+            <hr style={{ border: "none", borderTop: "1px solid #eee", margin: "1.5rem 0 1rem 0" }} />
+            
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>Habilitar modo regiones</span>
+              <label className="custom-toggle">
+                <input 
+                  type="checkbox" 
+                  checked={enableRegions} 
+                  onChange={(e) => setEnableRegions(e.target.checked)}
                 />
                 <div className="toggle-switch"></div>
               </label>

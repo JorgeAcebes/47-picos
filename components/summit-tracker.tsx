@@ -6,6 +6,7 @@ import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { peaks, type Peak } from "@/data/peaks";
 import { countries, type Country } from "@/data/countries";
+import { regionsByCountryIsoA2, type Region } from "@/data/regions";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { AuthDialog } from "./auth-dialog";
 import { ProfileSettings } from "./profile-settings";
@@ -82,6 +83,17 @@ function countryToItem(country: Country): SelectedItem {
     subtitle: country.capital,
     detail: country.continent,
     note: `${country.name} · ${country.capital}`,
+  };
+}
+
+function regionToItem(region: Region, country: Country): SelectedItem {
+  return {
+    id: region.id,
+    label: country.name,
+    title: region.name,
+    subtitle: country.name,
+    detail: "Región",
+    note: `${region.name} · ${country.name}`,
   };
 }
 
@@ -193,7 +205,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
   const isReadOnly = !!targetProfile;
 
   const [session, setSession] = useState<Session | null>(null);
-  const [myProfile, setMyProfile] = useState<{username: string; avatar_url: string | null} | null>(null);
+  const [myProfile, setMyProfile] = useState<{username: string; avatar_url: string | null; enable_regions?: boolean} | null>(null);
   const [ascents, setAscents] = useState<Ascent[]>([]);
   const [photos, setPhotos] = useState<SummitPhoto[]>([]);
   const [selected, setSelected] = useState<SelectedItem | null>(null);
@@ -217,11 +229,13 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
   const [notice, setNotice] = useState("");
   const [lightboxPhoto, setLightboxPhoto] = useState<SummitPhoto | null>(null);
   const [diffMode, setDiffMode] = useState(false);
+  const [regionsMode, setRegionsMode] = useState(false);
+  const [expandedCountryId, setExpandedCountryId] = useState<string | null>(null);
   const [myAscents, setMyAscents] = useState<Ascent[]>([]);
 
   useEffect(() => {
     if (session) {
-      supabase?.from("profiles").select("username, avatar_url").eq("id", session.user.id).single().then(({ data }) => {
+      supabase?.from("profiles").select("username, avatar_url, enable_regions").eq("id", session.user.id).single().then(({ data }) => {
         if (data) setMyProfile(data);
       });
     }
@@ -266,8 +280,14 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
 
   // IDs válidos para este modo (para filtrar ascents de Supabase)
   const validIds = useMemo(
-    () => new Set(allItems.map((i) => i.id)),
-    [allItems],
+    () => {
+      const ids = new Set(allItems.map((i) => i.id));
+      if (!isPeaks) {
+        Object.values(regionsByCountryIsoA2).flat().forEach((r) => ids.add(r.id));
+      }
+      return ids;
+    },
+    [allItems, isPeaks],
   );
 
   // Filtrar ascents por modo
@@ -283,7 +303,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
 
   // Contar únicas
   const achievedCount = useMemo(() => {
-    if (!isPeaks) return completedModeAscents.length;
+    if (!isPeaks) return completedModeAscents.filter((a) => a.summit_id.startsWith("country-")).length;
     // Para picos, contamos los nombres únicos ya que hay provincias que comparten cima
     const uniquePeakNames = new Set(
       completedModeAscents.map((a) => peaks.find((p) => p.id === a.summit_id)?.name).filter(Boolean)
@@ -340,12 +360,15 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
       if (photoResult.data) setPhotos(photoResult.data as SummitPhoto[]);
 
       if (!isReadOnly && !profileOpen) {
-        const { data: profile } = await supabase!
-          .from("profiles")
-          .select("username, avatar_url")
-          .eq("id", session.user.id)
-          .single();
-        if (profile) setMyProfile(profile);
+        // Ensure we have current user profile if session exists
+        if (session && !myProfile) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("username, avatar_url, enable_regions")
+            .eq("id", session.user.id)
+            .single();
+          if (profile) setMyProfile(profile);
+        }
       }
 
       // Load viewer's own ascents for diff comparison
@@ -388,6 +411,11 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
   );
   const wishlistCountryIds = useMemo(
     () => new Set(ascents.filter((a) => a.summit_id.startsWith("country-") && a.is_wishlist).map((a) => a.summit_id)),
+    [ascents],
+  );
+
+  const completedRegionIds = useMemo(
+    () => new Set(ascents.filter((a) => a.summit_id.startsWith("region-") && !a.is_wishlist).map((a) => a.summit_id)),
     [ascents],
   );
 
@@ -481,6 +509,14 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
 
   const openCountryInformation = useCallback((country: Country) => {
     openInformation(countryToItem(country));
+  }, [openInformation]);
+
+  const handleRegionInformation = useCallback((regionId: string, regionName: string, isoA2: string) => {
+    const country = countries.find(c => c.iso_a2 === isoA2);
+    if (!country) return;
+    const region: Region = { id: regionId, name: regionName };
+    const item = regionToItem(region, country);
+    openInformation(item);
   }, [openInformation]);
 
   const openRecord = useCallback(
@@ -928,8 +964,8 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
             </p>
           </div>
           <div className="map-legend-area">
-            {isReadOnly && session && (
-              <div className="diff-toggle-wrap">
+            <div className="diff-toggle-wrap">
+              {isReadOnly && session && (
                 <button
                   className={`diff-toggle${diffMode ? " diff-toggle--active" : ""}`}
                   onClick={() => setDiffMode(!diffMode)}
@@ -942,8 +978,22 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
                   </svg>
                   {diffMode ? "Comparando" : "Comparar conmigo"}
                 </button>
-              </div>
-            )}
+              )}
+              {!isPeaks && myProfile?.enable_regions && (
+                <button
+                  className={`diff-toggle${regionsMode ? " diff-toggle--active" : ""}`}
+                  onClick={() => setRegionsMode(!regionsMode)}
+                  title="Ver divisiones territoriales"
+                >
+                  <svg className="diff-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <line x1="3" y1="9" x2="21" y2="9" />
+                    <line x1="9" y1="21" x2="9" y2="9" />
+                  </svg>
+                  Regiones
+                </button>
+              )}
+            </div>
             {diffMode ? (
               <div className="diff-legend">
                 <span>
@@ -990,11 +1040,14 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
             completed={completedCountryIds}
             wishlist={wishlistCountryIds}
             onInformation={openCountryInformation}
+            onRegionInformation={handleRegionInformation}
             onComplete={openCountryRecord}
             diffMode={diffMode}
-            diffOnlyViewer={diffCountryOnlyViewer}
-            diffOnlyTarget={diffCountryOnlyTarget}
-            diffBoth={diffCountryBoth}
+            diffOnlyViewer={diffItemOnlyViewer}
+            diffOnlyTarget={diffItemOnlyTarget}
+            diffBoth={diffItemBoth}
+            regionsMode={regionsMode}
+            completedRegions={completedRegionIds}
           />
         )}
       </section>
@@ -1413,7 +1466,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
 
       {/* ── Modals ──────────────────────── */}
       {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} />}
-      {profileOpen && session && <ProfileSettings session={session} onClose={() => setProfileOpen(false)} />}
+      {profileOpen && session && <ProfileSettings session={session} onProfileUpdate={(p) => setMyProfile(prev => ({...prev, ...p}))} onClose={() => setProfileOpen(false)} />}
       <ConfirmModal
         isOpen={!!confirmConfig?.isOpen}
         message={confirmConfig?.message || ""}

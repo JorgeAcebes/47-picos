@@ -1,0 +1,51 @@
+/* Regions styling */
+.peak-list-group {
+  display: flex;
+  flex-direction: column;
+}
+.peak-list-group-header {
+  display: flex;
+  position: relative;
+}
+.peak-list-group-header .peak-list-item {
+  flex: 1;
+}
+.peak-list-expand-btn {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #7b52ab;
+  z-index: 2;
+}
+.peak-list-group.expanded .peak-list-expand-btn {
+  color: #ece5f3;
+}
+.peak-list-regions {
+  display: flex;
+  flex-direction: column;
+  padding-left: 2rem;
+  background-color: #f7f5fa;
+  border-bottom: 1px solid #e2d8f0;
+}
+.region-list-item {
+  border-bottom: 1px solid #e2d8f0;
+  background: transparent;
+}
+.region-list-item:last-child {
+  border-bottom: none;
+}
+.region-list-item:hover, .region-list-item:active {
+  background-color: #ece5f3;
+}
+.region-list-item.peak-list-item--done {
+  background-color: #f0e6ff;
+  color: #4a2878;
+}

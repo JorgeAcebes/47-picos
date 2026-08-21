@@ -25,6 +25,8 @@
     "@types/topojson-client": "^3.1.5",
     "eslint": "^9.22.0",
     "eslint-config-next": "^15.2.4",
+    "topojson-server": "^3.0.1",
+    "topojson-simplify": "^3.0.3",
     "typescript": "^5.8.2"
   }
 }
