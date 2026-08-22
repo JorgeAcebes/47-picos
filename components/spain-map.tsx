@@ -59,6 +59,76 @@ function FitSpain() {
   return null;
 }
 
+/** The original province paint stays untouched; this definition paints only its clone. */
+function SweepDefsInjector({ searchedId }: { searchedId: string | null }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!searchedId) return;
+    const overlayPane = map.getPane("overlayPane");
+    if (!overlayPane) return;
+    const svg = overlayPane.querySelector("svg");
+    if (!svg) return;
+
+    let defs = svg.querySelector("defs");
+    if (!defs) {
+      defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+      svg.prepend(defs);
+    }
+
+    const grad = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
+    grad.setAttribute("id", `sweep-${searchedId}`);
+    grad.setAttribute("x1", "-32%");
+    grad.setAttribute("y1", "0%");
+    grad.setAttribute("x2", "18%");
+    grad.setAttribute("y2", "0%");
+    grad.setAttribute("gradientUnits", "objectBoundingBox");
+
+    const stop1 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+    stop1.setAttribute("offset", "0%");
+    stop1.setAttribute("stop-color", "#fff");
+    stop1.setAttribute("stop-opacity", "0");
+
+    const stop2 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+    stop2.setAttribute("offset", "50%");
+    stop2.setAttribute("stop-color", "#fff");
+    stop2.setAttribute("stop-opacity", "1");
+
+    const stop3 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+    stop3.setAttribute("offset", "100%");
+    stop3.setAttribute("stop-color", "#fff");
+    stop3.setAttribute("stop-opacity", "0");
+
+    const anim1 = document.createElementNS("http://www.w3.org/2000/svg", "animate");
+    anim1.setAttribute("attributeName", "x1");
+    anim1.setAttribute("from", "-32%");
+    anim1.setAttribute("to", "100%");
+    anim1.setAttribute("dur", "0.85s");
+    anim1.setAttribute("fill", "freeze");
+
+    const anim2 = document.createElementNS("http://www.w3.org/2000/svg", "animate");
+    anim2.setAttribute("attributeName", "x2");
+    anim2.setAttribute("from", "18%");
+    anim2.setAttribute("to", "150%");
+    anim2.setAttribute("dur", "0.85s");
+    anim2.setAttribute("fill", "freeze");
+
+    grad.appendChild(stop1);
+    grad.appendChild(stop2);
+    grad.appendChild(stop3);
+    grad.appendChild(anim1);
+    grad.appendChild(anim2);
+
+    defs.appendChild(grad);
+
+    return () => {
+      defs?.removeChild(grad);
+    };
+  }, [searchedId, map]);
+
+  return null;
+}
+
 function MapZoomListener() {
   const map = useMapEvents({
     zoomend: () => {
@@ -80,6 +150,8 @@ const peakEntries = Object.values(peakByCode);
 export function SpainMap({ completed, wishlist, onInformation, onComplete, diffMode, diffOnlyViewer, diffOnlyTarget, diffBoth }: Props) {
   const [geo, setGeo] = useState<FeatureCollection | null>(_geoCache);
   const [searchedId, setSearchedId] = useState<string | null>(null);
+  const scanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scanFrameRef = useRef<number | null>(null);
 
   // Use refs for values accessed inside Leaflet event handlers
   // so we don't recreate onEachFeature on every prop change
@@ -90,6 +162,7 @@ export function SpainMap({ completed, wishlist, onInformation, onComplete, diffM
   const diffOnlyTargetRef = useRef(diffOnlyTarget);
   const diffBothRef = useRef(diffBoth);
   const onInformationRef = useRef(onInformation);
+  const layerRefs = useRef(new Map<string, L.Path>());
 
   completedRef.current = completed;
   wishlistRef.current = wishlist;
@@ -178,19 +251,17 @@ export function SpainMap({ completed, wishlist, onInformation, onComplete, diffM
   const geoStyle = useCallback(
     (feature: any) => {
       const code = String(feature?.properties?.Codigo ?? "");
-      const isSearched = searchedId === code;
       if (diffMode) return getDiffStyleRef(code);
       const isDone = completed.has(code);
       const isWishlist = wishlist.has(code);
       return {
         color: isDone ? "#245f52" : isWishlist ? "#d2a54b" : "#8bb8ae",
-        weight: isSearched ? 2.5 : 1.15,
+        weight: 1.15,
         fillColor: isDone ? "#5c9b7d" : isWishlist ? "#ecd9a5" : "#e7f1ea",
-        fillOpacity: isDone ? 0.83 : isWishlist ? 0.83 : 0.72,
-        className: isSearched ? "blink-polygon" : ""
+        fillOpacity: isDone ? 0.83 : isWishlist ? 0.83 : 0.72
       };
     },
-    [completed, wishlist, diffMode, searchedId, getDiffStyleRef],
+    [completed, wishlist, diffMode, getDiffStyleRef],
   );
 
   // ── Stable onEachFeature (uses refs to avoid GeoJSON remount) ──
@@ -198,6 +269,7 @@ export function SpainMap({ completed, wishlist, onInformation, onComplete, diffM
     (feature: any, layer: L.Layer) => {
       const peak = peakByCode[String(feature.properties?.Codigo ?? "")];
       if (peak) {
+        layerRefs.current.set(peak.code, layer as L.Path);
         const isDone = completedRef.current.has(peak.code);
         const isWishlist = wishlistRef.current.has(peak.code);
         const statusClass = isDone ? "tooltip-done" : isWishlist ? "tooltip-wishlist" : "tooltip-todo";
@@ -236,6 +308,51 @@ export function SpainMap({ completed, wishlist, onInformation, onComplete, diffM
     [getDiffStyleRef],
   );
 
+  useEffect(() => {
+    if (searchedId) {
+      const layer = layerRefs.current.get(searchedId);
+      if (!layer) return;
+
+      const layers: L.Path[] = [];
+      if ('eachLayer' in layer) {
+        (layer as unknown as L.LayerGroup).eachLayer(l => layers.push(l as L.Path));
+      } else {
+        layers.push(layer as L.Path);
+      }
+
+      const clones: SVGElement[] = [];
+      const frame = requestAnimationFrame(() => {
+        layers.forEach(l => {
+          const el = l.getElement();
+          if (!el?.parentNode) return;
+
+          const clone = el.cloneNode(true) as SVGElement;
+          ["style", "class", "fill", "fill-opacity", "stroke", "stroke-width", "stroke-opacity"]
+            .forEach(attribute => clone.removeAttribute(attribute));
+          clone.setAttribute("fill", `url(#sweep-${searchedId})`);
+          clone.setAttribute("fill-opacity", "1");
+          clone.setAttribute("stroke", "#fff");
+          clone.setAttribute("stroke-width", "0");
+          clone.setAttribute("stroke-opacity", "0");
+          clone.setAttribute("vector-effect", "non-scaling-stroke");
+          clone.setAttribute("aria-hidden", "true");
+          clone.classList.add("map-search-scan-overlay");
+          el.parentNode.appendChild(clone);
+          clones.push(clone);
+        });
+      });
+
+      return () => {
+        cancelAnimationFrame(frame);
+        clones.forEach(clone => {
+          if (clone.parentNode) {
+            clone.parentNode.removeChild(clone);
+          }
+        });
+      };
+    }
+  }, [searchedId]);
+
   const searchItems = useMemo<SearchItem[]>(() => {
     return peakEntries.map(peak => ({
       id: peak.code,
@@ -248,12 +365,21 @@ export function SpainMap({ completed, wishlist, onInformation, onComplete, diffM
   }, []);
 
   const handleSearchSelect = useCallback((item: SearchItem) => {
-    setTimeout(() => {
+    if (scanTimerRef.current) clearTimeout(scanTimerRef.current);
+    if (scanFrameRef.current) cancelAnimationFrame(scanFrameRef.current);
+
+    setSearchedId(null);
+    scanFrameRef.current = requestAnimationFrame(() => {
       setSearchedId(item.id);
-      setTimeout(() => {
+      scanTimerRef.current = setTimeout(() => {
         setSearchedId((current) => current === item.id ? null : current);
-      }, 750); // Wait 0.75s for blink animation
-    }, 1300); // Wait for flyToBounds (0.8s) + 0.5s pause
+      }, 900);
+    });
+  }, []);
+
+  useEffect(() => () => {
+    if (scanTimerRef.current) clearTimeout(scanTimerRef.current);
+    if (scanFrameRef.current) cancelAnimationFrame(scanFrameRef.current);
   }, []);
 
   // ── Memoized markers to avoid re-rendering all 52 on every parent render ──
@@ -277,19 +403,21 @@ export function SpainMap({ completed, wishlist, onInformation, onComplete, diffM
   );
 
   return (
-    <MapContainer
-      className="map map-spain"
-      scrollWheelZoom={true}
-      preferCanvas={true}
-      minZoom={4}
-      maxZoom={10}
-      maxBounds={[
-        [24, -22],
-        [46, 8]
-      ]}
-      maxBoundsViscosity={1.0}
-    >
-      <FitSpain />
+    <>
+      <MapContainer
+        className="map map-spain"
+        scrollWheelZoom={true}
+        preferCanvas={false}
+        minZoom={4}
+        maxZoom={10}
+        maxBounds={[
+          [24, -22],
+          [46, 8]
+        ]}
+        maxBoundsViscosity={1.0}
+      >
+        <SweepDefsInjector searchedId={searchedId} />
+        <FitSpain />
       <MapZoomListener />
       <MapSearchControl 
         items={searchItems} 
@@ -313,5 +441,6 @@ export function SpainMap({ completed, wishlist, onInformation, onComplete, diffM
       )}
       {markers}
     </MapContainer>
+    </>
   );
 }

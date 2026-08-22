@@ -15,6 +15,7 @@ export type SearchItem = {
 
 type Props = {
   items: SearchItem[];
+  /** Called once the map has finished moving to the selected result. */
   onSelect: (item: SearchItem) => void;
   placeholder?: string;
 };
@@ -26,6 +27,7 @@ export function MapSearchControl({ items, onSelect, placeholder = "Buscar..." }:
   const map = useMap();
   const divRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const searchRequestRef = useRef(0);
 
   useEffect(() => {
     if (divRef.current) {
@@ -144,11 +146,23 @@ export function MapSearchControl({ items, onSelect, placeholder = "Buscar..." }:
               onMouseEnter={e => e.currentTarget.style.background = "#f5f5f5"}
               onMouseLeave={e => e.currentTarget.style.background = "transparent"}
               onClick={() => {
-                onSelect(item);
+                // The scan belongs to the destination, not the click. Listening before
+                // starting the flight makes the callback work for both flyTo variants.
+                const requestId = ++searchRequestRef.current;
+                const notifyArrival = () => {
+                  // A later result may have interrupted this flight. Its moveend event
+                  // still arrives, but it must not start an additional scan.
+                  if (searchRequestRef.current !== requestId) return;
+                  onSelect(item);
+                };
                 if (item.bounds) {
+                  map.once("moveend", notifyArrival);
                   map.flyToBounds(item.bounds, { padding: [20, 20], maxZoom: 10, duration: 0.8 });
                 } else if (item.coordinates) {
+                  map.once("moveend", notifyArrival);
                   map.flyTo(item.coordinates, 10, { duration: 0.8 });
+                } else {
+                  onSelect(item);
                 }
                 setExpanded(false);
                 setQuery("");

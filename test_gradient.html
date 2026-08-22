@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    path {
+      fill: url(#myGrad);
+      stroke: black;
+      stroke-width: 2px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Global SVG with defs -->
+  <svg width="0" height="0">
+    <defs>
+      <linearGradient id="myGrad" x1="0%" y1="0%" x2="10%" y2="0%">
+        <stop offset="0%" stop-color="red" />
+        <stop offset="50%" stop-color="white" />
+        <stop offset="100%" stop-color="red" />
+        <animate attributeName="x1" from="-40%" to="100%" dur="2s" repeatCount="indefinite" />
+        <animate attributeName="x2" from="0%" to="140%" dur="2s" repeatCount="indefinite" />
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <!-- Leaflet-like SVG -->
+  <svg width="200" height="200">
+    <path d="M 10 10 L 190 10 L 190 190 L 10 190 Z" />
+  </svg>
+</body>
+</html>

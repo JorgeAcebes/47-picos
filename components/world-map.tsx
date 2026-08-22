@@ -103,14 +103,84 @@ type Props = {
 function FitWorld() {
   const map = useMap();
   useEffect(() => {
-    map.fitBounds(
-      [
-        [-55, -170],
-        [75, 180],
-      ],
-      { padding: [12, 12] },
-    );
+    map.fitBounds([
+      [-60, -180],
+      [80, 180]
+    ], { padding: [0, 0] });
   }, [map]);
+  return null;
+}
+
+/**
+ * Leaflet owns the geometry attributes, so the white sweep lives in a temporary
+ * SVG definition instead of changing the country/region's own paint.
+ */
+function SweepDefsInjector({ searchedId }: { searchedId: string | null }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!searchedId) return;
+    const overlayPane = map.getPane("overlayPane");
+    if (!overlayPane) return;
+    const svg = overlayPane.querySelector("svg");
+    if (!svg) return;
+
+    let defs = svg.querySelector("defs");
+    if (!defs) {
+      defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+      svg.prepend(defs);
+    }
+
+    const grad = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
+    grad.setAttribute("id", `sweep-${searchedId}`);
+    grad.setAttribute("x1", "-32%");
+    grad.setAttribute("y1", "0%");
+    grad.setAttribute("x2", "18%");
+    grad.setAttribute("y2", "0%");
+    grad.setAttribute("gradientUnits", "objectBoundingBox");
+
+    const stop1 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+    stop1.setAttribute("offset", "0%");
+    stop1.setAttribute("stop-color", "#fff");
+    stop1.setAttribute("stop-opacity", "0");
+
+    const stop2 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+    stop2.setAttribute("offset", "50%");
+    stop2.setAttribute("stop-color", "#fff");
+    stop2.setAttribute("stop-opacity", "1");
+
+    const stop3 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+    stop3.setAttribute("offset", "100%");
+    stop3.setAttribute("stop-color", "#fff");
+    stop3.setAttribute("stop-opacity", "0");
+
+    const anim1 = document.createElementNS("http://www.w3.org/2000/svg", "animate");
+    anim1.setAttribute("attributeName", "x1");
+    anim1.setAttribute("from", "-32%");
+    anim1.setAttribute("to", "100%");
+    anim1.setAttribute("dur", "0.85s");
+    anim1.setAttribute("fill", "freeze");
+
+    const anim2 = document.createElementNS("http://www.w3.org/2000/svg", "animate");
+    anim2.setAttribute("attributeName", "x2");
+    anim2.setAttribute("from", "18%");
+    anim2.setAttribute("to", "150%");
+    anim2.setAttribute("dur", "0.85s");
+    anim2.setAttribute("fill", "freeze");
+
+    grad.appendChild(stop1);
+    grad.appendChild(stop2);
+    grad.appendChild(stop3);
+    grad.appendChild(anim1);
+    grad.appendChild(anim2);
+
+    defs.appendChild(grad);
+
+    return () => {
+      defs?.removeChild(grad);
+    };
+  }, [searchedId, map]);
+
   return null;
 }
 
@@ -151,7 +221,7 @@ function getLargestPolygonBounds(feature: any) {
       }
     }
     if (largestPoly) {
-      return L.geoJSON(largestPoly).getBounds();
+      return L.geoJSON(largestPoly as any).getBounds();
     }
   }
   return L.geoJSON(feature).getBounds();
@@ -161,6 +231,8 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
   const [geo, setGeo] = useState<FeatureCollection | null>(_worldGeoCache);
   const [regionsGeo, setRegionsGeo] = useState<FeatureCollection | null>(_regionsGeoCache);
   const [searchedId, setSearchedId] = useState<string | null>(null);
+  const scanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scanFrameRef = useRef<number | null>(null);
 
   // Use refs for values accessed inside Leaflet event handlers
   const completedRef = useRef(completed);
@@ -173,6 +245,8 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
   const completedRegionsRef = useRef(completedRegions);
   const onInformationRef = useRef(onInformation);
   const onRegionInformationRef = useRef(onRegionInformation);
+  const layerRefs = useRef(new Map<string, L.Path>());
+  const regionLayerRefs = useRef(new Map<string, L.Path>());
 
   completedRef.current = completed;
   wishlistRef.current = wishlist;
@@ -233,12 +307,22 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
   }, [regionsMode, regionsGeo, geo]);
 
   const handleSearchSelect = useCallback((item: SearchItem) => {
-    setTimeout(() => {
+    if (scanTimerRef.current) clearTimeout(scanTimerRef.current);
+    if (scanFrameRef.current) cancelAnimationFrame(scanFrameRef.current);
+
+    // Resetting first also restarts the effect when the same result is chosen twice.
+    setSearchedId(null);
+    scanFrameRef.current = requestAnimationFrame(() => {
       setSearchedId(item.id);
-      setTimeout(() => {
+      scanTimerRef.current = setTimeout(() => {
         setSearchedId((current) => current === item.id ? null : current);
-      }, 750); // Wait 0.75s for blink animation
-    }, 1300); // Wait for flyToBounds (0.8s) + 0.5s pause
+      }, 900);
+    });
+  }, []);
+
+  useEffect(() => () => {
+    if (scanTimerRef.current) clearTimeout(scanTimerRef.current);
+    if (scanFrameRef.current) cancelAnimationFrame(scanFrameRef.current);
   }, []);
 
   const icons = useMemo(
@@ -314,7 +398,6 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
   const geoStyle = useCallback(
     (f: any) => {
       const country = f ? resolveCountryFromFeature(f as any) : undefined;
-      const isSearched = country && searchedId === country.id;
       
       if (regionsMode) {
         // En modo regiones, las fronteras de los países son overlay grueso
@@ -331,19 +414,17 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
       const isWishlist = country ? wishlist.has(country.id) : false;
       return {
         color: isDone ? "#4a2878" : isWishlist ? "#d2a54b" : "#9b8ab8",
-        weight: isSearched ? 2.5 : 1.15,
+        weight: 1.15,
         fillColor: isDone ? "#7b52ab" : isWishlist ? "#ecd9a5" : "#ece5f3",
-        fillOpacity: isDone ? 0.83 : isWishlist ? 0.83 : 0.55,
-        className: isSearched ? "blink-polygon" : ""
+        fillOpacity: isDone ? 0.83 : isWishlist ? 0.83 : 0.55
       };
     },
-    [completed, wishlist, diffMode, regionsMode, searchedId, getDiffGeoStyleRef],
+    [completed, wishlist, diffMode, regionsMode, getDiffGeoStyleRef],
   );
 
   const regionStyle = useCallback(
     (f: any) => {
       const regionId = f?.properties?.id;
-      const isSearched = regionId && searchedId === regionId;
       if (diffMode && regionId) {
         const ds = getDiffGeoStyleRef(regionId);
         return {
@@ -354,13 +435,12 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
       const isDone = completedRegions?.has(regionId);
       return {
         color: "#a69f93", // Fronteras un poco más marcadas
-        weight: isSearched ? 2.5 : 1.5,
+        weight: 1.5,
         fillColor: isDone ? "#7b52ab" : "#ece5f3",
-        fillOpacity: isDone ? 0.83 : 0.55,
-        className: isSearched ? "blink-polygon" : ""
+        fillOpacity: isDone ? 0.83 : 0.55
       };
     },
-    [completedRegions, diffMode, searchedId, getDiffGeoStyleRef],
+    [completedRegions, diffMode, getDiffGeoStyleRef],
   );
 
   // ── Stable onEachFeature (uses refs) ──
@@ -370,6 +450,7 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
 
       const country = resolveCountryFromFeature(f as any);
       if (country) {
+        layerRefs.current.set(country.id, layer as Path);
         const isDone = completedRef.current.has(country.id);
         const isWishlist = wishlistRef.current.has(country.id);
         const statusClass = isDone ? "tooltip-done" : isWishlist ? "tooltip-wishlist" : "tooltip-todo";
@@ -413,6 +494,7 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
       const isoA2 = f?.properties?.iso_a2;
       if (name) {
         const regionId = f.properties.id;
+        regionLayerRefs.current.set(regionId, layer as Path);
         const isDone = completedRegionsRef.current?.has(regionId);
         const statusClass = isDone ? "tooltip-done" : "tooltip-todo";
         layer.bindTooltip(name, { 
@@ -444,6 +526,53 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
     [getDiffGeoStyleRef],
   );
 
+  useEffect(() => {
+    if (searchedId) {
+      const layer = layerRefs.current.get(searchedId) || regionLayerRefs.current.get(searchedId);
+      if (!layer) return;
+
+      const layers: L.Path[] = [];
+      if ('eachLayer' in layer) {
+        (layer as unknown as L.LayerGroup).eachLayer(l => layers.push(l as L.Path));
+      } else {
+        layers.push(layer as L.Path);
+      }
+
+      const clones: SVGElement[] = [];
+      // Wait one frame so the <defs> effect has inserted the gradient first.
+      const frame = requestAnimationFrame(() => {
+        layers.forEach(l => {
+          const el = l.getElement();
+          if (!el?.parentNode) return;
+
+          const clone = el.cloneNode(true) as SVGElement;
+          // The source geometry is never touched: this is a pure temporary overlay.
+          ["style", "class", "fill", "fill-opacity", "stroke", "stroke-width", "stroke-opacity"]
+            .forEach(attribute => clone.removeAttribute(attribute));
+          clone.setAttribute("fill", `url(#sweep-${searchedId})`);
+          clone.setAttribute("fill-opacity", "1");
+          clone.setAttribute("stroke", "#fff");
+          clone.setAttribute("stroke-width", "0");
+          clone.setAttribute("stroke-opacity", "0");
+          clone.setAttribute("vector-effect", "non-scaling-stroke");
+          clone.setAttribute("aria-hidden", "true");
+          clone.classList.add("map-search-scan-overlay");
+          el.parentNode.appendChild(clone);
+          clones.push(clone);
+        });
+      });
+
+      return () => {
+        cancelAnimationFrame(frame);
+        clones.forEach(clone => {
+          if (clone.parentNode) {
+            clone.parentNode.removeChild(clone);
+          }
+        });
+      };
+    }
+  }, [searchedId]);
+
   // ── Memoized markers ──
   const markers = useMemo(
     () => {
@@ -468,10 +597,11 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
   );
 
   return (
-    <MapContainer
-      className="map"
+    <>
+      <MapContainer
+        className="map"
       scrollWheelZoom={true}
-      preferCanvas={true}
+      preferCanvas={false}
       minZoom={1}
       maxZoom={12}
       maxBounds={[
@@ -480,6 +610,7 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
       ]}
       maxBoundsViscosity={0.5}
     >
+      <SweepDefsInjector searchedId={searchedId} />
       <FitWorld />
       <MapZoomListener />
       <MapSearchControl 
@@ -513,5 +644,6 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
       )}
       {markers}
     </MapContainer>
+    </>
   );
 }

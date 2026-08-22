@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <svg width="200" height="200" id="mysvg">
+    <!-- Empty defs -->
+    <defs id="mydefs"></defs>
+    <path d="M 10 10 L 190 10 L 190 190 L 10 190 Z" fill="url(#testGrad)" />
+  </svg>
+  <script>
+    setTimeout(() => {
+      const defs = document.getElementById("mydefs");
+      const grad = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
+      grad.setAttribute("id", "testGrad");
+      grad.innerHTML = `
+        <stop offset="0%" stop-color="blue" />
+        <stop offset="50%" stop-color="white" />
+        <stop offset="100%" stop-color="blue" />
+        <animate attributeName="x1" from="-40%" to="100%" dur="2s" repeatCount="indefinite" />
+        <animate attributeName="x2" from="0%" to="140%" dur="2s" repeatCount="indefinite" />
+      `;
+      defs.appendChild(grad);
+    }, 1000);
+  </script>
+</body>
+</html>
