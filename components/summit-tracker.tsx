@@ -315,6 +315,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
   useEffect(() => {
     if (typeof window !== "undefined") {
       localStorage.setItem("last_map_path", window.location.pathname);
+      localStorage.setItem("ranking_mode", mode);
     }
   }, [mode]);
 
