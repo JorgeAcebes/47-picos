@@ -12,6 +12,7 @@ import {
 import type { FeatureCollection } from "geojson";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { peakByCode, type Peak } from "@/data/peaks";
+import { MapSearchControl, type SearchItem } from "./map-search";
 
 const PROVINCES_URL =
   "https://gist.githubusercontent.com/josemamira/3af52a4698d42b3f676fbc23f807a605/raw/cc5e247b63b05520c167639ed51d61acd560b1c1/provincias_spain.geojson";
@@ -78,6 +79,7 @@ const peakEntries = Object.values(peakByCode);
 
 export function SpainMap({ completed, wishlist, onInformation, onComplete, diffMode, diffOnlyViewer, diffOnlyTarget, diffBoth }: Props) {
   const [geo, setGeo] = useState<FeatureCollection | null>(_geoCache);
+  const [searchedId, setSearchedId] = useState<string | null>(null);
 
   // Use refs for values accessed inside Leaflet event handlers
   // so we don't recreate onEachFeature on every prop change
@@ -176,17 +178,19 @@ export function SpainMap({ completed, wishlist, onInformation, onComplete, diffM
   const geoStyle = useCallback(
     (feature: any) => {
       const code = String(feature?.properties?.Codigo ?? "");
+      const isSearched = searchedId === code;
       if (diffMode) return getDiffStyleRef(code);
       const isDone = completed.has(code);
       const isWishlist = wishlist.has(code);
       return {
         color: isDone ? "#245f52" : isWishlist ? "#d2a54b" : "#8bb8ae",
-        weight: 1.15,
+        weight: isSearched ? 2.5 : 1.15,
         fillColor: isDone ? "#5c9b7d" : isWishlist ? "#ecd9a5" : "#e7f1ea",
         fillOpacity: isDone ? 0.83 : isWishlist ? 0.83 : 0.72,
+        className: isSearched ? "blink-polygon" : ""
       };
     },
-    [completed, wishlist, diffMode, getDiffStyleRef],
+    [completed, wishlist, diffMode, searchedId, getDiffStyleRef],
   );
 
   // ── Stable onEachFeature (uses refs to avoid GeoJSON remount) ──
@@ -232,6 +236,26 @@ export function SpainMap({ completed, wishlist, onInformation, onComplete, diffM
     [getDiffStyleRef],
   );
 
+  const searchItems = useMemo<SearchItem[]>(() => {
+    return peakEntries.map(peak => ({
+      id: peak.code,
+      name: peak.name,
+      nameLocal: peak.province,
+      type: "peak",
+      coordinates: peak.coordinates,
+      originalData: peak
+    }));
+  }, []);
+
+  const handleSearchSelect = useCallback((item: SearchItem) => {
+    setTimeout(() => {
+      setSearchedId(item.id);
+      setTimeout(() => {
+        setSearchedId((current) => current === item.id ? null : current);
+      }, 750); // Wait 0.75s for blink animation
+    }, 1300); // Wait for flyToBounds (0.8s) + 0.5s pause
+  }, []);
+
   // ── Memoized markers to avoid re-rendering all 52 on every parent render ──
   const markers = useMemo(
     () =>
@@ -267,6 +291,11 @@ export function SpainMap({ completed, wishlist, onInformation, onComplete, diffM
     >
       <FitSpain />
       <MapZoomListener />
+      <MapSearchControl 
+        items={searchItems} 
+        onSelect={handleSearchSelect} 
+        placeholder="Buscar pico o provincia..." 
+      />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

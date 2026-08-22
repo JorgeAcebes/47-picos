@@ -146,9 +146,9 @@ function IconGlobe({ className }: { className?: string }) {
 }
 
 
-function IconClose({ className }: { className?: string }) {
+function IconClose({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg className={className} style={style} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
@@ -529,16 +529,16 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
       window.location.hash = "panel";
       setRecordOpen(true);
       if (!item) {
-        setClimbDate(new Date());
-        setIsDateUnknown(false);
+        setClimbDate(null);
+        setIsDateUnknown(true);
         setIsDateModified(false);
         setNotes("");
         setFiles([]);
       } else {
         setSelected(item);
         const date = modeAscents.find((a) => a.summit_id === item.id)?.achieved_on;
-        setClimbDate(date && date !== "1900-01-01" ? new Date(date) : new Date());
-        setIsDateUnknown(date === "1900-01-01");
+        setClimbDate(date && date !== "1900-01-01" ? new Date(date) : null);
+        setIsDateUnknown(!date || date === "1900-01-01");
         setIsDateModified(!!date && date !== "1900-01-01");
         setNotes(modeAscents.find((a) => a.summit_id === item.id)?.notes ?? "");
         setFiles([]);
@@ -1329,27 +1329,37 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
             <div className="field-label" style={{ marginBottom: 18 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                 <span>{isPeaks ? "Fecha de la ascensión" : "Fecha de la visita"}</span>
-                <label className="custom-toggle">
-                  No recuerdo
-                  <input
-                    type="checkbox"
-                    checked={isDateUnknown}
-                    onChange={(e) => setIsDateUnknown(e.target.checked)}
-                  />
-                  <div className="toggle-switch"></div>
-                </label>
               </div>
-              {!isDateUnknown && (
-                <input
-                  type="date"
-                  value={climbDate ? (climbDate.toISOString().slice(0, 10)) : ""}
-                  onChange={(e) => {
-                    setClimbDate(e.target.value ? new Date(e.target.value) : new Date());
-                    setIsDateModified(true);
-                  }}
-                  max={new Date().toISOString().slice(0, 10)}
-                  style={{ marginTop: 4 }}
-                />
+              {isDateUnknown ? (
+                <button 
+                  type="button" 
+                  className="button button--outline button--wide" 
+                  onClick={() => { setIsDateUnknown(false); setClimbDate(new Date()); setIsDateModified(true); }}
+                >
+                  Establecer fecha
+                </button>
+              ) : (
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: 4 }}>
+                  <input
+                    type="date"
+                    value={climbDate ? (climbDate.toISOString().slice(0, 10)) : ""}
+                    onChange={(e) => {
+                      setClimbDate(e.target.value ? new Date(e.target.value) : new Date());
+                      setIsDateModified(true);
+                    }}
+                    max={new Date().toISOString().slice(0, 10)}
+                    style={{ flex: 1 }}
+                  />
+                  <button 
+                    type="button" 
+                    className="button button--quiet" 
+                    onClick={() => { setIsDateUnknown(true); setClimbDate(null); setIsDateModified(true); }} 
+                    title="Quitar fecha" 
+                    style={{ padding: "8px 12px", minWidth: "auto", display: "flex", alignItems: "center", justifyContent: "center" }}
+                  >
+                    <IconClose style={{ width: 16, height: 16 }} />
+                  </button>
+                </div>
               )}
             </div>
 

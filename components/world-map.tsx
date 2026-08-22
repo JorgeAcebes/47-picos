@@ -16,9 +16,10 @@ import { feature } from "topojson-client";
 import type { Topology } from "topojson-specification";
 import { countries, resolveCountryFromFeature, type Country } from "@/data/countries";
 import { regionsByCountryIsoA2 } from "@/data/regions";
+import { MapSearchControl, type SearchItem } from "./map-search";
 
 const WORLD_TOPO_URL =
-  "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+  "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json";
 const WORLD_REGIONS_TOPO_URL = "/world-regions.topo.json";
 
 // ── Module-level GeoJSON cache ────────────
@@ -131,9 +132,35 @@ function MapZoomListener() {
 // ── Pre-filter countries with coordinates (stable list) ──
 const countriesWithCoords = countries.filter((c) => c.coordinates);
 
+function getLargestPolygonBounds(feature: any) {
+  if (!feature || !feature.geometry) return undefined;
+  if (feature.geometry.type === "MultiPolygon") {
+    let maxPoints = 0;
+    let largestPoly = null;
+    for (const polyCoords of feature.geometry.coordinates) {
+      if (polyCoords[0] && polyCoords[0].length > maxPoints) {
+        maxPoints = polyCoords[0].length;
+        largestPoly = {
+          type: "Feature",
+          properties: feature.properties,
+          geometry: {
+            type: "Polygon",
+            coordinates: polyCoords
+          }
+        };
+      }
+    }
+    if (largestPoly) {
+      return L.geoJSON(largestPoly).getBounds();
+    }
+  }
+  return L.geoJSON(feature).getBounds();
+}
+
 export function WorldMap({ completed, wishlist, onInformation, onRegionInformation, onComplete, diffMode, diffOnlyViewer, diffOnlyTarget, diffBoth, regionsMode, completedRegions }: Props) {
   const [geo, setGeo] = useState<FeatureCollection | null>(_worldGeoCache);
   const [regionsGeo, setRegionsGeo] = useState<FeatureCollection | null>(_regionsGeoCache);
+  const [searchedId, setSearchedId] = useState<string | null>(null);
 
   // Use refs for values accessed inside Leaflet event handlers
   const completedRef = useRef(completed);
@@ -171,6 +198,48 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
       setRegionsGeo(_regionsGeoCache);
     }
   }, [regionsMode]);
+
+  const searchItems = useMemo<SearchItem[]>(() => {
+    if (regionsMode && regionsGeo) {
+      return regionsGeo.features.map((f: any) => ({
+        id: f.properties?.id || "",
+        name: f.properties?.name || "",
+        nameLocal: f.properties?.name_local || "",
+        type: "region",
+        bounds: getLargestPolygonBounds(f),
+        originalFeature: f
+      }));
+    } else if (!regionsMode) {
+      return countriesWithCoords.map(c => {
+        let bounds: any;
+        if (geo) {
+          const feature = geo.features.find((f: any) => resolveCountryFromFeature(f)?.id === c.id);
+          if (feature) {
+            bounds = getLargestPolygonBounds(feature);
+          }
+        }
+        return {
+          id: c.id,
+          name: c.name,
+          nameLocal: c.name,
+          type: "country",
+          coordinates: c.coordinates,
+          bounds,
+          originalData: c
+        };
+      });
+    }
+    return [];
+  }, [regionsMode, regionsGeo, geo]);
+
+  const handleSearchSelect = useCallback((item: SearchItem) => {
+    setTimeout(() => {
+      setSearchedId(item.id);
+      setTimeout(() => {
+        setSearchedId((current) => current === item.id ? null : current);
+      }, 750); // Wait 0.75s for blink animation
+    }, 1300); // Wait for flyToBounds (0.8s) + 0.5s pause
+  }, []);
 
   const icons = useMemo(
     () => ({
@@ -245,12 +314,13 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
   const geoStyle = useCallback(
     (f: any) => {
       const country = f ? resolveCountryFromFeature(f as any) : undefined;
+      const isSearched = country && searchedId === country.id;
       
       if (regionsMode) {
         // En modo regiones, las fronteras de los países son overlay grueso
         return {
           color: "#4a2878", // Fronteras de países bien visibles
-          weight: 1.25,
+          weight: 2.5,
           fill: false,      // Sin relleno para que se vean las regiones
           interactive: false // Para no bloquear clicks a las regiones
         };
@@ -261,33 +331,36 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
       const isWishlist = country ? wishlist.has(country.id) : false;
       return {
         color: isDone ? "#4a2878" : isWishlist ? "#d2a54b" : "#9b8ab8",
-        weight: 1.15,
+        weight: isSearched ? 2.5 : 1.15,
         fillColor: isDone ? "#7b52ab" : isWishlist ? "#ecd9a5" : "#ece5f3",
         fillOpacity: isDone ? 0.83 : isWishlist ? 0.83 : 0.55,
+        className: isSearched ? "blink-polygon" : ""
       };
     },
-    [completed, wishlist, diffMode, regionsMode, getDiffGeoStyleRef],
+    [completed, wishlist, diffMode, regionsMode, searchedId, getDiffGeoStyleRef],
   );
 
   const regionStyle = useCallback(
     (f: any) => {
       const regionId = f?.properties?.id;
+      const isSearched = regionId && searchedId === regionId;
       if (diffMode && regionId) {
         const ds = getDiffGeoStyleRef(regionId);
         return {
           ...ds,
-          weight: 0.75,
+          weight: 1.5,
         };
       }
       const isDone = completedRegions?.has(regionId);
       return {
         color: "#a69f93", // Fronteras un poco más marcadas
-        weight: 0.75,
+        weight: isSearched ? 2.5 : 1.5,
         fillColor: isDone ? "#7b52ab" : "#ece5f3",
         fillOpacity: isDone ? 0.83 : 0.55,
+        className: isSearched ? "blink-polygon" : ""
       };
     },
-    [completedRegions, diffMode, getDiffGeoStyleRef],
+    [completedRegions, diffMode, searchedId, getDiffGeoStyleRef],
   );
 
   // ── Stable onEachFeature (uses refs) ──
@@ -355,15 +428,15 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
 
         // Hover effect for region
         layer.on("mouseover", () => {
-          (layer as Path).setStyle({ fillOpacity: 0.9, weight: 1 });
+          (layer as Path).setStyle({ fillOpacity: 0.9, weight: 2.5 });
         });
         layer.on("mouseout", () => {
           if (diffModeRef.current) {
             const ds = getDiffGeoStyleRef(regionId);
-            (layer as Path).setStyle({ fillOpacity: ds.fillOpacity, weight: 0.75 });
+            (layer as Path).setStyle({ fillOpacity: ds.fillOpacity, weight: 1.5 });
           } else {
             const isDone = completedRegionsRef.current?.has(regionId);
-            (layer as Path).setStyle({ fillOpacity: isDone ? 0.83 : 0.55, weight: 0.75 });
+            (layer as Path).setStyle({ fillOpacity: isDone ? 0.83 : 0.55, weight: 1.5 });
           }
         });
       }
@@ -400,7 +473,7 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
       scrollWheelZoom={true}
       preferCanvas={true}
       minZoom={1}
-      maxZoom={7}
+      maxZoom={12}
       maxBounds={[
         [-85, -180],
         [85, 180]
@@ -409,6 +482,11 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
     >
       <FitWorld />
       <MapZoomListener />
+      <MapSearchControl 
+        items={searchItems} 
+        onSelect={handleSearchSelect} 
+        placeholder={regionsMode ? "Buscar región..." : "Buscar país..."} 
+      />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

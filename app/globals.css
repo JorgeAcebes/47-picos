@@ -2722,3 +2722,14 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     gap: 8px;
   }
 }
+
+/* Blink animation for map search */
+@keyframes mapBlink {
+  0% { fill: #ffffff; fill-opacity: 1; stroke: #ffffff; stroke-width: 4px; }
+  15% { fill: #ffffff; fill-opacity: 1; stroke: #ffffff; stroke-width: 4px; }
+  100% { }
+}
+
+.blink-polygon {
+  animation: mapBlink 0.7s ease-out !important;
+}
