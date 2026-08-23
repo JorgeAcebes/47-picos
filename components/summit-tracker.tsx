@@ -1389,7 +1389,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
             )}
 
             <label className="field-label">
-              Notas
+              Notas (opcional)
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}

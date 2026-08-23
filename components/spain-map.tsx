@@ -48,17 +48,13 @@ type Props = {
 function FitSpain() {
   const map = useMap();
   useEffect(() => {
-    const timer = setTimeout(() => {
-      map.invalidateSize();
-      map.fitBounds(
-        [
-          [27.55, -18.65],
-          [43.95, 4.95],
-        ],
-        { padding: [12, 12] },
-      );
-    }, 100);
-    return () => clearTimeout(timer);
+    map.fitBounds(
+      [
+        [27.55, -18.65],
+        [43.95, 4.95],
+      ],
+      { padding: [12, 12] },
+    );
   }, [map]);
   return null;
 }

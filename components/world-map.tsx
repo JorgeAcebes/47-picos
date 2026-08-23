@@ -103,14 +103,10 @@ type Props = {
 function FitWorld() {
   const map = useMap();
   useEffect(() => {
-    const timer = setTimeout(() => {
-      map.invalidateSize();
-      map.fitBounds([
-        [-60, -180],
-        [80, 180]
-      ], { padding: [0, 0] });
-    }, 100);
-    return () => clearTimeout(timer);
+    map.fitBounds([
+      [-60, -180],
+      [80, 180]
+    ], { padding: [0, 0] });
   }, [map]);
   return null;
 }
