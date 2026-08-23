@@ -98,6 +98,7 @@ type Props = {
   regionsMode?: boolean;
   completedRegions?: Set<string>;
   onRegionInformation?: (regionId: string, name: string, isoA2: string) => void;
+  activeId?: string;
 };
 
 function FitWorld() {
@@ -227,7 +228,7 @@ function getLargestPolygonBounds(feature: any) {
   return L.geoJSON(feature).getBounds();
 }
 
-export function WorldMap({ completed, wishlist, onInformation, onRegionInformation, onComplete, diffMode, diffOnlyViewer, diffOnlyTarget, diffBoth, regionsMode, completedRegions }: Props) {
+export function WorldMap({ completed, wishlist, onInformation, onRegionInformation, onComplete, diffMode, diffOnlyViewer, diffOnlyTarget, diffBoth, regionsMode, completedRegions, activeId }: Props) {
   const [geo, setGeo] = useState<FeatureCollection | null>(_worldGeoCache);
   const [regionsGeo, setRegionsGeo] = useState<FeatureCollection | null>(_regionsGeoCache);
   const [searchedId, setSearchedId] = useState<string | null>(null);
@@ -258,6 +259,8 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
   completedRegionsRef.current = completedRegions;
   onInformationRef.current = onInformation;
   onRegionInformationRef.current = onRegionInformation;
+
+
 
   useEffect(() => {
     if (!_worldGeoCache) {
@@ -394,6 +397,54 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
     return { color: "#c4bfb6", weight: 0.8, fillColor: "#e8e4df", fillOpacity: 0.4 };
   }, []);
 
+  const activeIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const oldId = activeIdRef.current;
+    if (oldId && oldId !== activeId) {
+      const layer = layerRefs.current.get(oldId) || regionLayerRefs.current.get(oldId);
+      if (layer) {
+        if (diffModeRef.current) {
+          const ds = getDiffGeoStyleRef(oldId);
+          (layer as Path).setStyle({ weight: ds.weight, fillOpacity: ds.fillOpacity });
+        } else {
+          if (layerRefs.current.has(oldId)) {
+            const isWishlist = wishlistRef.current.has(oldId);
+            (layer as Path).setStyle({
+              weight: 1.15,
+              fillOpacity: completedRef.current.has(oldId) ? 0.83 : isWishlist ? 0.83 : 0.55,
+            });
+          }
+          if (regionLayerRefs.current.has(oldId)) {
+            const isDone = completedRegionsRef.current?.has(oldId);
+            (layer as Path).setStyle({ fillOpacity: isDone ? 0.83 : 0.55, weight: 1.5 });
+          }
+        }
+      }
+    }
+
+    if (activeId) {
+      const layer = layerRefs.current.get(activeId) || regionLayerRefs.current.get(activeId);
+      if (layer) {
+        if (diffModeRef.current) {
+          (layer as Path).setStyle({ weight: 2.5, fillOpacity: 0.9 });
+        } else {
+          if (layerRefs.current.has(activeId)) {
+            const isWishlist = wishlistRef.current.has(activeId);
+            (layer as Path).setStyle({
+              weight: 2.5,
+              fillOpacity: completedRef.current.has(activeId) ? 0.9 : isWishlist ? 0.9 : 0.75,
+            });
+          }
+          if (regionLayerRefs.current.has(activeId)) {
+            (layer as Path).setStyle({ fillOpacity: 0.9, weight: 2.5 });
+          }
+        }
+      }
+    }
+    activeIdRef.current = activeId || null;
+  }, [activeId, getDiffGeoStyleRef]);
+
   // ── Memoized style functions ──
   const geoStyle = useCallback(
     (f: any) => {
@@ -472,6 +523,7 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
           }
         });
         layer.on("mouseout", () => {
+          if (country.id === activeIdRef.current) return;
           if (diffModeRef.current) {
             const ds = getDiffGeoStyleRef(country.id);
             (layer as Path).setStyle({ weight: ds.weight, fillOpacity: ds.fillOpacity });
@@ -513,6 +565,7 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
           (layer as Path).setStyle({ fillOpacity: 0.9, weight: 2.5 });
         });
         layer.on("mouseout", () => {
+          if (regionId === activeIdRef.current) return;
           if (diffModeRef.current) {
             const ds = getDiffGeoStyleRef(regionId);
             (layer as Path).setStyle({ fillOpacity: ds.fillOpacity, weight: 1.5 });

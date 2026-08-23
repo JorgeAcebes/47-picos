@@ -1035,6 +1035,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
             diffOnlyViewer={diffPeakOnlyViewer}
             diffOnlyTarget={diffPeakOnlyTarget}
             diffBoth={diffPeakBoth}
+            activeId={selected?.id}
           />
         ) : (
           <WorldMap
@@ -1049,6 +1050,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
             diffBoth={diffItemBoth}
             regionsMode={regionsMode}
             completedRegions={completedRegionIds}
+            activeId={selected?.id}
           />
         )}
       </section>

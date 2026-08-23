@@ -661,6 +661,11 @@ nav a:hover::after {
   font-family: "DM Sans", sans-serif;
 }
 
+/* Evita que aparezca un rectángulo al clicar (focus) en los vectores (países, regiones, cimas) */
+.leaflet-interactive:focus {
+  outline: none;
+}
+
 /* Force GPU compositing for tile and overlay panes to prevent white-flash and jank */
 .leaflet-tile-pane,
 .leaflet-overlay-pane {

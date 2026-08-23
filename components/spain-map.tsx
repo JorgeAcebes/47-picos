@@ -43,6 +43,7 @@ type Props = {
   diffOnlyViewer?: Set<string>;
   diffOnlyTarget?: Set<string>;
   diffBoth?: Set<string>;
+  activeId?: string;
 };
 
 function FitSpain() {
@@ -147,7 +148,7 @@ function MapZoomListener() {
 // ── Stable marker list (never changes) ────
 const peakEntries = Object.values(peakByCode);
 
-export function SpainMap({ completed, wishlist, onInformation, onComplete, diffMode, diffOnlyViewer, diffOnlyTarget, diffBoth }: Props) {
+export function SpainMap({ completed, wishlist, onInformation, onComplete, diffMode, diffOnlyViewer, diffOnlyTarget, diffBoth, activeId }: Props) {
   const [geo, setGeo] = useState<FeatureCollection | null>(_geoCache);
   const [searchedId, setSearchedId] = useState<string | null>(null);
   const scanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -171,6 +172,10 @@ export function SpainMap({ completed, wishlist, onInformation, onComplete, diffM
   diffOnlyTargetRef.current = diffOnlyTarget;
   diffBothRef.current = diffBoth;
   onInformationRef.current = onInformation;
+
+  const activeIdRef = useRef<string | null>(null);
+
+
 
   useEffect(() => {
     if (!_geoCache) {
@@ -247,6 +252,42 @@ export function SpainMap({ completed, wishlist, onInformation, onComplete, diffM
     return { color: "#c4bfb6", weight: 0.8, fillColor: "#e8e4df", fillOpacity: 0.45 };
   }, []);
 
+  useEffect(() => {
+    const oldId = activeIdRef.current;
+    if (oldId && oldId !== activeId) {
+      const layer = layerRefs.current.get(oldId);
+      if (layer) {
+        if (diffModeRef.current) {
+          const ds = getDiffStyleRef(oldId);
+          layer.setStyle({ weight: ds.weight, fillOpacity: ds.fillOpacity });
+        } else {
+          const isWishlist = wishlistRef.current.has(oldId);
+          layer.setStyle({
+            weight: 1.15,
+            fillOpacity: completedRef.current.has(oldId) ? 0.83 : isWishlist ? 0.83 : 0.72,
+          });
+        }
+      }
+    }
+
+    if (activeId) {
+      const layer = layerRefs.current.get(activeId);
+      if (layer) {
+        if (diffModeRef.current) {
+          layer.setStyle({ weight: 2.5, fillOpacity: 0.9 });
+        } else {
+          const isWishlist = wishlistRef.current.has(activeId);
+          layer.setStyle({
+            weight: 2.5,
+            fillOpacity: completedRef.current.has(activeId) ? 0.9 : isWishlist ? 0.9 : 0.85,
+          });
+        }
+      }
+    }
+    activeIdRef.current = activeId || null;
+  }, [activeId, getDiffStyleRef]);
+
+
   // ── Memoized style function (recreated only when data deps change) ──
   const geoStyle = useCallback(
     (feature: any) => {
@@ -292,6 +333,7 @@ export function SpainMap({ completed, wishlist, onInformation, onComplete, diffM
           }
         });
         layer.on("mouseout", () => {
+          if (peak.code === activeIdRef.current) return;
           if (diffModeRef.current) {
             const ds = getDiffStyleRef(peak.code);
             (layer as L.Path).setStyle({ weight: ds.weight, fillOpacity: ds.fillOpacity });
