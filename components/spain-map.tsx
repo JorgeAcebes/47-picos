@@ -354,15 +354,33 @@ export function SpainMap({ completed, wishlist, onInformation, onComplete, diffM
   }, [searchedId]);
 
   const searchItems = useMemo<SearchItem[]>(() => {
-    return peakEntries.map(peak => ({
-      id: peak.code,
-      name: peak.name,
-      nameLocal: peak.province,
-      type: "peak",
-      coordinates: peak.coordinates,
-      originalData: peak
-    }));
-  }, []);
+    return peakEntries.map(peak => {
+      let bounds: any = undefined;
+      if (geo) {
+        // Encontrar los códigos de provincia que comparten este pico (por su id)
+        const relatedCodes = peakEntries
+          .filter(p => p.id === peak.id)
+          .map(p => p.code);
+        
+        const relatedFeatures = geo.features.filter(f => 
+          relatedCodes.includes(String(f.properties?.Codigo ?? ""))
+        );
+
+        if (relatedFeatures.length > 0) {
+          bounds = L.geoJSON(relatedFeatures as any).getBounds();
+        }
+      }
+      return {
+        id: peak.code,
+        name: peak.name,
+        nameLocal: peak.province,
+        type: "peak",
+        coordinates: peak.coordinates,
+        bounds,
+        originalData: peak
+      };
+    });
+  }, [geo]);
 
   const handleSearchSelect = useCallback((item: SearchItem) => {
     if (scanTimerRef.current) clearTimeout(scanTimerRef.current);
