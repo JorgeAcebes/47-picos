@@ -173,8 +173,13 @@ export function SpainMap({ completed, wishlist, onInformation, onComplete, diffM
   diffBothRef.current = diffBoth;
   onInformationRef.current = onInformation;
 
-  const activeIdRef = useRef<string | null>(null);
+  const activeCode = useMemo(() => {
+    if (!activeId) return null;
+    const peak = peakEntries.find(p => p.id === activeId);
+    return peak ? peak.code : null;
+  }, [activeId]);
 
+  const activeCodeRef = useRef<string | null>(null);
 
 
   useEffect(() => {
@@ -253,39 +258,39 @@ export function SpainMap({ completed, wishlist, onInformation, onComplete, diffM
   }, []);
 
   useEffect(() => {
-    const oldId = activeIdRef.current;
-    if (oldId && oldId !== activeId) {
-      const layer = layerRefs.current.get(oldId);
+    const oldCode = activeCodeRef.current;
+    if (oldCode && oldCode !== activeCode) {
+      const layer = layerRefs.current.get(oldCode);
       if (layer) {
         if (diffModeRef.current) {
-          const ds = getDiffStyleRef(oldId);
+          const ds = getDiffStyleRef(oldCode);
           layer.setStyle({ weight: ds.weight, fillOpacity: ds.fillOpacity });
         } else {
-          const isWishlist = wishlistRef.current.has(oldId);
+          const isWishlist = wishlistRef.current.has(oldCode);
           layer.setStyle({
             weight: 1.15,
-            fillOpacity: completedRef.current.has(oldId) ? 0.83 : isWishlist ? 0.83 : 0.72,
+            fillOpacity: completedRef.current.has(oldCode) ? 0.83 : isWishlist ? 0.83 : 0.72,
           });
         }
       }
     }
 
-    if (activeId) {
-      const layer = layerRefs.current.get(activeId);
+    if (activeCode) {
+      const layer = layerRefs.current.get(activeCode);
       if (layer) {
         if (diffModeRef.current) {
           layer.setStyle({ weight: 2.5, fillOpacity: 0.9 });
         } else {
-          const isWishlist = wishlistRef.current.has(activeId);
+          const isWishlist = wishlistRef.current.has(activeCode);
           layer.setStyle({
             weight: 2.5,
-            fillOpacity: completedRef.current.has(activeId) ? 0.9 : isWishlist ? 0.9 : 0.85,
+            fillOpacity: completedRef.current.has(activeCode) ? 0.9 : isWishlist ? 0.9 : 0.85,
           });
         }
       }
     }
-    activeIdRef.current = activeId || null;
-  }, [activeId, getDiffStyleRef]);
+    activeCodeRef.current = activeCode || null;
+  }, [activeCode, getDiffStyleRef]);
 
 
   // ── Memoized style function (recreated only when data deps change) ──
@@ -333,7 +338,7 @@ export function SpainMap({ completed, wishlist, onInformation, onComplete, diffM
           }
         });
         layer.on("mouseout", () => {
-          if (peak.code === activeIdRef.current) return;
+          if (peak.code === activeCodeRef.current) return;
           if (diffModeRef.current) {
             const ds = getDiffStyleRef(peak.code);
             (layer as L.Path).setStyle({ weight: ds.weight, fillOpacity: ds.fillOpacity });

@@ -787,9 +787,19 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
 
   function switchMode(target: ChallengeMode) {
     if (target === mode) return;
-    closePanel();
+    
+    // Clear panels explicitly without using history.back() 
+    // to prevent race conditions with navigation.
+    setSelected(null);
+    setRecordOpen(false);
+    setProfileOpen(false);
+    setAuthOpen(false);
+
     if (onSwitchMode) {
       onSwitchMode(target);
+      if (window.location.hash === "#panel") {
+        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      }
     } else {
       router.push(target === "peaks" ? "/picos" : "/");
     }
