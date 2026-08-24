@@ -153,7 +153,12 @@ export function MapSearchControl({ items, onSelect, placeholder = "Buscar..." }:
                   // A later result may have interrupted this flight. Its moveend event
                   // still arrives, but it must not start an additional scan.
                   if (searchRequestRef.current !== requestId) return;
-                  onSelect(item);
+                  // Damos margen para que las teselas del mapa terminen de cargar visualmente
+                  setTimeout(() => {
+                    if (searchRequestRef.current === requestId) {
+                      onSelect(item);
+                    }
+                  }, 800);
                 };
                 if (item.bounds) {
                   map.once("moveend", notifyArrival);
