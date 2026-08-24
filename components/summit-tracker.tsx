@@ -48,8 +48,8 @@ type TargetProfile = {
   username: string;
 };
 
-type Props = { 
-  mode: ChallengeMode; 
+type Props = {
+  mode: ChallengeMode;
   targetProfile?: TargetProfile;
   onSwitchMode?: (mode: ChallengeMode) => void;
 };
@@ -110,16 +110,16 @@ function formatDate(date: string) {
 function IconLogo({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12 52 L36 12 L48 32.75 Z" fill="url(#logoGradGreen)"/>
-      <path d="M24 60 L44 26 L60 52 Z" fill="url(#logoGradPurple)" style={{ mixBlendMode: 'multiply' }}/>
+      <path d="M12 52 L36 12 L48 32.75 Z" fill="url(#logoGradGreen)" />
+      <path d="M24 60 L44 26 L60 52 Z" fill="url(#logoGradPurple)" style={{ mixBlendMode: 'multiply' }} />
       <defs>
         <linearGradient id="logoGradGreen" x1="12" y1="12" x2="48" y2="52">
-          <stop stopColor="#5c9b7d"/>
-          <stop offset="1" stopColor="#245f52"/>
+          <stop stopColor="#5c9b7d" />
+          <stop offset="1" stopColor="#245f52" />
         </linearGradient>
         <linearGradient id="logoGradPurple" x1="24" y1="26" x2="60" y2="60">
-          <stop stopColor="#9570c7"/>
-          <stop offset="1" stopColor="#5b3a8c"/>
+          <stop stopColor="#9570c7" />
+          <stop offset="1" stopColor="#5b3a8c" />
         </linearGradient>
       </defs>
     </svg>
@@ -205,7 +205,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
   const isReadOnly = !!targetProfile;
 
   const [session, setSession] = useState<Session | null>(null);
-  const [myProfile, setMyProfile] = useState<{username: string; avatar_url: string | null; enable_regions?: boolean} | null>(null);
+  const [myProfile, setMyProfile] = useState<{ username: string; avatar_url: string | null; enable_regions?: boolean } | null>(null);
   const [ascents, setAscents] = useState<Ascent[]>([]);
   const [photos, setPhotos] = useState<SummitPhoto[]>([]);
   const [selected, setSelected] = useState<SelectedItem | null>(null);
@@ -559,7 +559,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
 
   function onFilesChanged(event: ChangeEvent<HTMLInputElement>) {
     const nextFiles = Array.from(event.target.files ?? []);
-    
+
     if (selectedPhotos.length + nextFiles.length > 3) {
       setNotice(`Máximo 3 fotos por ${isPeaks ? "pico" : "país"}. Ya tienes ${selectedPhotos.length}.`);
       event.target.value = "";
@@ -699,7 +699,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
     const confirmMessage = isPeaks
       ? "¿Seguro que quieres eliminar esta ascensión?"
       : "¿Seguro que quieres eliminar la visita a este país?";
-      
+
     setConfirmConfig({
       isOpen: true,
       message: confirmMessage,
@@ -736,7 +736,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
 
   function deletePhoto(photo: SummitPhoto) {
     if (!supabase || !session) return;
-    
+
     setConfirmConfig({
       isOpen: true,
       message: "¿Seguro que quieres eliminar esta foto?",
@@ -787,7 +787,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
 
   function switchMode(target: ChallengeMode) {
     if (target === mode) return;
-    
+
     // Clear panels explicitly without using history.back() 
     // to prevent race conditions with navigation.
     setSelected(null);
@@ -965,8 +965,8 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
         <div id="mapa" className="section-heading map-heading-row">
           <div>
             <span className="eyebrow">{isReadOnly ? "SU PROGRESO" : "TU PROGRESO"}</span>
-            <h2>{isPeaks 
-              ? (isReadOnly ? "Su mapa de cumbres" : "Tu mapa de cumbres") 
+            <h2>{isPeaks
+              ? (isReadOnly ? "Su mapa de cumbres" : "Tu mapa de cumbres")
               : (isReadOnly ? "Su mapa del mundo" : "Tu mapa del mundo")}</h2>
             <p>
               {isPeaks
@@ -1083,8 +1083,8 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
           </div>
           <div className="search-input-container">
             <IconSearch className="search-icon" />
-            <input 
-              type="search" 
+            <input
+              type="search"
               placeholder={isPeaks ? "Buscar pico o provincia..." : "Buscar país o capital..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -1344,9 +1344,9 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
                 <span>{isPeaks ? "Fecha de la ascensión" : "Fecha de la visita"}</span>
               </div>
               {isDateUnknown ? (
-                <button 
-                  type="button" 
-                  className="button button--outline button--wide" 
+                <button
+                  type="button"
+                  className="button button--outline button--wide"
                   onClick={() => { setIsDateUnknown(false); setClimbDate(new Date()); setIsDateModified(true); }}
                 >
                   Establecer fecha
@@ -1363,11 +1363,11 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
                     max={new Date().toISOString().slice(0, 10)}
                     style={{ flex: 1 }}
                   />
-                  <button 
-                    type="button" 
-                    className="button button--quiet" 
-                    onClick={() => { setIsDateUnknown(true); setClimbDate(null); setIsDateModified(true); }} 
-                    title="Quitar fecha" 
+                  <button
+                    type="button"
+                    className="button button--quiet"
+                    onClick={() => { setIsDateUnknown(true); setClimbDate(null); setIsDateModified(true); }}
+                    title="Quitar fecha"
                     style={{ padding: "8px 12px", minWidth: "auto", display: "flex", alignItems: "center", justifyContent: "center" }}
                   >
                     <IconClose style={{ width: 16, height: 16 }} />
@@ -1401,7 +1401,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
             )}
 
             <label className="field-label">
-              Notas (opcional)
+              Notas
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -1490,7 +1490,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
       {/* ── Modals ──────────────────────── */}
       {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} />}
       {profileOpen && session && <ProfileSettings session={session} onProfileUpdate={(p) => {
-        setMyProfile(prev => ({...prev, ...p}));
+        setMyProfile(prev => ({ ...prev, ...p }));
         if (p.enable_regions === false) setRegionsMode(false);
       }} onClose={() => setProfileOpen(false)} />}
       <ConfirmModal
