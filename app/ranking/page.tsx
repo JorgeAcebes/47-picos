@@ -179,9 +179,9 @@ export default function RankingPage() {
       <main className="peak-list-section" style={{ paddingTop: '80px', maxWidth: '800px', margin: '0 auto', paddingBottom: '4rem' }}>
         
         <div className="section-heading">
-          <div>
+          <div style={{ width: '100%' }}>
             <span className="eyebrow">EL PODIO</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
               <h2 style={{ margin: 0 }}>Ranking de {mode === "peaks" ? "Alpinistas" : "Viajeros"}</h2>
               {mode === "countries" && (
                 <button
