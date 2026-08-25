@@ -5,7 +5,13 @@ import { supabase } from "@/lib/supabase";
 import type { Session } from "@supabase/supabase-js";
 import Link from "next/link";
 import { countries } from "@/data/countries";
+import dynamic from "next/dynamic";
 import "./ranking.css";
+
+const CollectiveMap = dynamic(
+  () => import("@/components/collective-map").then((mod) => mod.CollectiveMap),
+  { ssr: false }
+);
 
 type RankingEntry = {
   user_id: string;
@@ -29,6 +35,7 @@ export default function RankingPage() {
   const [mapLink, setMapLink] = useState("/");
   const [totalUsersCount, setTotalUsersCount] = useState<number>(0);
   const [myProfile, setMyProfile] = useState<{username: string, avatar_url: string | null} | null>(null);
+  const [showCollectiveMap, setShowCollectiveMap] = useState(false);
 
   useEffect(() => {
     if (session) {
@@ -174,7 +181,26 @@ export default function RankingPage() {
         <div className="section-heading">
           <div>
             <span className="eyebrow">EL PODIO</span>
-            <h2>Ranking de {mode === "peaks" ? "Alpinistas" : "Viajeros"}</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <h2 style={{ margin: 0 }}>Ranking de {mode === "peaks" ? "Alpinistas" : "Viajeros"}</h2>
+              {mode === "countries" && (
+                <button
+                  className="collective-map-trigger"
+                  onClick={() => setShowCollectiveMap(true)}
+                  title="Mapa colectivo de países"
+                  aria-label="Abrir mapa colectivo de países"
+                >
+                  <svg viewBox="0 0 64 40" width="28" height="18" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="32" cy="12" r="8" />
+                    <path d="M20 38c0-7 5.4-12 12-12s12 5 12 12" />
+                    <circle cx="14" cy="16" r="6" />
+                    <path d="M2 38c0-5.5 4.5-10 10-10 2.2 0 4.3.7 6 2" />
+                    <circle cx="50" cy="16" r="6" />
+                    <path d="M62 38c0-5.5-4.5-10-10-10-2.2 0-4.3.7-6 2" />
+                  </svg>
+                </button>
+              )}
+            </div>
             <p>
               {scope === "following"
                 ? `Encuentra tu posición entre las ${loading ? '...' : entries.length} personas que sigues.`
@@ -275,6 +301,10 @@ export default function RankingPage() {
           </div>
         </section>
       </main>
+
+      {showCollectiveMap && (
+        <CollectiveMap onClose={() => setShowCollectiveMap(false)} />
+      )}
     </div>
   );
 }
