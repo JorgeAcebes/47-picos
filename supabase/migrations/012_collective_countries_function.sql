@@ -17,26 +17,33 @@ returns table (
 begin
   return query
   select
-    a.summit_id as summit_id,
-    array_agg(distinct p.id) as visitor_ids,
-    array_agg(distinct p.username) as visitor_usernames,
-    array_agg(distinct coalesce(p.avatar_url, '')) as visitor_avatars
-  from public.ascents a
-  join public.profiles p on p.id = a.user_id
-  where a.is_wishlist = false
-    and (
-      (p_mode = 'countries' and a.summit_id like 'country-%')
-      or
-      (p_mode = 'peaks' and a.summit_id not like 'country-%')
-    )
-    and (
-      (p_following_only = false and p.is_public = true)
-      or p.id = auth.uid()
-      or p.id in (
-        select following_id from public.connections
-        where follower_id = auth.uid() and status = 'accepted'
+    sub.summit_id,
+    array_agg(sub.id) as visitor_ids,
+    array_agg(sub.username) as visitor_usernames,
+    array_agg(sub.avatar_url) as visitor_avatars
+  from (
+    select distinct
+      a.summit_id,
+      p.id,
+      p.username,
+      coalesce(p.avatar_url, '') as avatar_url
+    from public.ascents a
+    join public.profiles p on p.id = a.user_id
+    where a.is_wishlist = false
+      and (
+        (p_mode = 'countries' and a.summit_id like 'country-%')
+        or
+        (p_mode = 'peaks' and a.summit_id not like 'country-%')
       )
-    )
-  group by a.summit_id;
+      and (
+        (p_following_only = false and p.is_public = true)
+        or p.id = auth.uid()
+        or p.id in (
+          select following_id from public.connections
+          where follower_id = auth.uid() and status = 'accepted'
+        )
+      )
+  ) sub
+  group by sub.summit_id;
 end;
 $$ language plpgsql security definer;
