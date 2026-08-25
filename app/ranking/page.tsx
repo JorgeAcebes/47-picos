@@ -67,6 +67,8 @@ export default function RankingPage() {
   }, []);
 
   useEffect(() => {
+    let ignore = false;
+
     async function fetchRanking() {
       setLoading(true);
       try {
@@ -79,6 +81,8 @@ export default function RankingPage() {
           p_mode: mode
         });
 
+        if (ignore) return;
+
         if (error) {
           console.error("Error fetching ranking:", error);
           setEntries([]);
@@ -86,15 +90,19 @@ export default function RankingPage() {
           setEntries(data as RankingEntry[] || []);
         }
       } catch (err) {
-        console.error(err);
+        if (!ignore) console.error(err);
       } finally {
-        setLoading(false);
+        if (!ignore) setLoading(false);
       }
     }
 
     if (supabase) {
       fetchRanking();
     }
+
+    return () => {
+      ignore = true;
+    };
   }, [mode, scope, session]);
 
   useEffect(() => {
