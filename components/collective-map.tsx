@@ -446,14 +446,14 @@ export function CollectiveMap({ onClose }: Props) {
             <button
               className={`list-filter-pill ${scope === 'all' ? 'list-filter-pill--active' : ''}`}
               onClick={() => setScope('all')}
-              style={scope === 'all' ? { background: '#7b52ab', color: 'white', borderColor: '#7b52ab', padding: "4px 12px", minWidth: "auto", fontSize: "0.8rem", height: "32px" } : { padding: "4px 12px", minWidth: "auto", fontSize: "0.8rem", height: "32px" }}
+              style={scope === 'all' ? { background: '#7b52ab', color: 'white', borderColor: '#7b52ab', padding: "4px 12px", minWidth: "auto", fontSize: "0.8rem", height: "32px", alignItems: "center", justifyContent: "center" } : { padding: "4px 12px", minWidth: "auto", fontSize: "0.8rem", height: "32px", alignItems: "center", justifyContent: "center" }}
             >
               Global
             </button>
             <button
               className={`list-filter-pill ${scope === 'following' ? 'list-filter-pill--active' : ''}`}
               onClick={() => setScope('following')}
-              style={scope === 'following' ? { background: '#7b52ab', color: 'white', borderColor: '#7b52ab', padding: "4px 12px", minWidth: "auto", fontSize: "0.8rem", height: "32px" } : { padding: "4px 12px", minWidth: "auto", fontSize: "0.8rem", height: "32px" }}
+              style={scope === 'following' ? { background: '#7b52ab', color: 'white', borderColor: '#7b52ab', padding: "4px 12px", minWidth: "auto", fontSize: "0.8rem", height: "32px", alignItems: "center", justifyContent: "center" } : { padding: "4px 12px", minWidth: "auto", fontSize: "0.8rem", height: "32px", alignItems: "center", justifyContent: "center" }}
             >
               Siguiendo
             </button>
