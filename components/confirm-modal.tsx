@@ -20,7 +20,7 @@ export function ConfirmModal({
   if (!isOpen) return null;
 
   return (
-    <div className="modal-backdrop">
+    <div className="modal-backdrop" style={{ zIndex: 3000 }}>
       <section
         className="record-dialog confirm-dialog"
         role="dialog"

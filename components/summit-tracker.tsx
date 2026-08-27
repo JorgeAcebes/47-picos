@@ -249,7 +249,17 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
   // Handle back button to close panels
   useEffect(() => {
     const handleHashChange = () => {
-      if (window.location.hash !== "#panel") {
+      const hash = window.location.hash;
+      if (hash === "#editor") {
+        // Let it stay open
+      } else if (hash === "#lightbox") {
+        setEditorPhoto(null);
+      } else if (hash === "#panel") {
+        setEditorPhoto(null);
+        setLightboxPhoto(null);
+      } else {
+        setEditorPhoto(null);
+        setLightboxPhoto(null);
         setSelected(null);
         setRecordOpen(false);
         setProfileOpen(false);
@@ -792,14 +802,25 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
 
   async function handleSaveEditedPhoto(blob: Blob) {
     if (!editorPhoto || !supabase || !session) return;
+    
+    // Close editor immediately for fluid UX
+    window.history.back();
+    
+    const tempUrl = URL.createObjectURL(blob);
+    // Optimistically update UI
+    setPhotos(prev => prev.map(p => p.id === editorPhoto.id ? { ...p, public_url: tempUrl } : p));
+    if (lightboxPhoto?.id === editorPhoto.id) {
+      setLightboxPhoto(prev => prev ? { ...prev, public_url: tempUrl } : null);
+    }
+
     setSaving(true);
     const newPath = `${session.user.id}/${Date.now()}.jpg`;
     const { error: uploadError } = await supabase.storage.from("summit-photos").upload(newPath, blob, { upsert: true });
 
     if (uploadError) {
-      setNotice("Error al guardar la foto editada.");
-      setTimeout(() => setNotice(""), 3000);
       setSaving(false);
+      setNotice("Error al subir la imagen editada.");
+      setTimeout(() => setNotice(""), 3000);
       return;
     }
 
@@ -809,9 +830,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
     if (!dbError) {
       await supabase.storage.from("summit-photos").remove([editorPhoto.storage_path]);
       setPhotos(prev => prev.map(p => p.id === editorPhoto.id ? { ...p, storage_path: newPath, public_url: publicUrl } : p));
-      if (lightboxPhoto?.id === editorPhoto.id) {
-        setLightboxPhoto(prev => prev ? { ...prev, storage_path: newPath, public_url: publicUrl } : null);
-      }
+      setLightboxPhoto(prev => prev && prev.id === editorPhoto.id ? { ...prev, storage_path: newPath, public_url: publicUrl } : prev);
       setNotice("Foto editada correctamente.");
     } else {
       setNotice("Error al actualizar la base de datos.");
@@ -1346,7 +1365,10 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
                 {selectedPhotos.map((photo) => (
                   <figure
                     key={photo.id}
-                    onClick={() => setLightboxPhoto(photo)}
+                    onClick={() => {
+                      setLightboxPhoto(photo);
+                      window.history.pushState(null, "", "#lightbox");
+                    }}
                   >
                     <img
                       src={photo.public_url}
@@ -1500,13 +1522,13 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
       {lightboxPhoto && (
         <div
           className="lightbox-backdrop"
-          onClick={() => setLightboxPhoto(null)}
+          onClick={() => window.history.back()}
         >
           <button
             className="lightbox-close"
             onClick={(e) => {
               e.stopPropagation();
-              setLightboxPhoto(null);
+              window.history.back();
             }}
             aria-label="Cerrar imagen"
           >
@@ -1543,6 +1565,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
                     e.stopPropagation();
                     setLightboxMenuOpen(false);
                     setEditorPhoto(lightboxPhoto);
+                    window.history.pushState(null, "", "#editor");
                   }}>Editar foto</button>
                   <button className="danger" onClick={(e) => {
                     e.stopPropagation();
@@ -1561,7 +1584,10 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
               setLightboxMenuOpen(false);
             }}
           />
-          <span className="lightbox-caption">{selected?.title} · {formatDate(lightboxPhoto.taken_on)}</span>
+          <span className="lightbox-caption">
+            {selected?.title}
+            {!lightboxPhoto.taken_on.startsWith("1900-01-01") && ` · ${formatDate(lightboxPhoto.taken_on)}`}
+          </span>
 
           {lightboxDateModalOpen && (
             <div className="lightbox-date-modal" onClick={(e) => e.stopPropagation()}>
@@ -1581,7 +1607,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
         <PhotoEditor
           imageUrl={editorPhoto.public_url}
           onSave={handleSaveEditedPhoto}
-          onCancel={() => setEditorPhoto(null)}
+          onCancel={() => window.history.back()}
         />
       )}
 
