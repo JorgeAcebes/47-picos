@@ -12,6 +12,7 @@ import { AuthDialog } from "./auth-dialog";
 import { ProfileSettings } from "./profile-settings";
 import { InstallPrompt } from "./install-prompt";
 import { ConfirmModal } from "./confirm-modal";
+import PhotoEditor from "./photo-editor";
 
 
 
@@ -228,6 +229,10 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
   const [lightboxPhoto, setLightboxPhoto] = useState<SummitPhoto | null>(null);
+  const [lightboxMenuOpen, setLightboxMenuOpen] = useState(false);
+  const [lightboxDateModalOpen, setLightboxDateModalOpen] = useState(false);
+  const [lightboxNewDate, setLightboxNewDate] = useState("");
+  const [editorPhoto, setEditorPhoto] = useState<SummitPhoto | null>(null);
   const [diffMode, setDiffMode] = useState(false);
   const [regionsMode, setRegionsMode] = useState(false);
   const [expandedCountryId, setExpandedCountryId] = useState<string | null>(null);
@@ -767,6 +772,53 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
     setLightboxPhoto(null);
     setSaving(false);
     setNotice("Foto eliminada correctamente.");
+  }
+
+  async function handleChangeDate() {
+    if (!lightboxPhoto || !lightboxNewDate || !supabase || !session) return;
+    setSaving(true);
+    const { error } = await supabase.from("summit_photos").update({ taken_on: lightboxNewDate }).eq("id", lightboxPhoto.id);
+    if (!error) {
+      setPhotos(prev => prev.map(p => p.id === lightboxPhoto.id ? { ...p, taken_on: lightboxNewDate } : p));
+      setLightboxPhoto(prev => prev ? { ...prev, taken_on: lightboxNewDate } : null);
+      setNotice("Fecha cambiada correctamente.");
+    } else {
+      setNotice("Error al cambiar la fecha.");
+    }
+    setTimeout(() => setNotice(""), 3000);
+    setLightboxDateModalOpen(false);
+    setSaving(false);
+  }
+
+  async function handleSaveEditedPhoto(blob: Blob) {
+    if (!editorPhoto || !supabase || !session) return;
+    setSaving(true);
+    const newPath = `${session.user.id}/${Date.now()}.jpg`;
+    const { error: uploadError } = await supabase.storage.from("summit-photos").upload(newPath, blob, { upsert: true });
+
+    if (uploadError) {
+      setNotice("Error al guardar la foto editada.");
+      setTimeout(() => setNotice(""), 3000);
+      setSaving(false);
+      return;
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from("summit-photos").getPublicUrl(newPath);
+    const { error: dbError } = await supabase.from("summit_photos").update({ storage_path: newPath, public_url: publicUrl }).eq("id", editorPhoto.id);
+
+    if (!dbError) {
+      await supabase.storage.from("summit-photos").remove([editorPhoto.storage_path]);
+      setPhotos(prev => prev.map(p => p.id === editorPhoto.id ? { ...p, storage_path: newPath, public_url: publicUrl } : p));
+      if (lightboxPhoto?.id === editorPhoto.id) {
+        setLightboxPhoto(prev => prev ? { ...prev, storage_path: newPath, public_url: publicUrl } : null);
+      }
+      setNotice("Foto editada correctamente.");
+    } else {
+      setNotice("Error al actualizar la base de datos.");
+    }
+    setTimeout(() => setNotice(""), 3000);
+    setEditorPhoto(null);
+    setSaving(false);
   }
 
   async function signOut() {
@@ -1361,14 +1413,14 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
                       setIsDateModified(true);
                     }}
                     max={new Date().toISOString().slice(0, 10)}
-                    style={{ flex: 1 }}
+                    style={{ flex: 1, padding: "0 12px", margin: 0, height: "35px", boxSizing: "border-box" }}
                   />
                   <button
                     type="button"
                     className="button button--quiet"
                     onClick={() => { setIsDateUnknown(true); setClimbDate(null); setIsDateModified(true); }}
                     title="Quitar fecha"
-                    style={{ padding: "8px 12px", minWidth: "auto", display: "flex", alignItems: "center", justifyContent: "center" }}
+                    style={{ padding: 0, minWidth: "auto", width: "35px", height: "35px", display: "flex", alignItems: "center", justifyContent: "center", margin: 0 }}
                   >
                     <IconClose style={{ width: 16, height: 16 }} />
                   </button>
@@ -1461,30 +1513,76 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
             <IconClose />
           </button>
           {!isReadOnly && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                deletePhoto(lightboxPhoto);
-              }}
-              aria-label="Eliminar foto"
-              title="Eliminar foto"
-              style={{ position: "absolute", top: 20, right: 80, background: "rgba(0,0,0,0.6)", color: "white", border: "none", borderRadius: "50%", padding: "10px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, transition: "background 0.2s" }}
-              onMouseEnter={(e) => e.currentTarget.style.background = "rgba(220,50,50,0.8)"}
-              onMouseLeave={(e) => e.currentTarget.style.background = "rgba(0,0,0,0.6)"}
-            >
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-              </svg>
-            </button>
+            <>
+              <button
+                className="lightbox-menu-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLightboxMenuOpen(!lightboxMenuOpen);
+                }}
+                aria-label="Opciones"
+              >
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                  <circle cx="12" cy="5" r="2"></circle>
+                  <circle cx="12" cy="12" r="2"></circle>
+                  <circle cx="12" cy="19" r="2"></circle>
+                </svg>
+              </button>
+              {lightboxMenuOpen && (
+                <div className="lightbox-dropdown">
+                  <button onClick={(e) => {
+                    e.stopPropagation();
+                    setLightboxMenuOpen(false);
+                    // Default to the original date of the summit if possible, otherwise today or taken_on
+                    const ascent = ascents.find(a => a.summit_id === selected?.id);
+                    const defaultDate = ascent?.achieved_on ? ascent.achieved_on.split("T")[0] : lightboxPhoto.taken_on.split("T")[0];
+                    setLightboxNewDate(defaultDate);
+                    setLightboxDateModalOpen(true);
+                  }}>Cambiar fecha</button>
+                  <button onClick={(e) => {
+                    e.stopPropagation();
+                    setLightboxMenuOpen(false);
+                    setEditorPhoto(lightboxPhoto);
+                  }}>Editar foto</button>
+                  <button className="danger" onClick={(e) => {
+                    e.stopPropagation();
+                    setLightboxMenuOpen(false);
+                    deletePhoto(lightboxPhoto);
+                  }}>Eliminar foto</button>
+                </div>
+              )}
+            </>
           )}
           <img
             src={lightboxPhoto.public_url}
             alt={`${isPeaks ? "Ascensión a" : "Visita a"} ${selected?.title}`}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              setLightboxMenuOpen(false);
+            }}
           />
           <span className="lightbox-caption">{selected?.title} · {formatDate(lightboxPhoto.taken_on)}</span>
+
+          {lightboxDateModalOpen && (
+            <div className="lightbox-date-modal" onClick={(e) => e.stopPropagation()}>
+              <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "bold" }}>Cambiar fecha</h3>
+              <p style={{ margin: 0, fontSize: "13px", color: "#666" }}>Esta fecha solo afectará a la foto seleccionada.</p>
+              <input type="date" value={lightboxNewDate} onChange={(e) => setLightboxNewDate(e.target.value)} />
+              <div className="lightbox-date-modal-actions">
+                <button className="cancel" onClick={() => setLightboxDateModalOpen(false)}>Cancelar</button>
+                <button className="save" onClick={handleChangeDate}>Guardar</button>
+              </div>
+            </div>
+          )}
         </div>
+      )}
+
+      {editorPhoto && (
+        <PhotoEditor
+          imageUrl={editorPhoto.public_url}
+          onSave={handleSaveEditedPhoto}
+          onCancel={() => setEditorPhoto(null)}
+        />
       )}
 
       {/* ── Modals ──────────────────────── */}
