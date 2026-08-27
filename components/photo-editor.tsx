@@ -37,11 +37,15 @@ export default function PhotoEditor({ imageUrl, onSave, onCancel }: PhotoEditorP
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Scale from DOM to natural image size
+    const scaleX = image.naturalWidth / image.width;
+    const scaleY = image.naturalHeight / image.height;
+
     // Use completedCrop if exists, otherwise crop the whole image
-    const cropX = completedCrop?.x ?? 0;
-    const cropY = completedCrop?.y ?? 0;
-    const cropWidth = completedCrop?.width ?? image.width;
-    const cropHeight = completedCrop?.height ?? image.height;
+    const cropX = (completedCrop?.x ?? 0) * scaleX;
+    const cropY = (completedCrop?.y ?? 0) * scaleY;
+    const cropWidth = (completedCrop?.width ?? image.width) * scaleX;
+    const cropHeight = (completedCrop?.height ?? image.height) * scaleY;
 
     // Output size
     canvas.width = cropWidth;
@@ -95,6 +99,7 @@ export default function PhotoEditor({ imageUrl, onSave, onCancel }: PhotoEditorP
             ref={imgRef}
             src={imageUrl}
             alt="Editor"
+            crossOrigin="anonymous"
             style={{ 
               transform: `scale(${scale}) rotate(${rotate}deg) scaleX(${flipHorizontal ? -1 : 1}) scaleY(${flipVertical ? -1 : 1})`,
               maxHeight: '70vh',
