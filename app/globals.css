@@ -1163,6 +1163,7 @@ nav a:hover::after {
 .photo-select-circle.active {
   background: var(--pine);
   border-color: var(--pine);
+  color: white;
 }
 
 .mode-countries .photo-select-circle.active {

@@ -186,9 +186,9 @@ function IconSearch({ className, style }: { className?: string; style?: React.CS
   );
 }
 
-function IconCheck() {
+function IconCheck({ style }: { style?: React.CSSProperties } = {}) {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={style}>
       <polyline points="20 6 9 17 4 12" />
     </svg>
   );
@@ -1560,7 +1560,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
                                 onClick={(e) => { e.stopPropagation(); togglePhotoSelection(photo.id); }}
                                 aria-label="Seleccionar foto"
                               >
-                                {isSelected && <IconCheck style={{ width: 14, height: 14, color: 'white' }} />}
+                                {isSelected && <IconCheck />}
                               </button>
                             )}
                             <img src={photo.public_url} alt={`${isPeaks ? "Ascensión a" : "Visita a"} ${selected.title}`} loading="lazy" />
@@ -1612,7 +1612,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
                             onClick={(e) => { e.stopPropagation(); togglePhotoSelection(photo.id); }}
                             aria-label="Seleccionar foto"
                           >
-                            {isSelected && <IconCheck style={{ width: 14, height: 14, color: 'white' }} />}
+                            {isSelected && <IconCheck />}
                           </button>
                         )}
                         <img src={photo.public_url} alt={`Foto en ${selected.title}`} loading="lazy" />
