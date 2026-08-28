@@ -1012,7 +1012,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
       setNotice("Error al cambiar la fecha.");
     }
     setTimeout(() => setNotice(""), 3000);
-    setLightboxDateModalOpen(false);
+    setLightboxEditModalOpen(false);
     setSaving(false);
   }
 
