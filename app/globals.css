@@ -1120,17 +1120,107 @@ nav a:hover::after {
   width: 100%;
   height: 118px;
   object-fit: cover;
-  transition: transform 0.3s ease;
+  will-change: transform;
+  transition: transform 0.12s ease-out, border-radius 0.12s ease-out;
 }
 
-.photo-grid figure:hover img {
-  transform: scale(1.05);
+.photo-grid figure:not(.selected):hover img {
+  transform: scale(1.03);
 }
 
 .photo-grid figcaption {
   font-size: 10px;
   color: var(--muted);
   margin-top: 3px;
+  line-height: 1.2;
+}
+
+.photo-select-circle {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid white;
+  background: rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transition: opacity 0.1s ease-out, background 0.1s ease-out, border-color 0.1s ease-out;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.photo-grid figure:hover .photo-select-circle,
+.photo-select-circle.active {
+  opacity: 1;
+}
+
+.photo-select-circle.active {
+  background: var(--pine);
+  border-color: var(--pine);
+}
+
+.mode-countries .photo-select-circle.active {
+  background: var(--sage);
+  border-color: var(--sage);
+}
+
+.photo-grid figure {
+  transition: transform 0.12s ease-out;
+  background-color: rgba(92, 155, 125, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.photo-grid figure.selected img {
+  transform: scale(0.94);
+  border-radius: 6px;
+}
+
+.photo-grid figure.selected:hover img {
+  transform: scale(0.92);
+}
+
+.photo-add-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(92, 155, 125, 0.04);
+  border: 1.5px dashed var(--sage);
+  border-radius: 2px;
+  color: var(--pine);
+  cursor: pointer;
+  transition: all var(--transition);
+  height: 118px;
+}
+
+.photo-add-button svg {
+  width: 26px;
+  height: 26px;
+  opacity: 0.8;
+}
+
+.photo-add-button:hover {
+  background: rgba(92, 155, 125, 0.08);
+  border-color: var(--pine);
+}
+
+.mode-countries .photo-add-button {
+  border-color: var(--sage);
+  background: rgba(149, 112, 199, 0.04);
+  color: var(--pine);
+}
+
+.mode-countries .photo-add-button:hover {
+  background: rgba(149, 112, 199, 0.08);
+  border-color: var(--pine);
 }
 
 /* ── Lightbox ───────────────────────────── */
@@ -2856,4 +2946,61 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 .lightbox-date-modal-actions .save {
   background: #2E5C4B;
   color: white;
+}
+
+.photo-batch-action {
+  background: var(--pine);
+  border: none;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 100px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.photo-batch-action:hover {
+  opacity: 0.9;
+}
+
+.photo-batch-action.danger-icon {
+  background: rgba(220, 53, 69, 0.2);
+  color: #ff6b6b;
+}
+
+.photo-batch-action.danger-icon:hover {
+  background: rgba(220, 53, 69, 0.4);
+}
+
+.photo-batch-action.ghost {
+  background: transparent;
+  color: #a0b3aa;
+  padding: 8px;
+}
+
+.photo-batch-action.ghost:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 600px) {
+  .photo-batch-bar {
+    padding: 10px 16px !important;
+    gap: 12px !important;
+  }
+  .photo-batch-action {
+    padding: 10px;
+    border-radius: 50%;
+  }
+  .photo-batch-action .hide-on-mobile {
+    display: none;
+  }
+  .photo-batch-bar > span .hide-on-mobile {
+    display: none;
+  }
 }
