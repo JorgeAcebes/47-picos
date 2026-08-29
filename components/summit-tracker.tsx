@@ -1606,7 +1606,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
                   <span>✓ {isPeaks ? "Ascensión registrada" : "Visita registrada"}</span>
                   <b>
                     {formatDate(ascent.achieved_on)}
-                    {ascent.end_date && ` — ${formatDate(ascent.end_date)}`}
+                    {ascent.end_date && ` - ${formatDate(ascent.end_date)}`}
                   </b>
                   {ascent.notes && <p>&ldquo;{ascent.notes}&rdquo;</p>}
 
@@ -1749,7 +1749,13 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
                     type="button"
                     className="diff-toggle"
                     style={{ fontSize: "0.85em", padding: "4px 8px", height: "auto" }}
-                    onClick={() => setIsEndDateEnabled(true)}
+                    onClick={() => {
+                      setIsEndDateEnabled(true);
+                      if (!climbEndDate && climbDate) {
+                        setClimbEndDate(new Date(climbDate));
+                        setIsDateModified(true);
+                      }
+                    }}
                   >
                     <svg className="diff-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
                       <circle cx="12" cy="12" r="10" />
