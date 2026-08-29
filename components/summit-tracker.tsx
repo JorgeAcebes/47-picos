@@ -2138,7 +2138,6 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
                   disabled={saving}
                 >
                   ✓ {formatDate(ascent.achieved_on)}
-                  {ascent.notes && <span style={{ marginLeft: '8px', opacity: 0.6, fontSize: '12px' }}>{ascent.notes}</span>}
                 </button>
               ))}
               <button
