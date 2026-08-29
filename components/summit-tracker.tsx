@@ -638,8 +638,8 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
     if (!supabase || !session || !selected) return;
 
     const existingPhotos = selectedPhotos.filter(p => p.taken_on === ascent.achieved_on);
-    if (existingPhotos.length + nextFiles.length > 3) {
-      setNotice(`Máximo 3 fotos por fecha. Ya tienes ${existingPhotos.length} en esta fecha.`);
+    if (existingPhotos.length + nextFiles.length > 4) {
+      setNotice(`Máximo 4 fotos por registro. Ya tienes ${existingPhotos.length} en este registro.`);
       event.target.value = "";
       return;
     }
@@ -907,9 +907,9 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
 
   function deleteAscent() {
     if (!supabase || !session || !selected || !originalAchievedOn) return;
-    
+
     const remainingAscents = ascents.filter(a => a.summit_id === selected.id && a.achieved_on !== originalAchievedOn && !a.is_wishlist);
-    
+
     const selectedAscentsForCheck = ascents.filter(a => a.summit_id === selected.id && !a.is_wishlist);
     const registeredDates = new Set(selectedAscentsForCheck.map(a => a.achieved_on));
     const hasOtherPhotos = photos.some(p => p.summit_id === selected.id && !registeredDates.has(p.taken_on));
@@ -919,7 +919,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
       : "¿Seguro que quieres eliminar la visita a este país?";
 
     if (remainingAscents.length === 0 && hasOtherPhotos) {
-       confirmMessage += ' Se eliminarán también las fotos de "Otras fotos".';
+      confirmMessage += ' Se eliminarán también las fotos de "Otras fotos".';
     }
 
     setConfirmConfig({
@@ -949,8 +949,8 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
     }
 
     if (remainingAscents.length === 0) {
-       await supabase.from("summit_photos").delete().match({ user_id: session.user.id, summit_id: selected.id });
-       setPhotos((prev) => prev.filter(p => p.summit_id !== selected.id));
+      await supabase.from("summit_photos").delete().match({ user_id: session.user.id, summit_id: selected.id });
+      setPhotos((prev) => prev.filter(p => p.summit_id !== selected.id));
     }
 
     setAscents((previous) => previous.filter((a) => !(a.summit_id === selected.id && a.achieved_on === originalAchievedOn)));
@@ -1038,7 +1038,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
 
   async function handleAssignPhotosToRecord(targetDate: string) {
     if (!session || selectedPhotosForEdit.length === 0) return;
-    
+
     const existingPhotosCount = photos.filter(p => p.summit_id === selected?.id && p.taken_on === targetDate).length;
     if (existingPhotosCount + selectedPhotosForEdit.length > 4) {
       setNotice("No puede haber más de 4 fotos en total en un solo registro.");
@@ -1627,12 +1627,33 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
                       <button className="button button--quiet button--small" style={{ margin: 0, padding: '0 12px', height: '32px' }} onClick={() => openRecord(selected, ascent)}>
                         Editar registro
                       </button>
-                      {ascentPhotos.length < 4 && (
-                        <label title="Añadir fotos a esta fecha" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', flexShrink: 0, padding: 0, background: 'rgba(92, 155, 125, 0.1)', color: 'var(--pine)', borderRadius: '4px', cursor: 'pointer', transition: 'all 0.2s ease', border: '1px solid var(--pine)' }} onMouseOver={(e) => e.currentTarget.style.background = 'rgba(92, 155, 125, 0.2)'} onMouseOut={(e) => e.currentTarget.style.background = 'rgba(92, 155, 125, 0.1)'}>
-                          <IconCamera style={{ width: 14, height: 14 }} strokeWidth={1.5} />
-                          <input type="file" accept="image/*" multiple onChange={(e) => handleAddPhotosToDate(e, ascent)} style={{ display: 'none' }} />
-                        </label>
-                      )}
+                      <label
+                        title="Añadir fotos a esta fecha"
+                        className="button button--quiet button--small"
+                        onClick={(e) => {
+                          if (ascentPhotos.length >= 4) {
+                            e.preventDefault();
+                            setNotice("Máximo 4 fotos por registro. Ya has alcanzado el límite.");
+                            setTimeout(() => setNotice(""), 4000);
+                          }
+                        }}
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          width: '32px', height: '32px', flexShrink: 0, padding: 0, margin: 0,
+                          cursor: ascentPhotos.length >= 4 ? 'not-allowed' : 'pointer',
+                          opacity: ascentPhotos.length >= 4 ? 0.5 : 1
+                        }}
+                      >
+                        <IconCamera style={{ width: 14, height: 14 }} strokeWidth={1.5} />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={(e) => handleAddPhotosToDate(e, ascent)}
+                          style={{ display: 'none' }}
+                          disabled={ascentPhotos.length >= 4}
+                        />
+                      </label>
                     </div>
                   )}
 
@@ -2048,8 +2069,8 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
           <span style={{ fontSize: '14px', fontWeight: 500 }}><span className="hide-on-mobile">Seleccionadas: </span>{selectedPhotosForEdit.length}</span>
 
           {selectedAscents.length > 0 && (
-            <button 
-              title="Asignar a registro" 
+            <button
+              title="Asignar a registro"
               onClick={() => {
                 if (selectedPhotosForEdit.length > 4) {
                   setNotice("No puedes asignar más de 4 fotos a un registro.");
