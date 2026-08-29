@@ -104,10 +104,24 @@ type Props = {
 function FitWorld() {
   const map = useMap();
   useEffect(() => {
-    map.fitBounds([
-      [-60, -180],
-      [80, 180]
-    ], { padding: [0, 0] });
+    const aspectRatio = window.innerWidth / window.innerHeight;
+    if (aspectRatio > 1) {
+      // Desktop: Shift center north to crop Antarctica but keep South America
+      const visibleHeight = 360 / Math.max(aspectRatio, 1);
+      // Put the bottom edge around -58 (Cape Horn)
+      const centerLat = Math.min(-58 + visibleHeight / 2, 50);
+      
+      map.fitBounds([
+        [centerLat - 0.1, -180],
+        [centerLat + 0.1, 180]
+      ], { padding: [0, 0] });
+    } else {
+      // Mobile: standard vertical bounds
+      map.fitBounds([
+        [-60, -180],
+        [80, 180]
+      ], { padding: [0, 0] });
+    }
   }, [map]);
   return null;
 }

@@ -79,7 +79,7 @@ export default function PhotoEditor({ imageUrl, onSave, onCancel }: PhotoEditorP
     <div className="photo-editor-modal" style={{ position: 'fixed', inset: 0, backgroundColor: '#000', zIndex: 2000, display: 'flex', flexDirection: 'column', color: 'white', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       
       {/* Top Bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', backgroundColor: '#000' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', alignItems: 'center', padding: '16px 20px', backgroundColor: '#000' }}>
         <button onClick={onCancel} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '15px', cursor: 'pointer' }}>
           Cancelar
         </button>

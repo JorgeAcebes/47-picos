@@ -1172,6 +1172,7 @@ nav a:hover::after {
 }
 
 .photo-grid figure {
+  align-self: start;
   transition: transform 0.12s ease-out;
   background-color: rgba(92, 155, 125, 0.1);
   border-radius: 4px;
@@ -1578,9 +1579,9 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 /* ── Toast ──────────────────────────────── */
 .toast {
   position: fixed;
-  z-index: 60;
+  z-index: 9999;
   left: 50%;
-  bottom: 25px;
+  bottom: 85px;
   transform: translateX(-50%);
   background: #183b31;
   color: white;
@@ -2111,7 +2112,16 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   .toast {
     font-size: 12px;
     padding: 10px 18px;
-    bottom: 16px;
+    bottom: 85px;
+  }
+
+  .lightbox-caption {
+    width: 92vw;
+    background: rgba(0, 0, 0, 0.65);
+    padding: 14px 16px;
+    border-radius: 8px;
+    bottom: 30px;
+    text-align: center;
   }
 }
 
@@ -2922,6 +2932,8 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   flex-direction: column;
   gap: 12px;
   box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+  width: 90vw;
+  max-width: 450px;
 }
 .lightbox-date-modal input[type="date"] {
   padding: 8px;

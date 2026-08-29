@@ -108,6 +108,15 @@ function formatDate(date: string) {
   }).format(new Date(`${date}T12:00:00`));
 }
 
+function formatShortDate(date: string) {
+  if (date === "1900-01-01") return "Desconocida";
+  return new Intl.DateTimeFormat("es-ES", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(`${date}T12:00:00`));
+}
+
 /* ── SVG icon components ────────────────── */
 function IconLogo({ className }: { className?: string }) {
   return (
@@ -204,9 +213,9 @@ function IconCheck({ style }: { style?: React.CSSProperties } = {}) {
   );
 }
 
-function IconCamera({ className }: { className?: string }) {
+function IconCamera(props: React.SVGProps<SVGSVGElement>) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
       <circle cx="12" cy="13" r="4"></circle>
     </svg>
@@ -265,19 +274,18 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
   const [lightboxPhoto, setLightboxPhoto] = useState<SummitPhoto | null>(null);
   const [lightboxMenuOpen, setLightboxMenuOpen] = useState(false);
   const [lightboxCaptionModalOpen, setLightboxCaptionModalOpen] = useState(false);
-  const [lightboxDateModalOpen, setLightboxDateModalOpen] = useState(false);
-  const [lightboxNewDate, setLightboxNewDate] = useState("");
+
   const [lightboxNewCaption, setLightboxNewCaption] = useState("");
 
   // Selección múltiple estilo Google Photos
   const [selectedPhotosForEdit, setSelectedPhotosForEdit] = useState<string[]>([]);
-  const [batchEditModalOpen, setBatchEditModalOpen] = useState(false);
-  const [batchNewDate, setBatchNewDate] = useState("");
+
   const [assignToRecordModalOpen, setAssignToRecordModalOpen] = useState(false);
   const [editorPhoto, setEditorPhoto] = useState<SummitPhoto | null>(null);
   const [diffMode, setDiffMode] = useState(false);
   const [regionsMode, setRegionsMode] = useState(false);
   const [expandedCountryId, setExpandedCountryId] = useState<string | null>(null);
+  const [ascentsSortOrder, setAscentsSortOrder] = useState<"asc" | "desc">("asc");
   const [myAscents, setMyAscents] = useState<Ascent[]>([]);
 
   useEffect(() => {
@@ -410,28 +418,6 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
     );
   }
 
-  async function handleBatchSaveDate() {
-    if (!session || !batchNewDate || selectedPhotosForEdit.length === 0) return;
-    setSaving(true);
-    setNotice("Actualizando fotos...");
-
-    const { error } = await supabase!
-      .from("summit_photos")
-      .update({ taken_on: batchNewDate })
-      .in("id", selectedPhotosForEdit)
-      .eq("user_id", session.user.id);
-
-    if (error) {
-      setNotice(`Error: ${error.message}`);
-    } else {
-      setPhotos(prev => prev.map(p => selectedPhotosForEdit.includes(p.id) ? { ...p, taken_on: batchNewDate } : p));
-      setNotice("Fotos actualizadas correctamente.");
-      setBatchEditModalOpen(false);
-      setSelectedPhotosForEdit([]);
-    }
-    setSaving(false);
-  }
-
   async function handleSaveCaption() {
     if (!session || !lightboxPhoto) return;
 
@@ -448,28 +434,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
       setPhotos(prev => prev.map(p => p.id === lightboxPhoto.id ? { ...p, caption: lightboxNewCaption || null } : p));
       setLightboxPhoto(prev => prev ? { ...prev, caption: lightboxNewCaption || null } : null);
       setLightboxCaptionModalOpen(false);
-      setNotice("Nota guardada correctamente.");
-    }
-    setSaving(false);
-  }
-
-  async function handleSavePhotoDate() {
-    if (!session || !lightboxPhoto || !lightboxNewDate) return;
-
-    setSaving(true);
-    const { error } = await supabase!
-      .from("summit_photos")
-      .update({ taken_on: lightboxNewDate })
-      .eq("id", lightboxPhoto.id)
-      .eq("user_id", session.user.id);
-
-    if (error) {
-      setNotice(`Error: ${error.message}`);
-    } else {
-      setPhotos(prev => prev.map(p => p.id === lightboxPhoto.id ? { ...p, taken_on: lightboxNewDate } : p));
-      setLightboxPhoto(prev => prev ? { ...prev, taken_on: lightboxNewDate } : null);
-      setLightboxDateModalOpen(false);
-      setNotice("Fecha cambiada correctamente.");
+      setNotice("Descripción guardada correctamente.");
     }
     setSaving(false);
   }
@@ -638,8 +603,16 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
 
   const selectedAscents = useMemo(() => {
     if (!selected) return [];
-    return modeAscents.filter((a) => a.summit_id === selected.id && !a.is_wishlist).sort((a, b) => b.achieved_on.localeCompare(a.achieved_on));
-  }, [selected, modeAscents]);
+    return modeAscents.filter((a) => a.summit_id === selected.id && !a.is_wishlist).sort((a, b) => {
+      const order = ascentsSortOrder === "asc" ? 1 : -1;
+      if (a.achieved_on !== b.achieved_on) {
+        return a.achieved_on.localeCompare(b.achieved_on) * order;
+      }
+      const aEnd = a.end_date || a.achieved_on;
+      const bEnd = b.end_date || b.achieved_on;
+      return aEnd.localeCompare(bEnd) * order;
+    });
+  }, [selected, modeAscents, ascentsSortOrder]);
 
   const hasWishlist = useMemo(() => {
     if (!selected) return false;
@@ -780,12 +753,6 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
   function onFilesChanged(event: ChangeEvent<HTMLInputElement>) {
     const nextFiles = Array.from(event.target.files ?? []);
 
-    if (selectedPhotos.length + nextFiles.length > 3) {
-      setNotice(`Máximo 3 fotos por ${isPeaks ? "pico" : "país"}. Ya tienes ${selectedPhotos.length}.`);
-      event.target.value = "";
-      return;
-    }
-
     const MAX_MB = 5;
     for (const file of nextFiles) {
       if (file.size > MAX_MB * 1024 * 1024) {
@@ -921,6 +888,11 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
       ];
     });
     if (uploaded.length) setPhotos((previous) => [...uploaded, ...previous]);
+    if (selectedPhotosForEdit.length > 0) {
+      await supabase.from("summit_photos").update({ taken_on: finalDate }).in("id", selectedPhotosForEdit).eq("user_id", session.user.id);
+      setPhotos(prev => prev.map(p => selectedPhotosForEdit.includes(p.id) ? { ...p, taken_on: finalDate } : p));
+      setSelectedPhotosForEdit([]);
+    }
     setFiles([]);
     setSaving(false);
     closePanel();
@@ -933,9 +905,20 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
 
   function deleteAscent() {
     if (!supabase || !session || !selected || !originalAchievedOn) return;
-    const confirmMessage = isPeaks
+    
+    const remainingAscents = ascents.filter(a => a.summit_id === selected.id && a.achieved_on !== originalAchievedOn && !a.is_wishlist);
+    
+    const selectedAscentsForCheck = ascents.filter(a => a.summit_id === selected.id && !a.is_wishlist);
+    const registeredDates = new Set(selectedAscentsForCheck.map(a => a.achieved_on));
+    const hasOtherPhotos = photos.some(p => p.summit_id === selected.id && !registeredDates.has(p.taken_on));
+
+    let confirmMessage = isPeaks
       ? "¿Seguro que quieres eliminar esta ascensión?"
       : "¿Seguro que quieres eliminar la visita a este país?";
+
+    if (remainingAscents.length === 0 && hasOtherPhotos) {
+       confirmMessage += ' Se eliminarán también las fotos de "Otras fotos".';
+    }
 
     setConfirmConfig({
       isOpen: true,
@@ -950,6 +933,8 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
     setSaving(true);
     setNotice("");
 
+    const remainingAscents = ascents.filter(a => a.summit_id === selected.id && a.achieved_on !== originalAchievedOn && !a.is_wishlist);
+
     const deleteResult = await supabase
       .from("ascents")
       .delete()
@@ -959,6 +944,11 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
       setNotice(deleteResult.error.message);
       setSaving(false);
       return;
+    }
+
+    if (remainingAscents.length === 0) {
+       await supabase.from("summit_photos").delete().match({ user_id: session.user.id, summit_id: selected.id });
+       setPhotos((prev) => prev.filter(p => p.summit_id !== selected.id));
     }
 
     setAscents((previous) => previous.filter((a) => !(a.summit_id === selected.id && a.achieved_on === originalAchievedOn)));
@@ -1046,6 +1036,14 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
 
   async function handleAssignPhotosToRecord(targetDate: string) {
     if (!session || selectedPhotosForEdit.length === 0) return;
+    
+    const existingPhotosCount = photos.filter(p => p.summit_id === selected?.id && p.taken_on === targetDate).length;
+    if (existingPhotosCount + selectedPhotosForEdit.length > 4) {
+      setNotice("No puede haber más de 4 fotos en total en un solo registro.");
+      setTimeout(() => setNotice(""), 4000);
+      return;
+    }
+
     setSaving(true);
     setNotice("Asignando fotos al registro...");
 
@@ -1585,18 +1583,30 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
           <h2>{selected.title}</h2>
           {isPeaks ? (
             <>
-              <div className="altitude">
-                {selected.subtitle.replace(" m", "")} <span>m</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 19 }}>
+                <div className="altitude" style={{ marginTop: 0 }}>
+                  {selected.subtitle.replace(" m", "")} <span>m</span>
+                </div>
               </div>
               <p className="range">{selected.detail}</p>
             </>
           ) : (
             <>
-              <div className="country-capital">{selected.subtitle}</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 19 }}>
+                <div className="country-capital" style={{ marginTop: 0 }}>{selected.subtitle}</div>
+              </div>
               <p className="range">{selected.detail}</p>
             </>
           )}
           <p>{selected.note}</p>
+
+          {selectedAscents.length > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(92, 155, 125, 0.1)', borderRadius: '20px', padding: '3px', position: 'relative', marginBottom: '16px', cursor: 'pointer', userSelect: 'none', width: 'fit-content' }} onClick={() => setAscentsSortOrder(o => o === "asc" ? "desc" : "asc")}>
+              <div style={{ position: 'absolute', top: 3, bottom: 3, left: ascentsSortOrder === "asc" ? 3 : '50%', right: ascentsSortOrder === "asc" ? '50%' : 3, background: 'var(--pine)', borderRadius: '18px', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }} />
+              <span style={{ position: 'relative', zIndex: 1, padding: '4px 12px', fontSize: '12px', fontWeight: 600, color: ascentsSortOrder === "asc" ? 'white' : 'var(--pine)', transition: 'color 0.2s ease', flex: 1, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Más antiguo</span>
+              <span style={{ position: 'relative', zIndex: 1, padding: '4px 12px', fontSize: '12px', fontWeight: 600, color: ascentsSortOrder === "desc" ? 'white' : 'var(--pine)', transition: 'color 0.2s ease', flex: 1, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Más reciente</span>
+            </div>
+          )}
 
           {selectedAscents.length > 0 ? (
             selectedAscents.map(ascent => {
@@ -1611,41 +1621,44 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
                   {ascent.notes && <p>&ldquo;{ascent.notes}&rdquo;</p>}
 
                   {!isReadOnly && (
-                    <button className="button button--quiet button--small" style={{ marginTop: 12 }} onClick={() => openRecord(selected, ascent)}>
-                      Editar registro
-                    </button>
-                  )}
-
-                  <div className="photo-section" style={{ marginTop: 16 }}>
-                    <div className="photo-grid">
-                      {ascentPhotos.map((photo) => {
-                        const isSelected = selectedPhotosForEdit.includes(photo.id);
-                        return (
-                          <figure key={photo.id} className={isSelected ? 'selected' : ''} onClick={() => handlePhotoClick(photo)}>
-                            {!isReadOnly && (
-                              <button
-                                type="button"
-                                className={`photo-select-circle ${isSelected ? 'active' : ''}`}
-                                onClick={(e) => { e.stopPropagation(); togglePhotoSelection(photo.id); }}
-                                aria-label="Seleccionar foto"
-                              >
-                                {isSelected && <IconCheck />}
-                              </button>
-                            )}
-                            <img src={photo.public_url} alt={`${isPeaks ? "Ascensión a" : "Visita a"} ${selected.title}`} loading="lazy" />
-                            {photo.caption && <figcaption>{photo.caption}</figcaption>}
-                          </figure>
-                        );
-                      })}
-                      {!isReadOnly && ascentPhotos.length < 3 && (
-                        <label className="photo-add-button" title="Añadir fotos a esta fecha">
-                          <IconCamera />
-                          <span style={{ fontSize: '20px', lineHeight: 1 }}>+</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: 12 }}>
+                      <button className="button button--quiet button--small" style={{ margin: 0, padding: '0 12px', height: '32px' }} onClick={() => openRecord(selected, ascent)}>
+                        Editar registro
+                      </button>
+                      {ascentPhotos.length < 4 && (
+                        <label title="Añadir fotos a esta fecha" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', flexShrink: 0, padding: 0, background: 'rgba(92, 155, 125, 0.1)', color: 'var(--pine)', borderRadius: '4px', cursor: 'pointer', transition: 'all 0.2s ease', border: '1px solid var(--pine)' }} onMouseOver={(e) => e.currentTarget.style.background = 'rgba(92, 155, 125, 0.2)'} onMouseOut={(e) => e.currentTarget.style.background = 'rgba(92, 155, 125, 0.1)'}>
+                          <IconCamera style={{ width: 14, height: 14 }} strokeWidth={1.5} />
                           <input type="file" accept="image/*" multiple onChange={(e) => handleAddPhotosToDate(e, ascent)} style={{ display: 'none' }} />
                         </label>
                       )}
                     </div>
-                  </div>
+                  )}
+
+                  {ascentPhotos.length > 0 && (
+                    <div className="photo-section" style={{ marginTop: 16 }}>
+                      <div className="photo-grid">
+                        {ascentPhotos.map((photo) => {
+                          const isSelected = selectedPhotosForEdit.includes(photo.id);
+                          return (
+                            <figure key={photo.id} className={isSelected ? 'selected' : ''} onClick={() => handlePhotoClick(photo)}>
+                              {!isReadOnly && (
+                                <button
+                                  type="button"
+                                  className={`photo-select-circle ${isSelected ? 'active' : ''}`}
+                                  onClick={(e) => { e.stopPropagation(); togglePhotoSelection(photo.id); }}
+                                  aria-label="Seleccionar foto"
+                                >
+                                  {isSelected && <IconCheck />}
+                                </button>
+                              )}
+                              <img src={photo.public_url} alt={`${isPeaks ? "Ascensión a" : "Visita a"} ${selected.title}`} loading="lazy" />
+                              {photo.caption && <figcaption>{photo.caption}</figcaption>}
+                            </figure>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })
@@ -1871,10 +1884,20 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
               </label>
             </div>
 
-            {files.length > 0 && (
-              <p className="file-count">
-                {files.length} foto{files.length > 1 ? "s" : ""} preparada
-                {files.length > 1 ? "s" : ""}.
+            {(files.length > 0 || selectedPhotosForEdit.length > 0) && (
+              <div style={{ marginTop: '12px', display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px' }}>
+                {Array.from(files).map((file, i) => (
+                  <img key={`local-${i}`} src={URL.createObjectURL(file)} alt="preview local" style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border)' }} />
+                ))}
+                {selectedPhotosForEdit.map(id => {
+                  const p = photos.find(x => x.id === id);
+                  return p ? <img key={id} src={p.public_url} alt="preview galeria" style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border)' }} /> : null;
+                })}
+              </div>
+            )}
+            {(files.length > 0 || selectedPhotosForEdit.length > 0) && (
+              <p className="file-count" style={{ marginTop: '4px', color: 'var(--sage)', fontSize: '12px' }}>
+                {files.length + selectedPhotosForEdit.length} foto{(files.length + selectedPhotosForEdit.length) !== 1 ? "s" : ""} preparadas para adjuntar.
               </p>
             )}
 
@@ -1959,21 +1982,16 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
                   <button onClick={(e) => {
                     e.stopPropagation();
                     setLightboxMenuOpen(false);
-                    setLightboxNewCaption(lightboxPhoto.caption || "");
-                    setLightboxCaptionModalOpen(true);
-                  }}>Nota</button>
-                  <button onClick={(e) => {
-                    e.stopPropagation();
-                    setLightboxMenuOpen(false);
                     setEditorPhoto(lightboxPhoto);
                     window.history.pushState(null, "", "#editor");
                   }}>Editar foto</button>
                   <button onClick={(e) => {
                     e.stopPropagation();
                     setLightboxMenuOpen(false);
-                    setLightboxNewDate(lightboxPhoto.taken_on.split("T")[0]);
-                    setLightboxDateModalOpen(true);
-                  }}>Cambiar fecha</button>
+                    setLightboxNewCaption(lightboxPhoto.caption || "");
+                    setLightboxCaptionModalOpen(true);
+                  }}>Descripción</button>
+
                   <button className="danger" onClick={(e) => {
                     e.stopPropagation();
                     setLightboxMenuOpen(false);
@@ -1992,25 +2010,25 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
             }}
           />
           <span className="lightbox-caption">
-            {lightboxPhoto.caption ? (
-              <>
-                <strong style={{ display: 'block', fontSize: '15px', marginBottom: '2px', color: 'white' }}>{lightboxPhoto.caption}</strong>
-                <span style={{ opacity: 0.7 }}>{selected?.title}{!lightboxPhoto.taken_on.startsWith("1900-01-01") && ` · ${formatDate(lightboxPhoto.taken_on)}`}</span>
-              </>
-            ) : (
-              <>
-                {selected?.title}
-                {!lightboxPhoto.taken_on.startsWith("1900-01-01") && ` · ${formatDate(lightboxPhoto.taken_on)}`}
-              </>
+            {lightboxPhoto.caption && (
+              <strong style={{ display: 'block', fontSize: '15px', marginBottom: '2px', color: 'white' }}>{lightboxPhoto.caption}</strong>
             )}
+            <span style={{ opacity: lightboxPhoto.caption ? 0.7 : 1 }}>
+              {selected?.title}
+              {(() => {
+                if (lightboxPhoto.taken_on.startsWith("1900-01-01")) return "";
+                const relatedAscent = ascents.find(a => a.summit_id === selected?.id && a.achieved_on === lightboxPhoto.taken_on);
+                return ` · ${formatShortDate(lightboxPhoto.taken_on)}${relatedAscent?.end_date ? ` - ${formatShortDate(relatedAscent.end_date)}` : ""}`;
+              })()}
+            </span>
           </span>
 
           {lightboxCaptionModalOpen && (
             <div className="lightbox-date-modal" onClick={(e) => e.stopPropagation()}>
-              <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "bold" }}>Añadir nota</h3>
+              <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "bold" }}>Añadir descripción</h3>
 
               <div style={{ marginTop: 12 }}>
-                <input type="text" placeholder="Añade una nota..." value={lightboxNewCaption} onChange={(e) => setLightboxNewCaption(e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: '4px', border: '1px solid #dce4da' }} />
+                <textarea placeholder="Añade una descripción..." value={lightboxNewCaption} onChange={(e) => setLightboxNewCaption(e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: '4px', border: '1px solid #dce4da', minHeight: '100px', resize: 'vertical' }} />
               </div>
 
               <div className="lightbox-date-modal-actions" style={{ marginTop: 16 }}>
@@ -2020,37 +2038,27 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
             </div>
           )}
 
-          {lightboxDateModalOpen && (
-            <div className="lightbox-date-modal" onClick={(e) => e.stopPropagation()}>
-              <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "bold" }}>Cambiar fecha</h3>
-              <p style={{ margin: '8px 0 0', fontSize: "13px", color: "#666" }}>Esta fecha solo afectará a esta foto.</p>
-
-              <div style={{ marginTop: 12 }}>
-                <input type="date" value={lightboxNewDate} onChange={(e) => setLightboxNewDate(e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: '4px', border: '1px solid #dce4da' }} />
-              </div>
-
-              <div className="lightbox-date-modal-actions" style={{ marginTop: 16 }}>
-                <button className="cancel" onClick={() => setLightboxDateModalOpen(false)}>Cancelar</button>
-                <button className="save" onClick={handleSavePhotoDate} disabled={saving}>{saving ? "Guardando..." : "Guardar"}</button>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
       {selectedPhotosForEdit.length > 0 && (
         <div className="photo-batch-bar" style={{ position: 'fixed', bottom: '25px', left: '50%', transform: 'translateX(-50%)', zIndex: 100, background: '#18342d', padding: '12px 24px', borderRadius: '100px', display: 'flex', alignItems: 'center', gap: '20px', boxShadow: '0 8px 30px rgba(0,0,0,0.3)', color: 'white', animation: 'fadeUp 0.3s ease' }}>
           <span style={{ fontSize: '14px', fontWeight: 500 }}><span className="hide-on-mobile">Seleccionadas: </span>{selectedPhotosForEdit.length}</span>
-          <button title="Cambiar fecha" onClick={() => {
-            const ascent = ascents.find(a => a.summit_id === selected?.id);
-            setBatchNewDate(ascent?.achieved_on ? ascent.achieved_on.split("T")[0] : new Date().toISOString().split("T")[0]);
-            setBatchEditModalOpen(true);
-          }} className="photo-batch-action">
-            <IconCalendar style={{ width: 16, height: 16 }} />
-            <span className="hide-on-mobile">Fecha</span>
-          </button>
+
           {selectedAscents.length > 0 && (
-            <button title="Asignar a registro" onClick={() => setAssignToRecordModalOpen(true)} className="photo-batch-action">
+            <button 
+              title="Asignar a registro" 
+              onClick={() => {
+                if (selectedPhotosForEdit.length > 4) {
+                  setNotice("No puedes asignar más de 4 fotos a un registro.");
+                  setTimeout(() => setNotice(""), 3000);
+                  return;
+                }
+                setAssignToRecordModalOpen(true);
+              }}
+              className="photo-batch-action"
+              style={selectedPhotosForEdit.length > 4 ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+            >
               <IconFolderMove style={{ width: 16, height: 16 }} />
               <span className="hide-on-mobile">Asignar</span>
             </button>
@@ -2066,24 +2074,10 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
         </div>
       )}
 
-      {batchEditModalOpen && (
-        <div className="modal-backdrop" onClick={() => setBatchEditModalOpen(false)} style={{ zIndex: 200 }}>
-          <div className="auth-dialog" onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ margin: "0 0 16px", fontSize: "20px", fontWeight: "bold", fontFamily: '"Playfair Display", serif' }}>Cambiar fecha</h3>
-            <p style={{ color: "var(--muted)", fontSize: "14px", marginBottom: "20px" }}>Selecciona la nueva fecha para las {selectedPhotosForEdit.length} fotos seleccionadas.</p>
-            <input type="date" value={batchNewDate} onChange={(e) => setBatchNewDate(e.target.value)} style={{ width: '100%', marginBottom: '24px' }} />
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button className="button button--quiet button--wide" onClick={() => setBatchEditModalOpen(false)}>Cancelar</button>
-              <button className="button button--green button--wide" onClick={handleBatchSaveDate} disabled={saving}>{saving ? "Guardando..." : "Guardar"}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {assignToRecordModalOpen && (
         <div className="modal-backdrop" onClick={() => setAssignToRecordModalOpen(false)} style={{ zIndex: 200 }}>
           <div className="auth-dialog" onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ margin: "0 0 16px", fontSize: "20px", fontWeight: "bold", fontFamily: '"Playfair Display", serif' }}>Asignar a registro</h3>
+            <h2>Asignar a registro</h2>
             <p style={{ color: "var(--muted)", fontSize: "14px", marginBottom: "20px" }}>Selecciona el registro al que asignar {selectedPhotosForEdit.length} foto{selectedPhotosForEdit.length !== 1 ? 's' : ''}:</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {selectedAscents.map(ascent => (
@@ -2098,6 +2092,14 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
                   {ascent.notes && <span style={{ marginLeft: '8px', opacity: 0.6, fontSize: '12px' }}>{ascent.notes}</span>}
                 </button>
               ))}
+              <button
+                className="button button--outline button--wide"
+                style={{ textAlign: 'left', justifyContent: 'flex-start', borderStyle: 'dashed' }}
+                onClick={() => { setAssignToRecordModalOpen(false); openRecord(selected, undefined); }}
+                disabled={saving}
+              >
+                + Crear nuevo registro
+              </button>
             </div>
             <button className="button button--quiet button--wide" style={{ marginTop: '16px' }} onClick={() => setAssignToRecordModalOpen(false)}>Cancelar</button>
           </div>
