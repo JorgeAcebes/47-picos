@@ -381,6 +381,18 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
     return uniquePeakNames.size;
   }, [isPeaks, completedModeAscents]);
 
+  const wishlistCount = useMemo(() => {
+    const w = modeAscents.filter(a => a.is_wishlist);
+    if (!isPeaks) {
+      const uniqueCountries = new Set(w.filter((a) => a.summit_id.startsWith("country-")).map(a => a.summit_id));
+      return uniqueCountries.size;
+    }
+    const uniquePeakNames = new Set(
+      w.map((a) => peaks.find((p) => p.id === a.summit_id)?.name).filter(Boolean)
+    );
+    return uniquePeakNames.size;
+  }, [isPeaks, modeAscents]);
+
   /* ── Save Last Path for Social Tab ────── */
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -1457,25 +1469,25 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
             className={`list-filter-pill${listFilter === "all" ? " list-filter-pill--active" : ""}`}
             onClick={() => setListFilter("all")}
           >
-            Todos <span className="pill-count">{allItems.length}</span>
+            Todos <span className="pill-count">{totalCount}</span>
           </button>
           <button
             className={`list-filter-pill${listFilter === "done" ? " list-filter-pill--active" : ""}`}
             onClick={() => setListFilter("done")}
           >
-            {isPeaks ? "Completadas" : "Visitados"} <span className="pill-count">{completedModeAscents.length}</span>
+            {isPeaks ? "Completadas" : "Visitados"} <span className="pill-count">{achievedCount}</span>
           </button>
           <button
             className={`list-filter-pill${listFilter === "pending" ? " list-filter-pill--active" : ""}`}
             onClick={() => setListFilter("pending")}
           >
-            Pendientes <span className="pill-count">{allItems.length - completedModeAscents.length - modeAscents.filter(a => a.is_wishlist).length}</span>
+            Pendientes <span className="pill-count">{totalCount - achievedCount - wishlistCount}</span>
           </button>
           <button
             className={`list-filter-pill${listFilter === "wishlist" ? " list-filter-pill--active" : ""}`}
             onClick={() => setListFilter("wishlist")}
           >
-            Quiero ir <span className="pill-count">{modeAscents.filter(a => a.is_wishlist).length}</span>
+            Quiero ir <span className="pill-count">{wishlistCount}</span>
           </button>
         </div>
         <div className="peak-list-grid">
