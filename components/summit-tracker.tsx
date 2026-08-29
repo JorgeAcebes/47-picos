@@ -274,8 +274,10 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
   const [lightboxPhoto, setLightboxPhoto] = useState<SummitPhoto | null>(null);
   const [lightboxMenuOpen, setLightboxMenuOpen] = useState(false);
   const [lightboxCaptionModalOpen, setLightboxCaptionModalOpen] = useState(false);
+  const [lightboxDateModalOpen, setLightboxDateModalOpen] = useState(false);
 
   const [lightboxNewCaption, setLightboxNewCaption] = useState("");
+  const [lightboxNewDate, setLightboxNewDate] = useState<string | null>(null);
 
   // Selección múltiple estilo Google Photos
   const [selectedPhotosForEdit, setSelectedPhotosForEdit] = useState<string[]>([]);
