@@ -1920,7 +1920,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
             )}
             {(files.length > 0 || selectedPhotosForEdit.length > 0) && (
               <p className="file-count" style={{ marginTop: '4px', color: 'var(--sage)', fontSize: '12px' }}>
-                {files.length + selectedPhotosForEdit.length} foto{(files.length + selectedPhotosForEdit.length) !== 1 ? "s" : ""} preparadas para adjuntar.
+                {files.length + selectedPhotosForEdit.length} foto{(files.length + selectedPhotosForEdit.length) !== 1 ? "s" : ""} preparada{(files.length + selectedPhotosForEdit.length) !== 1 ? "s" : ""} para adjuntar.
               </p>
             )}
 
