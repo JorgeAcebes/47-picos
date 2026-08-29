@@ -103,7 +103,7 @@ function formatDate(date: string) {
   if (date === "1900-01-01") return "Fecha desconocida";
   return new Intl.DateTimeFormat("es-ES", {
     day: "numeric",
-    month: "long",
+    month: "short",
     year: "numeric",
   }).format(new Date(`${date}T12:00:00`));
 }
@@ -218,6 +218,15 @@ function IconCamera(props: React.SVGProps<SVGSVGElement>) {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
       <circle cx="12" cy="13" r="4"></circle>
+    </svg>
+  );
+}
+
+function IconEdit(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
     </svg>
   );
 }
@@ -1633,47 +1642,53 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
               const ascentPhotos = selectedPhotos.filter(p => p.taken_on === ascent.achieved_on);
               return (
                 <div key={ascent.achieved_on} className="completed-card">
-                  <span>✓ {isPeaks ? "Ascensión registrada" : "Visita registrada"}</span>
-                  <b>
-                    {formatDate(ascent.achieved_on)}
-                    {ascent.end_date && ` - ${formatDate(ascent.end_date)}`}
-                  </b>
-                  {ascent.notes && <p>&ldquo;{ascent.notes}&rdquo;</p>}
-
-                  {!isReadOnly && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: 12 }}>
-                      <button className="button button--quiet button--small" style={{ margin: 0, padding: '0 12px', height: '32px' }} onClick={() => openRecord(selected, ascent)}>
-                        Editar registro
-                      </button>
-                      <label
-                        title="Añadir fotos a esta fecha"
-                        className="button button--quiet button--small"
-                        onClick={(e) => {
-                          if (ascentPhotos.length >= 4) {
-                            e.preventDefault();
-                            setNotice("Máximo 4 fotos por registro. Ya has alcanzado el límite.");
-                            setTimeout(() => setNotice(""), 4000);
-                          }
-                        }}
-                        style={{
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          width: '32px', height: '32px', flexShrink: 0, padding: 0, margin: 0,
-                          cursor: ascentPhotos.length >= 4 ? 'not-allowed' : 'pointer',
-                          opacity: ascentPhotos.length >= 4 ? 0.5 : 1
-                        }}
-                      >
-                        <IconCamera style={{ width: 14, height: 14 }} strokeWidth={1.5} />
-                        <input
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          onChange={(e) => handleAddPhotosToDate(e, ascent)}
-                          style={{ display: 'none' }}
-                          disabled={ascentPhotos.length >= 4}
-                        />
-                      </label>
-                    </div>
-                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                    <b style={{ marginTop: '6px' }}>
+                      {formatDate(ascent.achieved_on)}
+                      {ascent.end_date && ` - ${formatDate(ascent.end_date)}`}
+                    </b>
+                    
+                    {!isReadOnly && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <button 
+                          title="Editar registro"
+                          className="button button--quiet button--small" 
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', flexShrink: 0, padding: 0, margin: 0 }} 
+                          onClick={() => openRecord(selected, ascent)}
+                        >
+                          <IconEdit style={{ width: 14, height: 14 }} strokeWidth={1.5} />
+                        </button>
+                        <label
+                          title="Añadir fotos a esta fecha"
+                          className="button button--quiet button--small"
+                          onClick={(e) => {
+                            if (ascentPhotos.length >= 4) {
+                              e.preventDefault();
+                              setNotice("Máximo 4 fotos por registro. Ya has alcanzado el límite.");
+                              setTimeout(() => setNotice(""), 4000);
+                            }
+                          }}
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: '32px', height: '32px', flexShrink: 0, padding: 0, margin: 0,
+                            cursor: ascentPhotos.length >= 4 ? 'not-allowed' : 'pointer',
+                            opacity: ascentPhotos.length >= 4 ? 0.5 : 1
+                          }}
+                        >
+                          <IconCamera style={{ width: 14, height: 14 }} strokeWidth={1.5} />
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={(e) => handleAddPhotosToDate(e, ascent)}
+                            style={{ display: 'none' }}
+                            disabled={ascentPhotos.length >= 4}
+                          />
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                  {ascent.notes && <p style={{ marginTop: '4px' }}>&ldquo;{ascent.notes}&rdquo;</p>}
 
                   {ascentPhotos.length > 0 && (
                     <div className="photo-section" style={{ marginTop: 16 }}>
