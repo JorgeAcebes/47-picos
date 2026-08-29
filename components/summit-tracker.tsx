@@ -764,7 +764,13 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
       }
     }
 
-    setFiles(nextFiles);
+    if (files.length + selectedPhotosForEdit.length + nextFiles.length > 4) {
+      setNotice(`Máximo 4 fotos por registro. Selecciona menos imágenes.`);
+      event.target.value = "";
+      return;
+    }
+
+    setFiles(prev => [...prev, ...nextFiles]);
     if (!isDateUnknown && !isDateModified && nextFiles[0]?.lastModified) {
       setClimbDate(new Date(nextFiles[0].lastModified));
     }
@@ -1910,11 +1916,31 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
             {(files.length > 0 || selectedPhotosForEdit.length > 0) && (
               <div style={{ marginTop: '12px', display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px' }}>
                 {Array.from(files).map((file, i) => (
-                  <img key={`local-${i}`} src={URL.createObjectURL(file)} alt="preview local" style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border)' }} />
+                  <div key={`local-${i}`} style={{ position: 'relative', display: 'inline-block' }}>
+                    <img src={URL.createObjectURL(file)} alt="preview local" style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border)' }} />
+                    <button 
+                      onClick={() => setFiles(prev => prev.filter((_, idx) => idx !== i))}
+                      title="Quitar imagen"
+                      style={{ position: 'absolute', top: '2px', right: '2px', background: '#e74c3c', color: 'white', width: '16px', height: '16px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', padding: 0, zIndex: 10 }}
+                    >
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                  </div>
                 ))}
                 {selectedPhotosForEdit.map(id => {
                   const p = photos.find(x => x.id === id);
-                  return p ? <img key={id} src={p.public_url} alt="preview galeria" style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border)' }} /> : null;
+                  return p ? (
+                    <div key={id} style={{ position: 'relative', display: 'inline-block' }}>
+                      <img src={p.public_url} alt="preview galeria" style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border)' }} />
+                      <button 
+                        onClick={() => setSelectedPhotosForEdit(prev => prev.filter(x => x !== id))}
+                        title="Quitar imagen"
+                        style={{ position: 'absolute', top: '2px', right: '2px', background: '#e74c3c', color: 'white', width: '16px', height: '16px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', padding: 0, zIndex: 10 }}
+                      >
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                      </button>
+                    </div>
+                  ) : null;
                 })}
               </div>
             )}
