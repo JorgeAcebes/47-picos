@@ -6,6 +6,7 @@ import type { Session } from "@supabase/supabase-js";
 import Link from "next/link";
 import { countries } from "@/data/countries";
 import dynamic from "next/dynamic";
+import { AuthDialog } from "@/components/auth-dialog";
 import "./ranking.css";
 
 const CollectiveMap = dynamic(
@@ -36,6 +37,7 @@ export default function RankingPage() {
   const [totalUsersCount, setTotalUsersCount] = useState<number>(0);
   const [myProfile, setMyProfile] = useState<{username: string, avatar_url: string | null} | null>(null);
   const [showCollectiveMap, setShowCollectiveMap] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
 
   useEffect(() => {
     if (session) {
@@ -56,9 +58,6 @@ export default function RankingPage() {
       setMapLink(localStorage.getItem("last_map_path") || "/");
       const savedMode = localStorage.getItem("ranking_mode") as ModeFilter | null;
       if (savedMode === "countries" || savedMode === "peaks") setMode(savedMode);
-      
-      const savedScope = localStorage.getItem("ranking_scope") as ScopeFilter | null;
-      if (savedScope === "all" || savedScope === "following") setScope(savedScope);
     }
     
     return () => listener.subscription.unsubscribe();
@@ -118,20 +117,10 @@ export default function RankingPage() {
     }
   }, [mode]);
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("ranking_scope", scope);
-    }
-  }, [scope]);
-
   const totalPossible = mode === "peaks" ? 47 : 196;
   const unit = mode === "peaks" ? "picos" : "países";
 
   const handleScopeChange = (newScope: ScopeFilter) => {
-    if (newScope === 'following' && !session) {
-      alert("Inicia sesión en la pestaña Social para usar este filtro.");
-      return;
-    }
     setScope(newScope);
   };
 
@@ -168,9 +157,9 @@ export default function RankingPage() {
               <span>{myProfile?.username || session.user.email?.split("@")[0]}</span>
             </Link>
           ) : (
-            <Link href="/login" className="button button--outline">
+            <button className="button button--outline" onClick={() => setAuthOpen(true)}>
               Entrar
-            </Link>
+            </button>
           )}
         </nav>
       </header>
@@ -261,7 +250,11 @@ export default function RankingPage() {
           </div>
 
           <div>
-            {loading ? (
+            {scope === 'following' && !session ? (
+              <div className="ranking-empty-msg" style={{ textAlign: "left", paddingTop: "10px" }}>
+                Inicia sesión para ver a quién sigues.
+              </div>
+            ) : loading ? (
               <div className="ranking-empty-msg">Cargando clasificación...</div>
             ) : entries.length === 0 ? (
               <div className="ranking-empty-msg">No hay resultados para este filtro todavía.</div>
@@ -305,6 +298,7 @@ export default function RankingPage() {
       {showCollectiveMap && (
         <CollectiveMap onClose={() => setShowCollectiveMap(false)} />
       )}
+      {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} />}
     </div>
   );
 }
