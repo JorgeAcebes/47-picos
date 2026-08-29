@@ -32,7 +32,7 @@ const WorldMap = dynamic(
   },
 );
 
-type Ascent = { summit_id: string; achieved_on: string; notes: string | null; is_wishlist: boolean };
+type Ascent = { summit_id: string; achieved_on: string; end_date?: string | null; notes: string | null; is_wishlist: boolean };
 type SummitPhoto = {
   id: string;
   summit_id: string;
@@ -245,6 +245,8 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [recordOpen, setRecordOpen] = useState(false);
   const [climbDate, setClimbDate] = useState<Date | null>(new Date());
+  const [climbEndDate, setClimbEndDate] = useState<Date | null>(null);
+  const [isEndDateEnabled, setIsEndDateEnabled] = useState(false);
   const [originalAchievedOn, setOriginalAchievedOn] = useState<string | null>(null);
   const [isDateUnknown, setIsDateUnknown] = useState(false);
   const [isDateModified, setIsDateModified] = useState(false);
@@ -494,7 +496,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
       const [ascentResult, photoResult] = await Promise.all([
         supabase!
           .from("ascents")
-          .select("summit_id, achieved_on, notes, is_wishlist")
+          .select("summit_id, achieved_on, end_date, notes, is_wishlist")
           .eq("user_id", targetId)
           .order("achieved_on", { ascending: false }),
         supabase!
@@ -522,7 +524,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
       if (isReadOnly && session) {
         const { data: myData } = await supabase!
           .from("ascents")
-          .select("summit_id, achieved_on, notes, is_wishlist")
+          .select("summit_id, achieved_on, end_date, notes, is_wishlist")
           .eq("user_id", session.user.id);
         if (myData) setMyAscents(myData as Ascent[]);
       }
@@ -733,6 +735,8 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
       setRecordOpen(true);
       if (!item) {
         setClimbDate(null);
+        setClimbEndDate(null);
+        setIsEndDateEnabled(false);
         setOriginalAchievedOn(null);
         setIsDateUnknown(true);
         setIsDateModified(false);
@@ -743,12 +747,16 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
         if (ascentToEdit) {
           const date = ascentToEdit.achieved_on;
           setClimbDate(date && date !== "1900-01-01" ? new Date(date) : null);
+          setClimbEndDate(ascentToEdit.end_date ? new Date(ascentToEdit.end_date) : null);
+          setIsEndDateEnabled(!!ascentToEdit.end_date);
           setOriginalAchievedOn(date);
           setIsDateUnknown(!date || date === "1900-01-01");
           setIsDateModified(!!date && date !== "1900-01-01");
           setNotes(ascentToEdit.notes ?? "");
         } else {
           setClimbDate(null);
+          setClimbEndDate(null);
+          setIsEndDateEnabled(false);
           setOriginalAchievedOn(null);
           setIsDateUnknown(true);
           setIsDateModified(false);
@@ -820,6 +828,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
           user_id: session.user.id,
           summit_id: selected.id,
           achieved_on: finalDate,
+          end_date: null,
           notes: null,
           is_wishlist: true,
         },
@@ -831,7 +840,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
         return;
       }
       setAscents((previous) => [
-        { summit_id: selected.id, achieved_on: finalDate, notes: null, is_wishlist: true },
+        { summit_id: selected.id, achieved_on: finalDate, end_date: null, notes: null, is_wishlist: true },
         ...previous.filter((a) => !(a.summit_id === selected.id && a.is_wishlist)),
       ]);
       setNotice("¡Añadido a tu lista de deseos!");
@@ -852,11 +861,13 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
       setPhotos(prev => prev.map(p => p.summit_id === selected.id && p.taken_on === originalAchievedOn ? { ...p, taken_on: finalDate } : p));
     }
 
+    const finalEndDate = isEndDateEnabled && climbEndDate ? climbEndDate.toISOString().slice(0, 10) : null;
     const ascentResult = await supabase.from("ascents").upsert(
       {
         user_id: session.user.id,
         summit_id: selected.id,
         achieved_on: finalDate,
+        end_date: finalEndDate,
         notes: notes || null,
         is_wishlist: false,
       },
@@ -905,7 +916,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
         (a) => !(a.summit_id === selected.id && (a.achieved_on === finalDate || a.achieved_on === originalAchievedOn || a.is_wishlist))
       );
       return [
-        { summit_id: selected.id, achieved_on: finalDate, notes: notes || null, is_wishlist: false },
+        { summit_id: selected.id, achieved_on: finalDate, end_date: finalEndDate, notes: notes || null, is_wishlist: false },
         ...withoutThisAscentOrWishlist,
       ];
     });
@@ -1593,7 +1604,10 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
               return (
                 <div key={ascent.achieved_on} className="completed-card">
                   <span>✓ {isPeaks ? "Ascensión registrada" : "Visita registrada"}</span>
-                  <b>{formatDate(ascent.achieved_on)}</b>
+                  <b>
+                    {formatDate(ascent.achieved_on)}
+                    {ascent.end_date && ` — ${formatDate(ascent.end_date)}`}
+                  </b>
                   {ascent.notes && <p>&ldquo;{ascent.notes}&rdquo;</p>}
 
                   {!isReadOnly && (
@@ -1730,6 +1744,21 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
             <div className="field-label" style={{ marginBottom: 18 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                 <span>{isPeaks ? "Fecha de la ascensión" : "Fecha de la visita"}</span>
+                {!isDateUnknown && !isEndDateEnabled && (
+                  <button
+                    type="button"
+                    className="diff-toggle"
+                    style={{ fontSize: "0.85em", padding: "4px 8px", height: "auto" }}
+                    onClick={() => setIsEndDateEnabled(true)}
+                  >
+                    <svg className="diff-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="8" x2="12" y2="16" />
+                      <line x1="8" y1="12" x2="16" y2="12" />
+                    </svg>
+                    Fecha finalización
+                  </button>
+                )}
               </div>
               {isDateUnknown ? (
                 <button
@@ -1740,27 +1769,82 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
                   Establecer fecha
                 </button>
               ) : (
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: 4 }}>
-                  <input
-                    type="date"
-                    value={climbDate ? (climbDate.toISOString().slice(0, 10)) : ""}
-                    onChange={(e) => {
-                      setClimbDate(e.target.value ? new Date(e.target.value) : new Date());
-                      setIsDateModified(true);
-                    }}
-                    max={new Date().toISOString().slice(0, 10)}
-                    style={{ flex: 1, padding: "0 12px", margin: 0, height: "35px", boxSizing: "border-box" }}
-                  />
-                  <button
-                    type="button"
-                    className="button button--quiet"
-                    onClick={() => { setIsDateUnknown(true); setClimbDate(null); setIsDateModified(true); }}
-                    title="Quitar fecha"
-                    style={{ padding: 0, minWidth: "auto", width: "35px", height: "35px", display: "flex", alignItems: "center", justifyContent: "center", margin: 0 }}
-                  >
-                    <IconClose style={{ width: 16, height: 16 }} />
-                  </button>
-                </div>
+                isEndDateEnabled ? (
+                  <div style={{ display: "flex", alignItems: "flex-end", gap: "8px", marginTop: 4 }}>
+                    <div style={{ display: "flex", flexDirection: "column", flex: 1, gap: 4 }}>
+                      <label style={{ fontSize: "0.8em", color: "var(--muted)" }}>Comienzo</label>
+                      <input
+                        type="date"
+                        value={climbDate ? (climbDate.toISOString().slice(0, 10)) : ""}
+                        onChange={(e) => {
+                          setClimbDate(e.target.value ? new Date(e.target.value) : new Date());
+                          setIsDateModified(true);
+                        }}
+                        max={new Date().toISOString().slice(0, 10)}
+                        style={{ padding: "0 12px", margin: 0, height: "35px", boxSizing: "border-box" }}
+                      />
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", flex: 1, gap: 4 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <label style={{ fontSize: "0.8em", color: "var(--muted)" }}>Fin</label>
+                        <button
+                          type="button"
+                          className="button button--quiet"
+                          style={{ padding: 0, height: 16, minWidth: "auto", border: "none" }}
+                          onClick={() => { setIsEndDateEnabled(false); setClimbEndDate(null); }}
+                          title="Quitar fecha finalización"
+                        >
+                          <IconClose style={{ width: 12, height: 12 }} />
+                        </button>
+                      </div>
+                      <input
+                        type="date"
+                        value={climbEndDate ? (climbEndDate.toISOString().slice(0, 10)) : ""}
+                        onChange={(e) => {
+                          setClimbEndDate(e.target.value ? new Date(e.target.value) : new Date());
+                          setIsDateModified(true);
+                        }}
+                        min={climbDate ? (climbDate.toISOString().slice(0, 10)) : ""}
+                        max={new Date().toISOString().slice(0, 10)}
+                        style={{ padding: "0 12px", margin: 0, height: "35px", boxSizing: "border-box" }}
+                      />
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <label style={{ fontSize: "0.8em", visibility: "hidden" }}>X</label>
+                      <button
+                        type="button"
+                        className="button button--quiet"
+                        onClick={() => { setIsDateUnknown(true); setClimbDate(null); setClimbEndDate(null); setIsEndDateEnabled(false); setIsDateModified(true); }}
+                        title="Quitar fechas"
+                        style={{ padding: 0, minWidth: "auto", width: "35px", height: "35px", display: "flex", alignItems: "center", justifyContent: "center", margin: 0 }}
+                      >
+                        <IconClose style={{ width: 16, height: 16 }} />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: 4 }}>
+                    <input
+                      type="date"
+                      value={climbDate ? (climbDate.toISOString().slice(0, 10)) : ""}
+                      onChange={(e) => {
+                        setClimbDate(e.target.value ? new Date(e.target.value) : new Date());
+                        setIsDateModified(true);
+                      }}
+                      max={new Date().toISOString().slice(0, 10)}
+                      style={{ flex: 1, padding: "0 12px", margin: 0, height: "35px", boxSizing: "border-box" }}
+                    />
+                    <button
+                      type="button"
+                      className="button button--quiet"
+                      onClick={() => { setIsDateUnknown(true); setClimbDate(null); setIsDateModified(true); }}
+                      title="Quitar fecha"
+                      style={{ padding: 0, minWidth: "auto", width: "35px", height: "35px", display: "flex", alignItems: "center", justifyContent: "center", margin: 0 }}
+                    >
+                      <IconClose style={{ width: 16, height: 16 }} />
+                    </button>
+                  </div>
+                )
               )}
             </div>
 
