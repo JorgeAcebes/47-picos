@@ -1011,7 +1011,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
 
     setConfirmConfig({
       isOpen: true,
-      message: `¿Seguro que quieres eliminar ${selectedPhotosForEdit.length} foto(s)?`,
+      message: `¿Seguro que quieres eliminar ${selectedPhotosForEdit.length === 1 ? '1 foto' : `${selectedPhotosForEdit.length} fotos`}?`,
       onConfirm: () => performBatchDeletePhotos(),
     });
   }
