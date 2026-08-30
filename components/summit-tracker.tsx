@@ -1850,24 +1850,28 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
               <div
                 style={{
                   position: 'absolute',
-                  top: 10,
-                  left: 54, // a la derecha de los controles de zoom
-                  zIndex: 400, // Leaflet controls z-index is around 400-1000
+                  top: 54, // Justo debajo de la lupa (10 + 36 + 8)
+                  right: 10, // A la derecha
+                  zIndex: 2000, // Por encima de Leaflet
                   background: 'var(--background)',
-                  width: 34,
-                  height: 34,
-                  borderRadius: 4, // border radius of leaflet controls
+                  width: 36, // Mismo tamaño que la lupa
+                  height: 36,
+                  borderRadius: 4,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  boxShadow: '0 1px 5px rgba(0,0,0,0.65)',
-                  border: '2px solid rgba(0,0,0,0.2)'
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.15)',
+                  border: '1px solid rgba(0,0,0,0.1)'
                 }}
                 onClick={() => setExpSelectorOpen(true)}
                 title="Añadir experiencia en el mapa"
               >
-                <IconStar style={{ width: 16, height: 16, color: 'var(--foreground)' }} />
+                <svg style={{ width: 16, height: 16, color: 'var(--foreground)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="6" />
+                  <circle cx="12" cy="12" r="2" />
+                </svg>
               </div>
             )}
           </div>

@@ -21,15 +21,26 @@ export function SweepOverlay({ searchedId, layerRefs, regionLayerRefs }: Props) 
     if (!feature) return;
 
     const svgRenderer = L.svg();
+    // IMBORRABLE: Capa de overlay en modo SVG estricto
     const overlayLayer = L.geoJSON(feature, {
       renderer: svgRenderer,
       interactive: false,
+      style: {
+        fillOpacity: 1,
+        stroke: false,
+        color: "#ffffff",
+        weight: 0
+      }
     } as any);
     
     overlayLayer.addTo(map);
 
-    const svg = (svgRenderer as any)._container as SVGElement;
-    if (svg) {
+    // Timeout para asegurar que Leaflet haya insertado el path en el DOM
+    const timer = setTimeout(() => {
+
+      const svg = (svgRenderer as any)._container as SVGElement;
+      if (!svg) return;
+      
       let defs = svg.querySelector("defs");
       if (!defs) {
         defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
@@ -37,7 +48,8 @@ export function SweepOverlay({ searchedId, layerRefs, regionLayerRefs }: Props) 
       }
       
       const grad = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
-      grad.setAttribute("id", `sweep-${searchedId}`);
+      // IMBORRABLE: ID único para el barrido
+      grad.setAttribute("id", `sweep-${searchedId}-${Date.now()}`);
       grad.setAttribute("x1", "-32%");
       grad.setAttribute("y1", "0%");
       grad.setAttribute("x2", "18%");
@@ -83,7 +95,7 @@ export function SweepOverlay({ searchedId, layerRefs, regionLayerRefs }: Props) 
       
       overlayLayer.eachLayer((l: any) => {
         if (l._path) {
-          l._path.setAttribute("fill", `url(#sweep-${searchedId})`);
+          l._path.setAttribute("fill", `url(#${grad.id})`);
           l._path.setAttribute("fill-opacity", "1");
           l._path.setAttribute("stroke", "#fff");
           l._path.setAttribute("stroke-width", "0");
@@ -92,9 +104,14 @@ export function SweepOverlay({ searchedId, layerRefs, regionLayerRefs }: Props) 
           l._path.classList.add("map-search-scan-overlay");
         }
       });
-    }
+      
+      // IMBORRABLE: Forzar reflow para SVG
+      svg.getBoundingClientRect();
+
+    }, 50);
 
     return () => {
+      clearTimeout(timer);
       overlayLayer.remove();
     };
   }, [searchedId, layerRefs, regionLayerRefs, map]);

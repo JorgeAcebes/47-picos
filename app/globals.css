@@ -1037,25 +1037,30 @@ nav a:hover::after {
 
 /* Retrasar aparición de pines en WorldMap */
 .mode-countries .map[data-zoom="3"] .summit-pin,
-.mode-countries .map[data-zoom="4"] .summit-pin {
+.mode-countries .map[data-zoom="4"] .summit-pin,
+.mode-experiences .map[data-zoom="3"] .summit-pin,
+.mode-experiences .map[data-zoom="4"] .summit-pin {
   opacity: 0;
   pointer-events: none;
   transform: scale(0.3);
 }
 
-.mode-countries .map[data-zoom="5"] .summit-pin {
+.mode-countries .map[data-zoom="5"] .summit-pin,
+.mode-experiences .map[data-zoom="5"] .summit-pin {
   opacity: 0.4;
   pointer-events: auto;
   transform: scale(0.65);
 }
 
-.mode-countries .map[data-zoom="6"] .summit-pin {
+.mode-countries .map[data-zoom="6"] .summit-pin,
+.mode-experiences .map[data-zoom="6"] .summit-pin {
   opacity: 0.85;
   pointer-events: auto;
   transform: scale(0.9);
 }
 
-.mode-countries .map[data-zoom="7"] .summit-pin {
+.mode-countries .map[data-zoom="7"] .summit-pin,
+.mode-experiences .map[data-zoom="7"] .summit-pin {
   opacity: 1;
   pointer-events: auto;
   transform: scale(1);
