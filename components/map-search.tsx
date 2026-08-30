@@ -135,10 +135,12 @@ export function MapSearchControl({ items, onSelect, placeholder = "Buscar..." }:
             onChange={e => setQuery(e.target.value)}
             onFocus={() => {
               if (window.innerWidth <= 768) {
-                const mapSection = document.querySelector(".map-section");
-                if (mapSection) {
-                  mapSection.scrollIntoView({ behavior: "smooth", block: "start" });
-                }
+                setTimeout(() => {
+                  const legend = document.querySelector(".map-legend-area");
+                  if (legend) {
+                    legend.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }
+                }, 300);
               }
             }}
             style={{ border: "none", outline: "none", padding: "4px 8px", width: "100%", background: "transparent", fontSize: 14 }}

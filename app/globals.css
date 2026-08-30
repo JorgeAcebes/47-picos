@@ -3007,6 +3007,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   flex-direction: column;
   align-items: flex-end;
   gap: 8px;
+  scroll-margin-top: 67.5px;
 }
 
 @media (max-width: 768px) {
