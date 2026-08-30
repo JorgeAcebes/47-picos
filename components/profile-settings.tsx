@@ -10,6 +10,7 @@ type Profile = {
   avatar_url: string | null;
   is_public: boolean;
   enable_regions?: boolean;
+  enable_experiences?: boolean;
 };
 
 export function ProfileSettings({ session, onClose, onProfileUpdate }: { session: Session; onClose: () => void; onProfileUpdate?: (profile: any) => void }) {
@@ -17,6 +18,7 @@ export function ProfileSettings({ session, onClose, onProfileUpdate }: { session
   const [username, setUsername] = useState("");
   const [isPublic, setIsPublic] = useState(true);
   const [enableRegions, setEnableRegions] = useState(false);
+  const [enableExperiences, setEnableExperiences] = useState(false);
   const [sharePhotos, setSharePhotos] = useState(true);
   const [shareNotes, setShareNotes] = useState(true);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -40,6 +42,7 @@ export function ProfileSettings({ session, onClose, onProfileUpdate }: { session
         setUsername(data.username);
         setIsPublic(data.is_public);
         setEnableRegions(data.enable_regions ?? false);
+        setEnableExperiences(data.enable_experiences ?? false);
         setSharePhotos(data.share_photos ?? true);
         setShareNotes(data.share_notes ?? true);
         if (data.avatar_url) setAvatarPreview(data.avatar_url);
@@ -87,6 +90,7 @@ export function ProfileSettings({ session, onClose, onProfileUpdate }: { session
       avatar_url: avatarUrl,
       is_public: isPublic,
       enable_regions: enableRegions,
+      enable_experiences: enableExperiences,
       share_photos: sharePhotos,
       share_notes: shareNotes,
       updated_at: new Date().toISOString()
@@ -162,62 +166,75 @@ export function ProfileSettings({ session, onClose, onProfileUpdate }: { session
               </div>
             </div>
             
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontWeight: "bold" }}>Perfil Público</span>
-              <label className="custom-toggle">
-                <input 
-                  type="checkbox" 
-                  checked={isPublic} 
-                  onChange={(e) => setIsPublic(e.target.checked)}
-                />
-                <div className="toggle-switch"></div>
-              </label>
-            </div>
-            
-            <p style={{ fontSize: "0.85rem", color: "#666", marginTop: "0.25rem", marginBottom: "1rem" }}>
-              {isPublic 
-                ? "Cualquiera podrá buscarte y ver tu actividad." 
-                : "Solo los usuarios que aceptes podrán ver tu actividad."}
-            </p>
-
-            <h4 style={{ margin: "0.5rem 0 0 0", fontSize: "0.95rem" }}>Privacidad de datos</h4>
-            
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.5rem" }}>
-              <span>Mostrar mis fotos</span>
-              <label className="custom-toggle">
-                <input 
-                  type="checkbox" 
-                  checked={sharePhotos} 
-                  onChange={(e) => setSharePhotos(e.target.checked)}
-                />
-                <div className="toggle-switch"></div>
-              </label>
+            <div style={{ background: "#f5f5f5", padding: "0.75rem", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontWeight: "bold", fontSize: "0.9rem" }}>Perfil Público</span>
+                <label className="custom-toggle">
+                  <input 
+                    type="checkbox" 
+                    checked={isPublic} 
+                    onChange={(e) => setIsPublic(e.target.checked)}
+                  />
+                  <div className="toggle-switch"></div>
+                </label>
+              </div>
+              <p style={{ fontSize: "0.75rem", color: "#666", margin: 0, lineHeight: 1.2 }}>
+                {isPublic 
+                  ? "Cualquiera podrá buscarte y ver tu actividad." 
+                  : "Solo los usuarios que aceptes podrán ver tu actividad."}
+              </p>
             </div>
 
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.5rem" }}>
-              <span>Mostrar mis notas</span>
-              <label className="custom-toggle">
-                <input 
-                  type="checkbox" 
-                  checked={shareNotes} 
-                  onChange={(e) => setShareNotes(e.target.checked)}
-                />
-                <div className="toggle-switch"></div>
-              </label>
+            <div style={{ background: "#f5f5f5", padding: "0.75rem", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+              <span style={{ fontWeight: "bold", fontSize: "0.9rem" }}>Privacidad de datos</span>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: "0.9rem" }}>Mostrar mis fotos</span>
+                <label className="custom-toggle">
+                  <input 
+                    type="checkbox" 
+                    checked={sharePhotos} 
+                    onChange={(e) => setSharePhotos(e.target.checked)}
+                  />
+                  <div className="toggle-switch"></div>
+                </label>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: "0.9rem" }}>Mostrar mis notas</span>
+                <label className="custom-toggle">
+                  <input 
+                    type="checkbox" 
+                    checked={shareNotes} 
+                    onChange={(e) => setShareNotes(e.target.checked)}
+                  />
+                  <div className="toggle-switch"></div>
+                </label>
+              </div>
             </div>
-            
-            <hr style={{ border: "none", borderTop: "1px solid #eee", margin: "1.5rem 0 1rem 0" }} />
-            
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span>Habilitar modo regiones</span>
-              <label className="custom-toggle">
-                <input 
-                  type="checkbox" 
-                  checked={enableRegions} 
-                  onChange={(e) => setEnableRegions(e.target.checked)}
-                />
-                <div className="toggle-switch"></div>
-              </label>
+
+            <div style={{ background: "#f5f5f5", padding: "0.75rem", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+              <span style={{ fontWeight: "bold", fontSize: "0.9rem" }}>Modos de la app</span>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: "0.9rem" }}>Habilitar modo experiencias</span>
+                <label className="custom-toggle">
+                  <input 
+                    type="checkbox" 
+                    checked={enableExperiences} 
+                    onChange={(e) => setEnableExperiences(e.target.checked)}
+                  />
+                  <div className="toggle-switch"></div>
+                </label>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: "0.9rem" }}>Habilitar modo regiones</span>
+                <label className="custom-toggle">
+                  <input 
+                    type="checkbox" 
+                    checked={enableRegions} 
+                    onChange={(e) => setEnableRegions(e.target.checked)}
+                  />
+                  <div className="toggle-switch"></div>
+                </label>
+              </div>
             </div>
             
             {error && <p style={{ color: "red", margin: 0, fontSize: "0.9rem" }}>{error}</p>}

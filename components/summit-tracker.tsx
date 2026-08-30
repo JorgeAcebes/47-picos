@@ -266,7 +266,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
   }, []);
 
   const [session, setSession] = useState<Session | null>(null);
-  const [myProfile, setMyProfile] = useState<{ username: string; avatar_url: string | null; enable_regions?: boolean } | null>(null);
+  const [myProfile, setMyProfile] = useState<{ username: string; avatar_url: string | null; enable_regions?: boolean; enable_experiences?: boolean } | null>(null);
   const [ascents, setAscents] = useState<Ascent[]>([]);
   const [photos, setPhotos] = useState<SummitPhoto[]>([]);
   const [selected, setSelected] = useState<SelectedItem | null>(null);
@@ -306,6 +306,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
   const [editorPhoto, setEditorPhoto] = useState<SummitPhoto | null>(null);
   const [diffMode, setDiffMode] = useState(false);
   const [regionsMode, setRegionsMode] = useState(false);
+  const [experiencesMode, setExperiencesMode] = useState(false);
   const [expandedCountryId, setExpandedCountryId] = useState<string | null>(null);
   const [ascentsSortOrder, setAscentsSortOrder] = useState<"asc" | "desc">("asc");
   const [myAscents, setMyAscents] = useState<Ascent[]>([]);
@@ -371,7 +372,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
 
   useEffect(() => {
     if (session) {
-      supabase?.from("profiles").select("username, avatar_url, enable_regions").eq("id", session.user.id).single().then(({ data }) => {
+      supabase?.from("profiles").select("username, avatar_url, enable_regions, enable_experiences").eq("id", session.user.id).single().then(({ data }) => {
         if (data) setMyProfile(data);
       });
     }
@@ -599,7 +600,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
         if (session && !myProfile) {
           const { data: profile } = await supabase
             .from("profiles")
-            .select("username, avatar_url, enable_regions")
+            .select("username, avatar_url, enable_regions, enable_experiences")
             .eq("id", session.user.id)
             .single();
           if (profile) setMyProfile(profile);
@@ -1468,6 +1469,20 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                     <line x1="8" y1="12" x2="16" y2="12" />
                   </svg>
                   {diffMode ? "Comparando" : "Comparar conmigo"}
+                </button>
+              )}
+              {myProfile?.enable_experiences && (
+                <button
+                  className={`diff-toggle${experiencesMode ? " diff-toggle--active" : ""}`}
+                  onClick={() => setExperiencesMode(!experiencesMode)}
+                  title="Ver experiencias"
+                >
+                  <svg className="diff-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <circle cx="12" cy="12" r="6" />
+                    <circle cx="12" cy="12" r="2" />
+                  </svg>
+                  Experiencias
                 </button>
               )}
               {!isPeaks && myProfile?.enable_regions && (
