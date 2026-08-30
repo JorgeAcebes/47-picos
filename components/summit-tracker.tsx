@@ -441,7 +441,10 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      localStorage.setItem("last_map_path", window.location.pathname);
+      const path = window.location.pathname;
+      if (path === "/" || path === "/picos") {
+        localStorage.setItem("last_map_path", path);
+      }
       localStorage.setItem("ranking_mode", currentMode);
     }
   }, [currentMode]);

@@ -148,11 +148,11 @@ export function RankingTab({ onNavigate }: { onNavigate?: (tab: string) => void 
     <div className={`ranking-theme ${mode === "countries" ? "mode-countries" : ""}`} style={{ backgroundColor: "var(--bg-color)" }}>
       {/* ── Standard Topbar ────────────────── */}
       <header className="topbar">
-        <a className="brand" href={mapLink} onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate(mapLink); }}}>
+        <a className="brand" href={mapLink} onClick={(e) => { if (onNavigate) { e.preventDefault(); const currentMap = localStorage.getItem("last_map_path") || "/"; onNavigate(currentMap); }}}>
           <img src="/icon.svg" alt="Logo" width={32} height={32} style={{ filter: "brightness(0)" }} />
         </a>
         <nav>
-          <a href={mapLink} onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate(mapLink); }}}>Mapa</a>
+          <a href={mapLink} onClick={(e) => { if (onNavigate) { e.preventDefault(); const currentMap = localStorage.getItem("last_map_path") || "/"; onNavigate(currentMap); }}}>Mapa</a>
           <a href="/social" onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("/social"); }}}>Social</a>
           <a href="/ranking" style={{ fontWeight: 'bold', color: 'var(--purple)' }} onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("/ranking"); }}}>Ranking</a>
           {session ? (
