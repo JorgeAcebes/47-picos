@@ -50,7 +50,9 @@ export function SocialTab({ onNavigate }: { onNavigate?: (tab: string) => void }
     );
     
     if (typeof window !== "undefined") {
-      setMapLink(localStorage.getItem("last_map_path") || "/");
+      let stored = localStorage.getItem("last_map_path") || "/";
+      if (stored !== "/" && stored !== "/picos") stored = "/";
+      setMapLink(stored);
     }
     
     return () => listener.subscription.unsubscribe();
@@ -315,11 +317,11 @@ export function SocialTab({ onNavigate }: { onNavigate?: (tab: string) => void }
   return (
     <main>
       <header className="topbar">
-        <a className="brand" href={mapLink} onClick={(e) => { if (onNavigate) { e.preventDefault(); const currentMap = localStorage.getItem("last_map_path") || "/"; onNavigate(currentMap); }}}>
+        <a className="brand" href={mapLink} onClick={(e) => { if (onNavigate) { e.preventDefault(); let currentMap = localStorage.getItem("last_map_path") || "/"; if (currentMap !== "/" && currentMap !== "/picos") currentMap = "/"; onNavigate(currentMap); }}}>
           <img src="/icon.svg" alt="Logo" width={32} height={32} style={{ filter: "brightness(0)" }} />
         </a>
         <nav>
-          <a href={mapLink} onClick={(e) => { if (onNavigate) { e.preventDefault(); const currentMap = localStorage.getItem("last_map_path") || "/"; onNavigate(currentMap); }}}>Mapa</a>
+          <a href={mapLink} onClick={(e) => { if (onNavigate) { e.preventDefault(); let currentMap = localStorage.getItem("last_map_path") || "/"; if (currentMap !== "/" && currentMap !== "/picos") currentMap = "/"; onNavigate(currentMap); }}}>Mapa</a>
           <a href="/social" style={{ fontWeight: 'bold', position: 'relative' }} onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("/social"); }}}>
             Social
             {hasPendingRequests ? (
