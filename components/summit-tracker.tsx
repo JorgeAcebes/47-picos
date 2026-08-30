@@ -332,9 +332,9 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
   }, []);
 
   // ── Mode config ────────────────────────────
-  const allItems = isPeaks
+  const allItems = useMemo(() => isPeaks
     ? peaks.map(peakToItem)
-    : countries.map(countryToItem);
+    : countries.map(countryToItem), [isPeaks]);
   const totalCount = isPeaks ? 47 : allItems.length;
   const modeLabel = isPeaks ? "47 PICOS" : "196 PAÍSES";
   const modeLabelShort = isPeaks ? "47" : "196";
@@ -396,12 +396,12 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
              }
            }
         }
-        if (item) {
+        if (item && (!selected || selected.id !== item.id)) {
           setSelected(item);
         }
       }
     }
-  }, [allItems, isPeaks]);
+  }, [allItems, isPeaks, selected]);
 
   // Contar únicas
   const achievedCount = useMemo(() => {
