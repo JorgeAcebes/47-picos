@@ -104,6 +104,17 @@ type Props = {
 function FitWorld() {
   const map = useMap();
   useEffect(() => {
+    if (window.location.hash.startsWith("#panel=")) {
+      const saved = sessionStorage.getItem("mapState_world");
+      if (saved) {
+        try {
+          const { zoom, center } = JSON.parse(saved);
+          map.setView(center, zoom, { animate: false });
+          return;
+        } catch (e) {}
+      }
+    }
+
     const aspectRatio = window.innerWidth / window.innerHeight;
     if (aspectRatio > 1) {
       // Desktop: Shift center north to crop Antarctica but keep South America
@@ -203,8 +214,15 @@ function MapZoomListener() {
   const map = useMapEvents({
     zoomend: () => {
       const zoom = map.getZoom();
+      const center = map.getCenter();
+      sessionStorage.setItem("mapState_world", JSON.stringify({ zoom, center }));
       const container = map.getContainer();
       container.setAttribute("data-zoom", zoom.toString());
+    },
+    moveend: () => {
+      const zoom = map.getZoom();
+      const center = map.getCenter();
+      sessionStorage.setItem("mapState_world", JSON.stringify({ zoom, center }));
     },
   });
   useEffect(() => {

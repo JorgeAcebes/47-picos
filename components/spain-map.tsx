@@ -49,6 +49,16 @@ type Props = {
 function FitSpain() {
   const map = useMap();
   useEffect(() => {
+    if (window.location.hash.startsWith("#panel=")) {
+      const saved = sessionStorage.getItem("mapState_spain");
+      if (saved) {
+        try {
+          const { zoom, center } = JSON.parse(saved);
+          map.setView(center, zoom, { animate: false });
+          return;
+        } catch (e) {}
+      }
+    }
     map.fitBounds(
       [
         [27.55, -18.65],
@@ -134,8 +144,15 @@ function MapZoomListener() {
   const map = useMapEvents({
     zoomend: () => {
       const zoom = map.getZoom();
+      const center = map.getCenter();
+      sessionStorage.setItem("mapState_spain", JSON.stringify({ zoom, center }));
       const container = map.getContainer();
       container.setAttribute("data-zoom", zoom.toString());
+    },
+    moveend: () => {
+      const zoom = map.getZoom();
+      const center = map.getCenter();
+      sessionStorage.setItem("mapState_spain", JSON.stringify({ zoom, center }));
     },
   });
   useEffect(() => {

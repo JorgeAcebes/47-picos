@@ -315,7 +315,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
         // Let it stay open
       } else if (hash === "#lightbox") {
         setEditorPhoto(null);
-      } else if (hash === "#panel") {
+      } else if (hash.startsWith("#panel")) {
         setEditorPhoto(null);
         setLightboxPhoto(null);
       } else {
@@ -376,6 +376,32 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
     () => modeAscents.filter((a) => !a.is_wishlist),
     [modeAscents],
   );
+
+  // Restore selection on load
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.startsWith("#panel=")) {
+      const id = hash.substring(7);
+      if (id) {
+        let item = allItems.find((i) => i.id === id);
+        if (!item && !isPeaks) {
+           for (const [countryId, regions] of Object.entries(regionsByCountryIsoA2)) {
+             const region = regions.find((r) => r.id === id);
+             if (region) {
+               const country = countries.find((c) => c.iso_a2 === countryId);
+               if (country) {
+                 item = regionToItem(region, country);
+                 break;
+               }
+             }
+           }
+        }
+        if (item) {
+          setSelected(item);
+        }
+      }
+    }
+  }, [allItems, isPeaks]);
 
   // Contar únicas
   const achievedCount = useMemo(() => {
@@ -648,7 +674,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
 
   /* ── Handlers ─────────────────────────── */
   const openInformation = useCallback((item: SelectedItem) => {
-    window.location.hash = "panel";
+    window.location.hash = `panel=${item.id}`;
     setSelected(item);
     setRecordOpen(false);
     setNotice("");
@@ -727,7 +753,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
         setAuthOpen(true);
         return;
       }
-      window.location.hash = "panel";
+      window.location.hash = item ? `panel=${item.id}` : "panel";
       setRecordOpen(true);
       if (!item) {
         setClimbDate(null);
@@ -1155,7 +1181,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
   }
 
   function closePanel() {
-    if (window.location.hash === "#panel") {
+    if (window.location.hash.startsWith("#panel")) {
       window.history.back();
     } else {
       setSelected(null);
@@ -1177,7 +1203,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
 
     if (onSwitchMode) {
       onSwitchMode(target);
-      if (window.location.hash === "#panel") {
+      if (window.location.hash.startsWith("#panel")) {
         window.history.replaceState(null, "", window.location.pathname + window.location.search);
       }
     } else {
