@@ -17,7 +17,7 @@ type Profile = {
 
 type ConnectionStatus = 'pending' | 'accepted' | null;
 
-export function SocialTab() {
+export function SocialTab({ onNavigate }: { onNavigate?: (tab: string) => void }) {
   const [session, setSession] = useState<Session | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -315,12 +315,12 @@ export function SocialTab() {
   return (
     <main>
       <header className="topbar">
-        <Link className="brand" href={mapLink}>
+        <a className="brand" href={mapLink} onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate(mapLink); }}}>
           <img src="/icon.svg" alt="Logo" width={32} height={32} style={{ filter: "brightness(0)" }} />
-        </Link>
+        </a>
         <nav>
-          <Link href={mapLink}>Mapa</Link>
-          <Link href="/social" style={{ fontWeight: 'bold', position: 'relative' }}>
+          <a href={mapLink} onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate(mapLink); }}}>Mapa</a>
+          <a href="/social" style={{ fontWeight: 'bold', position: 'relative' }} onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("/social"); }}}>
             Social
             {hasPendingRequests ? (
               <span 
@@ -340,8 +340,8 @@ export function SocialTab() {
                 }} 
               />
             ) : null}
-          </Link>
-          <Link href="/ranking">Ranking</Link>
+          </a>
+          <a href="/ranking" onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("/ranking"); }}}>Ranking</a>
           {session ? (
             <button className="account-button" onClick={() => setProfileOpen(true)}>
               {myProfile?.avatar_url ? (

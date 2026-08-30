@@ -1,5 +1,5 @@
-import { SocialTab } from "@/components/social-tab";
+import { AppShell } from "@/components/app-shell";
 
 export default function SocialPage() {
-  return <SocialTab />;
+  return <AppShell initialTab="social" />;
 }

@@ -54,6 +54,7 @@ type Props = {
   mode: ChallengeMode;
   targetProfile?: TargetProfile;
   onSwitchMode?: (mode: ChallengeMode) => void;
+  onNavigate?: (tab: string) => void;
 };
 
 // Tipo unificado para item seleccionado
@@ -249,7 +250,7 @@ function IconLinkedin() {
   );
 }
 
-export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMode }: Props) {
+export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMode, onNavigate }: Props) {
   const router = useRouter();
   const [currentMode, setCurrentMode] = useState<ChallengeMode>(initialModeProp);
   const isPeaks = currentMode === "peaks";
@@ -1239,7 +1240,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
     <main className={isPeaks ? "" : "mode-countries"}>
       {/* ── Topbar ──────────────────────── */}
       <header className="topbar">
-        <a className="brand" href={isPeaks ? "#inicio" : "#inicio"}>
+        <a className="brand" href={isPeaks ? "#inicio" : "#inicio"} onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate(isPeaks ? "/picos" : "/"); }}}>
           <IconLogo className="brand-icon" />
           <span>
             {modeLabelShort} <b>{modeLabelBold}</b>
@@ -1252,15 +1253,15 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
         <nav>
           {isReadOnly ? (
             <>
-              <a href="/">Mapa</a>
+              <a href="/" onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("/"); }}}>Mapa</a>
             </>
           ) : (
             <>
-              <a href="#mapa">Mapa</a>
+              <a href="#mapa" onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate(isPeaks ? "/picos" : "/"); }}}>Mapa</a>
             </>
           )}
-          <a href="/social">Social</a>
-          <a href="/ranking">Ranking</a>
+          <a href="/social" onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("/social"); }}}>Social</a>
+          <a href="/ranking" onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("/ranking"); }}}>Ranking</a>
           {session ? (
             <button className="account-button" onClick={() => {
               window.location.hash = "panel";
