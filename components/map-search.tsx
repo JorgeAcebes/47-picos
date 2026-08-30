@@ -29,25 +29,7 @@ export function MapSearchControl({ items, onSelect, placeholder = "Buscar..." }:
   const inputRef = useRef<HTMLInputElement>(null);
   const searchRequestRef = useRef(0);
 
-  const scrollToLegend = (smooth = false) => {
-    if (window.innerWidth > 768) return;
-    const legend = document.querySelector(".map-legend-area") as HTMLElement;
-    if (!legend) return;
-    
-    // 15px scroll-margin-top equivalent
-    const targetY = legend.getBoundingClientRect().top + window.scrollY - 15;
-    
-    if (smooth) {
-      window.scrollTo({ top: targetY, behavior: "smooth" });
-    } else {
-      let count = 0;
-      const interval = setInterval(() => {
-        window.scrollTo({ top: targetY, behavior: "instant" });
-        count++;
-        if (count > 15) clearInterval(interval);
-      }, 20);
-    }
-  };
+
 
   useEffect(() => {
     if (divRef.current) {
@@ -130,8 +112,7 @@ export function MapSearchControl({ items, onSelect, placeholder = "Buscar..." }:
               e.stopPropagation(); 
               setExpanded(false); 
               setQuery(""); 
-              setResults([]); 
-              scrollToLegend(false);
+              setResults([]);
             } 
           }}
         >
@@ -154,11 +135,6 @@ export function MapSearchControl({ items, onSelect, placeholder = "Buscar..." }:
             placeholder={placeholder} 
             value={query}
             onChange={e => setQuery(e.target.value)}
-            onFocus={() => {
-              setTimeout(() => {
-                scrollToLegend(true);
-              }, 300);
-            }}
             style={{ border: "none", outline: "none", padding: "4px 8px", width: "100%", background: "transparent", fontSize: 14 }}
           />
         )}
@@ -198,7 +174,6 @@ export function MapSearchControl({ items, onSelect, placeholder = "Buscar..." }:
                 setExpanded(false);
                 setQuery("");
                 setResults([]);
-                scrollToLegend(false);
               }}
             >
               <div style={{ fontSize: 13, fontWeight: 500, color: "#333" }}>{item.name}</div>
