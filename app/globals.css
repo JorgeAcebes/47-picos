@@ -601,12 +601,14 @@ nav a:hover::after {
   border: 1px solid #8bb8ae;
   font-size: 10px;
   font-weight: 800;
+  padding-bottom: 2px;
 }
 
 .mode-countries .legend-pin {
   color: #5b3a8c;
   background: #eee8f0;
   border-color: #9b8ab8;
+  padding-bottom: 0;
 }
 
 .legend-wishlist {
@@ -626,6 +628,7 @@ nav a:hover::after {
   background: #5c9b7d;
   color: white;
   border-color: #245f52;
+  padding-bottom: 0;
 }
 
 .mode-countries .legend-done {
@@ -694,6 +697,7 @@ nav a:hover::after {
   font-weight: 800;
   box-shadow: 0 2px 5px rgba(33, 79, 68, 0.2);
   transition: transform 0.18s ease, box-shadow 0.18s ease;
+  padding-bottom: 2px;
 }
 
 .mode-countries .summit-pin {
@@ -701,6 +705,7 @@ nav a:hover::after {
   color: #5b3a8c;
   border-color: #9b8ab8;
   box-shadow: 0 2px 5px rgba(74, 40, 120, 0.2);
+  padding-bottom: 0;
 }
 
 .summit-pin:hover {
@@ -718,6 +723,7 @@ nav a:hover::after {
   border-color: #245f52 !important;
   font-size: 15px !important;
   font-weight: 700 !important;
+  padding-bottom: 0;
 }
 
 .mode-countries .summit-pin--done {
@@ -732,12 +738,14 @@ nav a:hover::after {
   font-size: 16px !important;
   font-weight: 700 !important;
   border-color: #d2a54b !important;
+  padding-bottom: 2px !important;
 }
 
 .mode-countries .summit-pin--wishlist {
   background: #ecd9a5 !important;
   color: #a67c29 !important;
   border-color: #d2a54b !important;
+  padding-bottom: 2px !important;
 }
 
 /* ── Dynamic map zoom scaling ──────────────── */

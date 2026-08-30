@@ -924,7 +924,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
     }
     setFiles([]);
     setSaving(false);
-    closePanel();
+    setRecordOpen(false);
     setNotice(
       isPeaks
         ? "Registro guardado. ¡Una provincia menos en el mapa!"
@@ -982,7 +982,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
 
     setAscents((previous) => previous.filter((a) => !(a.summit_id === selected.id && a.achieved_on === originalAchievedOn)));
     setSaving(false);
-    closePanel();
+    setRecordOpen(false);
     setNotice(
       isPeaks
         ? "Ascensión eliminada."
