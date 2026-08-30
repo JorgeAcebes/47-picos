@@ -28,6 +28,7 @@ export function MapSearchControl({ items, onSelect, placeholder = "Buscar..." }:
   const divRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const searchRequestRef = useRef(0);
+  const scrollYRef = useRef(0);
 
   useEffect(() => {
     if (divRef.current) {
@@ -113,11 +114,8 @@ export function MapSearchControl({ items, onSelect, placeholder = "Buscar..." }:
               setResults([]); 
               if (window.innerWidth <= 768) {
                 setTimeout(() => {
-                  const legend = document.querySelector(".map-legend-area");
-                  if (legend) {
-                    legend.scrollIntoView({ behavior: "smooth", block: "start" });
-                  }
-                }, 150);
+                  window.scrollTo({ top: scrollYRef.current, behavior: "instant" });
+                }, 100);
               }
             } 
           }}
@@ -148,6 +146,10 @@ export function MapSearchControl({ items, onSelect, placeholder = "Buscar..." }:
                   if (legend) {
                     legend.scrollIntoView({ behavior: "smooth", block: "start" });
                   }
+                  // Save the position after the smooth scroll is likely done
+                  setTimeout(() => {
+                    scrollYRef.current = window.scrollY;
+                  }, 500);
                 }, 300);
               }
             }}
@@ -192,11 +194,8 @@ export function MapSearchControl({ items, onSelect, placeholder = "Buscar..." }:
                 setResults([]);
                 if (window.innerWidth <= 768) {
                   setTimeout(() => {
-                    const legend = document.querySelector(".map-legend-area");
-                    if (legend) {
-                      legend.scrollIntoView({ behavior: "smooth", block: "start" });
-                    }
-                  }, 150);
+                    window.scrollTo({ top: scrollYRef.current, behavior: "instant" });
+                  }, 100);
                 }
               }}
             >
