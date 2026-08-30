@@ -111,6 +111,14 @@ export function MapSearchControl({ items, onSelect, placeholder = "Buscar..." }:
               setExpanded(false); 
               setQuery(""); 
               setResults([]); 
+              if (window.innerWidth <= 768) {
+                setTimeout(() => {
+                  const legend = document.querySelector(".map-legend-area");
+                  if (legend) {
+                    legend.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }
+                }, 150);
+              }
             } 
           }}
         >
@@ -182,6 +190,14 @@ export function MapSearchControl({ items, onSelect, placeholder = "Buscar..." }:
                 setExpanded(false);
                 setQuery("");
                 setResults([]);
+                if (window.innerWidth <= 768) {
+                  setTimeout(() => {
+                    const legend = document.querySelector(".map-legend-area");
+                    if (legend) {
+                      legend.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }
+                  }, 150);
+                }
               }}
             >
               <div style={{ fontSize: 13, fontWeight: 500, color: "#333" }}>{item.name}</div>
