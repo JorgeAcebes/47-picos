@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { peaks, type Peak } from "@/data/peaks";
 import { countries, type Country } from "@/data/countries";
@@ -309,6 +309,65 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
   const [expandedCountryId, setExpandedCountryId] = useState<string | null>(null);
   const [ascentsSortOrder, setAscentsSortOrder] = useState<"asc" | "desc">("asc");
   const [myAscents, setMyAscents] = useState<Ascent[]>([]);
+
+  const touchStartX = useRef<number | null>(null);
+
+  const currentPhotoGroup = useMemo(() => {
+    if (!lightboxPhoto || !selected) return [];
+    const registeredDates = new Set(ascents.filter(a => a.summit_id === selected.id && !a.is_wishlist).map(a => a.achieved_on));
+    const isRegistered = registeredDates.has(lightboxPhoto.taken_on);
+    
+    if (isRegistered) {
+      return photos.filter(p => p.summit_id === selected.id && p.taken_on === lightboxPhoto.taken_on);
+    } else {
+      return photos.filter(p => p.summit_id === selected.id && !registeredDates.has(p.taken_on));
+    }
+  }, [lightboxPhoto, selected, ascents, photos]);
+
+  const lightboxIndex = lightboxPhoto ? currentPhotoGroup.findIndex(p => p.id === lightboxPhoto.id) : -1;
+  const hasPrevPhoto = lightboxIndex > 0;
+  const hasNextPhoto = lightboxIndex !== -1 && lightboxIndex < currentPhotoGroup.length - 1;
+
+  const showPrevPhoto = useCallback(() => {
+    if (hasPrevPhoto) {
+      setLightboxPhoto(currentPhotoGroup[lightboxIndex - 1]);
+    }
+  }, [hasPrevPhoto, currentPhotoGroup, lightboxIndex]);
+
+  const showNextPhoto = useCallback(() => {
+    if (hasNextPhoto) {
+      setLightboxPhoto(currentPhotoGroup[lightboxIndex + 1]);
+    }
+  }, [hasNextPhoto, currentPhotoGroup, lightboxIndex]);
+
+  useEffect(() => {
+    if (!lightboxPhoto) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") showPrevPhoto();
+      else if (e.key === "ArrowRight") showNextPhoto();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [lightboxPhoto, showPrevPhoto, showNextPhoto]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.changedTouches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const distance = touchStartX.current - touchEndX;
+    
+    const minSwipeDistance = 50;
+    
+    if (distance > minSwipeDistance) {
+      showNextPhoto();
+    } else if (distance < -minSwipeDistance) {
+      showPrevPhoto();
+    }
+    touchStartX.current = null;
+  };
 
   useEffect(() => {
     if (session) {
@@ -2083,7 +2142,23 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
         <div
           className="lightbox-backdrop"
           onClick={() => window.history.back()}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
         >
+          {hasPrevPhoto && (
+            <button className="lightbox-nav lightbox-nav--prev" onClick={(e) => { e.stopPropagation(); showPrevPhoto(); }} aria-label="Foto anterior">
+              <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+            </button>
+          )}
+          {hasNextPhoto && (
+            <button className="lightbox-nav lightbox-nav--next" onClick={(e) => { e.stopPropagation(); showNextPhoto(); }} aria-label="Foto siguiente">
+              <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+          )}
           <button
             className="lightbox-close"
             onClick={(e) => {
@@ -2135,6 +2210,8 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
             </>
           )}
           <img
+            key={lightboxPhoto.id}
+            className="lightbox-image"
             src={lightboxPhoto.public_url}
             alt={`${isPeaks ? "Ascensión a" : "Visita a"} ${selected?.title}`}
             onClick={(e) => {
