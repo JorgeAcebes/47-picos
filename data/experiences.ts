@@ -16,6 +16,14 @@ export type ExperienceCategory = {
   experiences: Experience[];
 };
 
+export type CustomExperience = {
+  id: string;
+  user_id: string;
+  name: string;
+  icon_name: string;
+  created_at: string;
+};
+
 export const predefinedCategories: ExperienceCategory[] = [
   {
     id: "cat-astro-geo",

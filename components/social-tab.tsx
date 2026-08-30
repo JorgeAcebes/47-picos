@@ -17,7 +17,7 @@ type Profile = {
 
 type ConnectionStatus = 'pending' | 'accepted' | null;
 
-export function SocialTab({ onNavigate }: { onNavigate?: (tab: string) => void }) {
+export function SocialTab({ onNavigate, isActive }: { onNavigate?: (tab: string) => void, isActive?: boolean }) {
   const [session, setSession] = useState<Session | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);

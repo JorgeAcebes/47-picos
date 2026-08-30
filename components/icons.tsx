@@ -1,5 +1,5 @@
 import React from "react";
-import { Telescope, PawPrint, Plane, Rocket, Star, Camera, Heart, User } from "lucide-react";
+import { Telescope, PawPrint, Plane, Rocket, Star, Camera, Heart, User, Tent, Mountain, Compass, Building } from "lucide-react";
 
 export function getIconComponent(name: string) {
   switch (name) {
@@ -10,6 +10,10 @@ export function getIconComponent(name: string) {
     case "camera": return <Camera size={14} />;
     case "heart": return <Heart size={14} />;
     case "user": return <User size={14} />;
+    case "tent": return <Tent size={14} />;
+    case "mountain": return <Mountain size={14} />;
+    case "compass": return <Compass size={14} />;
+    case "building": return <Building size={14} />;
     default: return <Star size={14} />;
   }
 }

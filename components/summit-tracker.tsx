@@ -301,7 +301,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
   const [notes, setNotes] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [listFilter, setListFilter] = useState<"all" | "done" | "pending" | "wishlist">("all");
+  const [listFilter, setListFilter] = useState<string>("all");
   const [selectedPhotoFiles, setSelectedPhotoFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
@@ -316,6 +316,10 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
 
   // Experience features
   const [experienceRecords, setExperienceRecords] = useState<ExperienceRecord[]>([]);
+  const [customExperiences, setCustomExperiences] = useState<any[]>([]); // We use any[] for now or import CustomExperience
+  const [creatingCustomExp, setCreatingCustomExp] = useState(false);
+  const [customExpName, setCustomExpName] = useState("");
+  const [customExpIcon, setCustomExpIcon] = useState("star");
   const [selectingLocationForExp, setSelectingLocationForExp] = useState<string | null>(null);
   const [expSelectorOpen, setExpSelectorOpen] = useState(false);
   const [selectedLatLng, setSelectedLatLng] = useState<{lat: number, lng: number} | null>(null);
@@ -466,10 +470,33 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
 
   // ── Mode config ────────────────────────────
   const isExp = experiencesMode && !isPeaks;
+  const dynamicCategories = useMemo(() => {
+    if (customExperiences.length === 0) return predefinedCategories;
+    
+    // Group custom experiences by icon
+    const customCats = customExperiences.reduce((acc: ExperienceCategory[], ce) => {
+      const icon = ce.icon_name || "star";
+      let cat = acc.find(c => c.iconName === icon);
+      if (!cat) {
+        cat = {
+          id: `cat-custom-${icon}`,
+          name: `Personalizadas (${icon})`,
+          iconName: icon,
+          experiences: []
+        };
+        acc.push(cat);
+      }
+      cat.experiences.push({ id: ce.id, name: ce.name });
+      return acc;
+    }, []);
+
+    return [...predefinedCategories, ...customCats];
+  }, [customExperiences]);
+
   const allItems = useMemo(() => isPeaks
     ? peaks.map(peakToItem)
     : isExp
-      ? predefinedCategories.flatMap(cat => 
+      ? dynamicCategories.flatMap(cat => 
           cat.experiences.map(exp => ({
             id: exp.id,
             title: exp.name,
@@ -662,7 +689,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
         return;
       }
       const targetId = targetProfile ? targetProfile.id : session.user.id;
-      const [ascentResult, photoResult, expResult] = await Promise.all([
+      const [ascentResult, photoResult, expResult, customExpResult] = await Promise.all([
         supabase!
           .from("ascents")
           .select("summit_id, achieved_on, end_date, notes, is_wishlist")
@@ -676,11 +703,16 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
         supabase!
           .from("experience_records")
           .select("*")
+          .eq("user_id", targetId),
+        supabase!
+          .from("custom_experiences")
+          .select("*")
           .eq("user_id", targetId)
       ]);
       if (ascentResult.data) setAscents(ascentResult.data as Ascent[]);
       if (photoResult.data) setPhotos(photoResult.data as SummitPhoto[]);
       if (expResult.data) setExperienceRecords(expResult.data as ExperienceRecord[]);
+      if (customExpResult.data) setCustomExperiences(customExpResult.data);
 
       if (!isReadOnly && !profileOpen) {
         // Ensure we have current user profile if session exists
@@ -910,11 +942,11 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
     if (!selectingLocationForExp) return;
     
     const [expId, subItemId] = selectingLocationForExp.split("::");
-    let category = predefinedCategories.find(c => c.experiences.some(e => e.id === expId));
+    let category = dynamicCategories.find(c => c.experiences.some(e => e.id === expId));
     let exp = category?.experiences.find(e => e.id === expId);
     
     if (exp && category) {
-      const title = subItemId && exp.multiItem ? `${exp.name} - ${exp.multiItem.items.find(i => i.id === subItemId)?.name}` : exp.name;
+      const title = subItemId && exp.subItems ? `${exp.name} - ${exp.subItems.find((i: any) => i.id === subItemId)?.name}` : exp.name;
       const item: SelectedItem = {
         id: expId,
         sub_item_id: subItemId,
@@ -933,10 +965,10 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
   }
 
   function handleExperienceClick(record: ExperienceRecord) {
-    let category = predefinedCategories.find(c => c.experiences.some(e => e.id === record.experience_id));
+    let category = dynamicCategories.find(c => c.experiences.some(e => e.id === record.experience_id));
     let exp = category?.experiences.find(e => e.id === record.experience_id);
     if (exp && category) {
-      const title = record.sub_item_id && exp.multiItem ? `${exp.name} - ${exp.multiItem.items.find(i => i.id === record.sub_item_id)?.name}` : exp.name;
+      const title = record.sub_item_id && exp.subItems ? `${exp.name} - ${exp.subItems.find((i: any) => i.id === record.sub_item_id)?.name}` : exp.name;
       const item: SelectedItem = {
         id: record.experience_id,
         sub_item_id: record.sub_item_id,
@@ -1285,6 +1317,29 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
           ? "Experiencia eliminada."
           : "País eliminado de tu lista."
     );
+  }
+
+  async function handleCreateCustomExperience() {
+    if (!customExpName.trim()) return;
+    if (!supabase || !session) return;
+    setSaving(true);
+    
+    // In local UI we just generate a random UUID so we can optimistic update, or let DB do it
+    const newExp = {
+      user_id: session.user.id,
+      name: customExpName.trim(),
+      icon_name: customExpIcon
+    };
+    
+    const { data, error } = await supabase.from("custom_experiences").insert(newExp).select().single();
+    if (error) {
+      setNotice(error.message);
+    } else if (data) {
+      setCustomExperiences(prev => [...prev, data]);
+      setCreatingCustomExp(false);
+      setCustomExpName("");
+    }
+    setSaving(false);
   }
 
   function deletePhoto(photo: SummitPhoto) {
@@ -1791,6 +1846,30 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
               onMapClick={handleMapClickForExp}
               onExperienceClick={handleExperienceClick}
             />
+            {experiencesMode && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 10,
+                  left: 54, // a la derecha de los controles de zoom
+                  zIndex: 400, // Leaflet controls z-index is around 400-1000
+                  background: 'var(--background)',
+                  width: 34,
+                  height: 34,
+                  borderRadius: 4, // border radius of leaflet controls
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  boxShadow: '0 1px 5px rgba(0,0,0,0.65)',
+                  border: '2px solid rgba(0,0,0,0.2)'
+                }}
+                onClick={() => setExpSelectorOpen(true)}
+                title="Añadir experiencia en el mapa"
+              >
+                <IconStar style={{ width: 16, height: 16, color: 'var(--foreground)' }} />
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -1832,7 +1911,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
           </button>
           
           {isExp ? (
-            predefinedCategories.map(cat => (
+            dynamicCategories.map(cat => (
               <button
                 key={cat.id}
                 className={`list-filter-pill${listFilter === cat.name ? " list-filter-pill--active" : ""}`}
@@ -1982,12 +2061,13 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
             <IconClose />
           </button>
           <span className="eyebrow" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            {isExp && selected.label && selected.detail && getIconComponent(selected.label) && (
+            {isExp && selected.subtitle === "Experiencia" && selected.label && selected.detail && getIconComponent(selected.label) && (
               <span style={{ display: 'flex', width: 14, height: 14, alignItems: 'center' }}>
                 {getIconComponent(selected.label)}
               </span>
             )}
-            {isExp && selected.detail ? selected.detail.toUpperCase() : selected.label.toUpperCase()}
+            {isExp && selected.detail && selected.subtitle === "Experiencia" ? selected.detail.toUpperCase() : 
+            selected.label ? selected.label.toUpperCase() : ""}
           </span>
           <h2>{selected.title}</h2>
           {isPeaks ? (
@@ -2616,7 +2696,17 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
               <button className="icon-button" onClick={() => setExpSelectorOpen(false)}><IconClose /></button>
             </div>
             <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-              {predefinedCategories.map(cat => (
+              <button 
+                className="button" 
+                style={{ width: '100%', marginBottom: 16 }}
+                onClick={() => {
+                  setExpSelectorOpen(false);
+                  setCreatingCustomExp(true);
+                }}
+              >
+                + Crear Experiencia Personalizada
+              </button>
+              {dynamicCategories.map(cat => (
                 <div key={cat.id} style={{ marginBottom: 16 }}>
                   <h4 style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 8px 0', color: 'var(--foreground)' }}>
                      {cat.name}
@@ -2624,7 +2714,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {cat.experiences.map(exp => (
                       <div key={exp.id}>
-                        {!exp.multiItem ? (
+                        {!exp.subItems ? (
                           <button 
                             className="button button--outline" 
                             style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left', padding: '8px 12px' }}
@@ -2639,7 +2729,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                           <div style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: '8px' }}>
                             <div style={{ fontWeight: 500, marginBottom: 8 }}>{exp.name}</div>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                              {exp.multiItem.items.map(item => (
+                              {exp.subItems.map((item: any) => (
                                 <button
                                   key={item.id}
                                   className="button button--quiet button--small"
@@ -2664,6 +2754,52 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
           </div>
         </div>
       )}
+
+      {creatingCustomExp && (
+        <div className="modal-overlay" onClick={() => setCreatingCustomExp(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Crear Experiencia Personalizada</h3>
+              <button className="icon-button" onClick={() => setCreatingCustomExp(false)}><IconClose /></button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Nombre de la Experiencia</label>
+                <input 
+                  type="text" 
+                  value={customExpName} 
+                  onChange={e => setCustomExpName(e.target.value)}
+                  placeholder="Ej. Bucear con tiburones..."
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--foreground)' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Icono</label>
+                <select 
+                  value={customExpIcon}
+                  onChange={e => setCustomExpIcon(e.target.value)}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--foreground)' }}
+                >
+                  <option value="star">Estrella (General)</option>
+                  <option value="tent">Tienda (Naturaleza)</option>
+                  <option value="mountain">Montaña (Alpinismo)</option>
+                  <option value="compass">Brújula (Exploración)</option>
+                  <option value="paw">Huella (Fauna)</option>
+                  <option value="camera">Cámara (Fotografía)</option>
+                  <option value="building">Edificio (Cultura)</option>
+                </select>
+              </div>
+            </div>
+            <div className="modal-footer" style={{ marginTop: 24, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="button button--outline" onClick={() => setCreatingCustomExp(false)}>Cancelar</button>
+              <button className="button" disabled={saving || !customExpName.trim()} onClick={handleCreateCustomExperience}>
+                {saving ? "Creando..." : "Crear"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </main>
   );
 }
