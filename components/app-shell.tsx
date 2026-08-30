@@ -35,7 +35,7 @@ export function AppShell({
     
     setCurrentTab(tab);
     
-    if (window.location.pathname !== targetUrl) {
+    if (window.location.pathname !== targetUrl || window.location.hash) {
       window.history.pushState(null, "", targetUrl);
     }
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -53,11 +53,11 @@ export function AppShell({
   return (
     <>
       <div style={{ display: currentTab === "map" ? "block" : "none", animation: "fadeIn 0.3s" }}>
-        <SummitTracker mode={initialMapMode} onNavigate={handleNavigate} />
+        <SummitTracker mode={initialMapMode} onNavigate={handleNavigate} isActive={currentTab === "map"} />
       </div>
 
       <div style={{ display: currentTab === "social" ? "block" : "none", animation: "fadeIn 0.3s" }}>
-        <SocialTab onNavigate={handleNavigate} />
+        <SocialTab onNavigate={handleNavigate} isActive={currentTab === "social"} />
       </div>
 
       <div style={{ display: currentTab === "ranking" ? "block" : "none", animation: "fadeIn 0.3s" }}>

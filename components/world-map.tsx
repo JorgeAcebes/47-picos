@@ -12,6 +12,7 @@ import {
 import type { Path } from "leaflet";
 import type { FeatureCollection, Position } from "geojson";
 import { useCallback, useEffect, useState, useMemo, useRef } from "react";
+import * as ReactDOMServer from "react-dom/server";
 import { feature } from "topojson-client";
 import type { Topology } from "topojson-specification";
 import { countries, resolveCountryFromFeature, type Country } from "@/data/countries";
@@ -103,6 +104,11 @@ type Props = {
   completedRegions?: Set<string>;
   onRegionInformation?: (regionId: string, name: string, isoA2: string) => void;
   activeId?: string;
+  experiencesMode?: boolean;
+  experienceRecords?: any[];
+  selectingLocation?: boolean;
+  onMapClick?: (lat: number, lng: number) => void;
+  onExperienceClick?: (record: any) => void;
 };
 
 function FitWorld() {
@@ -141,8 +147,26 @@ function FitWorld() {
   return null;
 }
 
-
-
+function MapClickListener({ onMapClick, selectingLocation }: { onMapClick?: (lat: number, lng: number) => void, selectingLocation?: boolean }) {
+  const map = useMapEvents({
+    click(e) {
+      if (selectingLocation && onMapClick) {
+        onMapClick(e.latlng.lat, e.latlng.lng);
+      }
+    }
+  });
+  
+  useEffect(() => {
+    const container = map.getContainer();
+    if (selectingLocation) {
+      container.style.cursor = 'crosshair';
+    } else {
+      container.style.cursor = '';
+    }
+  }, [selectingLocation, map]);
+  
+  return null;
+}
 function MapZoomListener() {
   const map = useMapEvents({
     zoomend: () => {
@@ -193,7 +217,9 @@ function getLargestPolygonBounds(feature: any) {
   return L.geoJSON(feature).getBounds();
 }
 
-export function WorldMap({ completed, wishlist, onInformation, onRegionInformation, onComplete, diffMode, diffOnlyViewer, diffOnlyTarget, diffBoth, regionsMode, completedRegions, activeId }: Props) {
+import { getIconComponent } from "./icons";
+
+export function WorldMap({ completed, wishlist, onInformation, onRegionInformation, onComplete, diffMode, diffOnlyViewer, diffOnlyTarget, diffBoth, regionsMode, completedRegions, activeId, experiencesMode, experienceRecords, selectingLocation, onMapClick, onExperienceClick }: Props) {
   const [geo, setGeo] = useState<FeatureCollection | null>(_worldGeoCache);
   const [regionsGeo, setRegionsGeo] = useState<FeatureCollection | null>(_regionsGeoCache);
   const [searchedId, setSearchedId] = useState<string | null>(null);
@@ -549,9 +575,11 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
   // ── Memoized markers ──
   const markers = useMemo(
     () => {
-      if (regionsMode) return null; // No icons in regions mode
+      const showCountryMarkers = !regionsMode || diffMode;
 
-      return countriesWithCoords.map((c) => (
+      let cMarkers: React.ReactNode[] = [];
+      if (showCountryMarkers) {
+        cMarkers = countriesWithCoords.map((c) => (
         <Marker
           key={`${c.id}-${diffMode ? "d" : "n"}`}
           position={c.coordinates!}
@@ -565,8 +593,40 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
           }}
         />
       ));
+      }
+
+      if (experiencesMode && experienceRecords) {
+        const expMarkers = experienceRecords.map((r, i) => {
+          const iconHtml = ReactDOMServer.renderToString(
+            <span className="summit-pin summit-pin--experience summit-pin--done">
+              {getIconComponent(r.icon_name)}
+            </span>
+          );
+          
+          const expIcon = L.divIcon({
+            className: "",
+            html: iconHtml,
+            iconSize: [28, 28],
+            iconAnchor: [14, 14],
+          });
+          
+          return (
+            <Marker
+              key={`exp-${r.id || i}`}
+              position={[r.lat, r.lng]}
+              icon={expIcon}
+              eventHandlers={{
+                click: () => onExperienceClick && onExperienceClick(r),
+              }}
+            />
+          );
+        });
+        return [...cMarkers, ...expMarkers];
+      }
+
+      return cMarkers;
     },
-    [completed, wishlist, diffMode, regionsMode, diffOnlyViewer, diffOnlyTarget, diffBoth, icons, onInformation],
+    [completed, wishlist, diffMode, regionsMode, experiencesMode, experienceRecords, diffOnlyViewer, diffOnlyTarget, diffBoth, icons, onInformation, onExperienceClick],
   );
 
   return (
@@ -585,6 +645,7 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
     >
       <FitWorld />
       <MapZoomListener />
+      <MapClickListener onMapClick={onMapClick} selectingLocation={selectingLocation} />
       <SweepOverlay searchedId={searchedId} layerRefs={layerRefs} regionLayerRefs={regionLayerRefs} />
       <MapSearchControl 
         items={searchItems} 

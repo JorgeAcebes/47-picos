@@ -35,6 +35,182 @@
   --muted: #6b5f7a;
 }
 
+/* ── Experiences mode dark tokens ──────── */
+.mode-experiences {
+  --ink: #ffffff;
+  --pine: #cba6f7;
+  --sage: #a6adc8;
+  --paper: #11111b;
+  --sand: #181825;
+  --line: #313244;
+  --muted: #a6adc8;
+}
+
+.mode-experiences .topbar {
+  background: rgba(17, 17, 27, 0.94);
+}
+
+.mode-experiences .hero {
+  background-color: #181825;
+}
+
+.mode-experiences .challenge-summary {
+  background: #09090f;
+  border-top: 1px solid #181825;
+  border-bottom: 1px solid #181825;
+}
+
+.mode-experiences .peak-list-item {
+  background: #1e1e2e;
+}
+
+.mode-experiences .peak-list-item:hover {
+  background: #313244;
+  border-color: var(--pine);
+}
+
+.mode-experiences .peak-list-item--done {
+  background: #2a2a3e;
+  border-color: var(--pine);
+}
+
+.mode-experiences .peak-list-item--done .item-check {
+  background: var(--pine);
+  border-color: var(--pine);
+}
+
+.mode-experiences .record-dialog,
+.mode-experiences .info-panel {
+  background: #11111b;
+  color: #f0f0f0;
+}
+.mode-experiences .record-dialog::before {
+  background: linear-gradient(to bottom, #181825 0%, transparent 100%);
+}
+.mode-experiences .record-dialog>p,
+.mode-experiences .info-panel>p {
+  color: #bac2de;
+}
+.mode-experiences .info-message,
+.mode-experiences .pending-card {
+  background: rgba(255, 255, 255, 0.05);
+  color: #bac2de;
+  border-left-color: var(--pine);
+}
+
+.mode-experiences .legend-pin {
+  background: #181825;
+  color: var(--muted);
+  border-color: rgba(186, 194, 222, 0.3);
+}
+
+.mode-experiences .legend-done,
+.mode-experiences .summit-pin--done {
+  background: var(--pine) !important;
+  color: #11111b !important;
+  border-color: transparent !important;
+}
+
+.mode-experiences .summit-pin {
+  background: #181825;
+  color: var(--muted);
+  border-color: rgba(186, 194, 222, 0.3);
+}
+
+.mode-experiences .legend-diff-dot--only-me,
+.mode-experiences .summit-pin--diff-only-me {
+  background: var(--pine);
+  border-color: rgba(149, 112, 199, 0.3);
+}
+
+.mode-experiences .legend-diff-dot--both,
+.mode-experiences .summit-pin--diff-both {
+  background: rgba(149, 112, 199, 0.4);
+  border-color: rgba(149, 112, 199, 0.2);
+}
+
+.brand-icon .logo-mountain-2 {
+  mix-blend-mode: multiply;
+}
+
+.mode-experiences .brand-icon .logo-mountain-2 {
+  mix-blend-mode: screen;
+}
+
+.mode-experiences .brand-icon {
+  color: var(--pine);
+}
+
+.mode-experiences .hero-stat-mobile {
+  background: #181825;
+  border-color: #313244;
+}
+.mode-experiences .hero-stat-mobile__total,
+.mode-experiences .hero-stat-mobile__label,
+.mode-experiences .hero-stat-mobile__sep {
+  color: #a6adc8;
+}
+
+.mode-experiences .mode-tab {
+  color: #a6adc8;
+}
+.mode-experiences .mode-tab:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.mode-experiences .mode-tab--active {
+  background: #313244;
+  color: #f0f0f0;
+}
+
+.mode-experiences .diff-toggle {
+  background: #11111b;
+  border-color: #313244;
+  color: #a6adc8;
+}
+.mode-experiences .diff-toggle:hover {
+  background: #1e1e2e;
+  border-color: var(--pine);
+  color: #f0f0f0;
+}
+.mode-experiences .diff-toggle--active {
+  background: #313244;
+  color: #f0f0f0;
+  border-color: var(--pine);
+}
+.mode-experiences .diff-toggle--active:hover {
+  background: #45475a;
+  border-color: var(--pine);
+}
+
+.mode-experiences .list-filter-pill {
+  background: #11111b;
+  border-color: #313244;
+  color: #a6adc8;
+}
+.mode-experiences .list-filter-pill:hover {
+  background: #1e1e2e;
+  border-color: var(--pine);
+  color: #f0f0f0;
+}
+.mode-experiences .list-filter-pill--active {
+  background: var(--pine);
+  border-color: var(--pine);
+  color: #11111b;
+}
+.mode-experiences .list-filter-pill--active:hover {
+  background: #b48ead;
+  border-color: #b48ead;
+}
+
+.mode-experiences .search-input-container input {
+  background: #11111b;
+  border-color: #313244;
+  color: #f0f0f0;
+}
+.mode-experiences .search-input-container input:focus {
+  border-color: var(--pine);
+  background: #1e1e2e;
+}
 
 /* ── Reset ──────────────────────────────── */
 *,
@@ -55,6 +231,7 @@ body {
   font-family: "DM Sans", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 1.5s cubic-bezier(0.4, 0, 0.2, 1), color 1.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 button,
@@ -449,7 +626,7 @@ nav a:hover::after {
   grid-template-columns: minmax(0, 1fr) 260px;
   gap: 55px;
   padding: 67px clamp(22px, 11vw, 168px) 60px;
-  background: linear-gradient(135deg, #f1ede1 0%, #f8f6ef 55%, #e8eee6 100%);
+  background-color: #f1ede1;
   overflow: hidden;
   position: relative;
 }
@@ -642,8 +819,9 @@ nav a:hover::after {
   font-style: normal;
   width: 20px;
   height: 20px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 50%;
   color: #5c9b7d;
   background: #e7f1ea;
@@ -1502,6 +1680,19 @@ nav a:hover::after {
   overflow: hidden;
 }
 
+.auth-dialog {
+  --ink: #18342d;
+  --pine: #245f52;
+  --sage: #5c9b7d;
+  --paper: #faf8f1;
+  --sand: #f0eadc;
+  --line: #dce4da;
+  --muted: #62716b;
+  --amber: #d2a54b;
+  --amber-bg: #fff8e7;
+  color: var(--ink);
+}
+
 /* Header background for record dialog */
 .record-dialog::before {
   content: '';
@@ -2335,7 +2526,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 }
 
 .mode-countries .hero {
-  background: linear-gradient(135deg, #ede6f3 0%, #f5f2f9 55%, #e6e0ed 100%);
+  background-color: #ede6f3;
 }
 
 .mode-countries .hero h1 em {
@@ -2850,6 +3041,13 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   align-items: center;
   gap: 10px;
   margin-left: auto;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  max-width: 100%;
+}
+.diff-toggle-wrap::-webkit-scrollbar {
+  display: none;
 }
 
 .diff-toggle {
@@ -2864,8 +3062,9 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   padding: 6px 13px;
   border-radius: 20px;
   cursor: pointer;
-  transition: all var(--transition);
+  transition: all 0.2s ease;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .diff-toggle:hover {
@@ -3082,6 +3281,8 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   .map-legend-area>.diff-toggle-wrap {
     order: 1;
     margin-left: 0;
+    width: 100%;
+    max-width: calc(100vw - 32px);
   }
 
   .diff-legend {

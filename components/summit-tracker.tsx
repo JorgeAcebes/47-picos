@@ -6,6 +6,7 @@ import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "
 import type { Session } from "@supabase/supabase-js";
 import { peaks, type Peak } from "@/data/peaks";
 import { countries, type Country } from "@/data/countries";
+import { predefinedCategories } from "@/data/experiences";
 import { regionsByCountryIsoA2, type Region } from "@/data/regions";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { AuthDialog } from "./auth-dialog";
@@ -13,8 +14,7 @@ import { ProfileSettings } from "./profile-settings";
 import { InstallPrompt } from "./install-prompt";
 import { ConfirmModal } from "./confirm-modal";
 import PhotoEditor from "./photo-editor";
-
-
+import { getIconComponent } from "./icons";
 
 const SpainMap = dynamic(
   () => import("./spain-map").then((module) => module.SpainMap),
@@ -33,14 +33,37 @@ const WorldMap = dynamic(
 );
 
 type Ascent = { summit_id: string; achieved_on: string; end_date?: string | null; notes: string | null; is_wishlist: boolean };
-type SummitPhoto = {
+export type SelectedItem = {
+  id: string;
+  sub_item_id?: string;
+  title: string;
+  subtitle: string;
+  label: string;
+  detail: string;
+  note: string;
+};
+
+export type SummitPhoto = {
   id: string;
   summit_id: string;
   public_url: string;
   taken_on: string;
-  caption?: string | null;
+  caption: string | null;
   created_at: string;
   storage_path: string;
+};
+
+export type ExperienceRecord = {
+  id: string;
+  user_id: string;
+  experience_id: string;
+  sub_item_id?: string;
+  lat: number;
+  lng: number;
+  achieved_on: string;
+  notes?: string;
+  is_wishlist: boolean;
+  created_at: string;
 };
 
 type ChallengeMode = "peaks" | "countries";
@@ -55,16 +78,7 @@ type Props = {
   targetProfile?: TargetProfile;
   onSwitchMode?: (mode: ChallengeMode) => void;
   onNavigate?: (tab: string) => void;
-};
-
-// Tipo unificado para item seleccionado
-type SelectedItem = {
-  id: string;
-  label: string;       // Provincia o Nombre del país
-  title: string;       // Nombre del pico o del país
-  subtitle: string;    // "2428 m" o "Capital: Madrid"
-  detail: string;      // Sierra o Continente
-  note: string;        // Nota o texto complementario
+  isActive?: boolean;
 };
 
 function peakToItem(peak: Peak): SelectedItem {
@@ -122,8 +136,8 @@ function formatShortDate(date: string) {
 function IconLogo({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12 52 L36 12 L48 32.75 Z" fill="url(#logoGradGreen)" />
-      <path d="M24 60 L44 26 L60 52 Z" fill="url(#logoGradPurple)" style={{ mixBlendMode: 'multiply' }} />
+      <path className="logo-mountain-1" d="M12 52 L36 12 L48 32.75 Z" fill="url(#logoGradGreen)" />
+      <path className="logo-mountain-2" d="M24 60 L44 26 L60 52 Z" fill="url(#logoGradPurple)" />
       <defs>
         <linearGradient id="logoGradGreen" x1="12" y1="12" x2="48" y2="52">
           <stop stopColor="#5c9b7d" />
@@ -250,7 +264,7 @@ function IconLinkedin() {
   );
 }
 
-export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMode, onNavigate }: Props) {
+export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMode, onNavigate, isActive = true }: Props) {
   const router = useRouter();
   const [currentMode, setCurrentMode] = useState<ChallengeMode>(initialModeProp);
   const isPeaks = currentMode === "peaks";
@@ -298,15 +312,41 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
 
   const [lightboxNewCaption, setLightboxNewCaption] = useState("");
   const [lightboxNewDate, setLightboxNewDate] = useState<string | null>(null);
-
-  // Selección múltiple estilo Google Photos
   const [selectedPhotosForEdit, setSelectedPhotosForEdit] = useState<string[]>([]);
+
+  // Experience features
+  const [experienceRecords, setExperienceRecords] = useState<ExperienceRecord[]>([]);
+  const [selectingLocationForExp, setSelectingLocationForExp] = useState<string | null>(null);
+  const [expSelectorOpen, setExpSelectorOpen] = useState(false);
+  const [selectedLatLng, setSelectedLatLng] = useState<{lat: number, lng: number} | null>(null);
+  const [editingExpRecordId, setEditingExpRecordId] = useState<string | null>(null);
 
   const [assignToRecordModalOpen, setAssignToRecordModalOpen] = useState(false);
   const [editorPhoto, setEditorPhoto] = useState<SummitPhoto | null>(null);
   const [diffMode, setDiffMode] = useState(false);
   const [regionsMode, setRegionsMode] = useState(false);
   const [experiencesMode, setExperiencesMode] = useState(false);
+
+  useEffect(() => {
+    if (!isReadOnly) {
+      const savedExp = localStorage.getItem("myExperiencesMode");
+      if (savedExp === "true") setExperiencesMode(true);
+      const savedReg = localStorage.getItem("myRegionsMode");
+      if (savedReg === "true") setRegionsMode(true);
+    }
+  }, [isReadOnly]);
+
+  useEffect(() => {
+    if (!isReadOnly) {
+      localStorage.setItem("myExperiencesMode", experiencesMode.toString());
+    }
+  }, [experiencesMode, isReadOnly]);
+
+  useEffect(() => {
+    if (!isReadOnly) {
+      localStorage.setItem("myRegionsMode", regionsMode.toString());
+    }
+  }, [regionsMode, isReadOnly]);
   const [expandedCountryId, setExpandedCountryId] = useState<string | null>(null);
   const [ascentsSortOrder, setAscentsSortOrder] = useState<"asc" | "desc">("asc");
   const [myAscents, setMyAscents] = useState<Ascent[]>([]);
@@ -399,31 +439,73 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
       }
     };
     window.addEventListener("hashchange", handleHashChange);
-    return () => window.removeEventListener("hashchange", handleHashChange);
+    window.addEventListener("popstate", handleHashChange);
+    return () => {
+      window.removeEventListener("hashchange", handleHashChange);
+      window.removeEventListener("popstate", handleHashChange);
+    };
   }, []);
 
+  useEffect(() => {
+    if (!isActive) {
+      document.body.classList.remove("mode-experiences");
+      document.body.classList.remove("mode-countries");
+      return;
+    }
+    if (experiencesMode && !isPeaks) {
+      document.body.classList.add("mode-experiences");
+      document.body.classList.remove("mode-countries");
+    } else if (isPeaks) {
+      document.body.classList.remove("mode-experiences");
+      document.body.classList.remove("mode-countries");
+    } else {
+      document.body.classList.add("mode-countries");
+      document.body.classList.remove("mode-experiences");
+    }
+  }, [experiencesMode, isPeaks, isActive]);
+
   // ── Mode config ────────────────────────────
+  const isExp = experiencesMode && !isPeaks;
   const allItems = useMemo(() => isPeaks
     ? peaks.map(peakToItem)
-    : countries.map(countryToItem), [isPeaks]);
+    : isExp
+      ? predefinedCategories.flatMap(cat => 
+          cat.experiences.map(exp => ({
+            id: exp.id,
+            title: exp.name,
+            subtitle: "",
+            label: cat.iconName,
+            detail: cat.name,
+            note: ""
+          }))
+        )
+      : countries.map(countryToItem), [isPeaks, isExp]);
+  
   const totalCount = isPeaks ? 47 : allItems.length;
   const modeLabel = isPeaks ? "47 PICOS" : "196 PAÍSES";
   const modeLabelShort = isPeaks ? "47" : "196";
   const modeLabelBold = isPeaks ? "PICOS" : "PAÍSES";
-  const modeUnit = isPeaks ? "cimas conquistadas" : "países visitados";
-  const modeUnitSingular = isPeaks ? "cima" : "país";
-  const modeHeroEyebrow = isPeaks ? "UN RETO, 47 PICOS" : "UN RETO, 196 PAÍSES";
+  const modeUnit = isPeaks ? "cimas conquistadas" : isExp ? "experiencias registradas" : "países visitados";
+  const modeUnitSingular = isPeaks ? "cima" : isExp ? "experiencia" : "país";
+  const modeHeroEyebrow = isPeaks ? "UN RETO, 47 PICOS" : isExp ? "UN RETO, EXPERIENCIAS GLOBALES" : "UN RETO, 196 PAÍSES";
   const modeHeroSubtitle = isPeaks
     ? "El mapa para conquistar el techo de cada provincia española."
-    : "El mapa para registrar cada país del mundo que has visitado.";
+    : isExp 
+      ? "El mapa para registrar todas las experiencias de tu vida."
+      : "El mapa para registrar cada país del mundo que has visitado.";
   const modeChallengeTitle = isPeaks
     ? <>Un país por descubrir,<br />una cima cada vez.</>
-    : <>Un mundo por explorar,<br />un país cada vez.</>;
-  const modeListEyebrow = isPeaks ? "52 Territorios - 47 Picos" : "196 Países del mundo";
-  const modeListTitle = isPeaks ? "Todas las cumbres" : "Todos los países";
+    : isExp 
+      ? <>Un mundo por explorar,<br />una experiencia cada vez.</>
+      : <>Un mundo por explorar,<br />un país cada vez.</>;
+  
+  const modeListEyebrow = isPeaks ? "52 Territorios - 47 Picos" : isExp ? `${totalCount} Experiencias` : "196 Países del mundo";
+  const modeListTitle = isPeaks ? "Todas las cumbres" : isExp ? (isReadOnly ? "Todas sus experiencias" : "Todas tus experiencias") : "Todos los países";
   const modeListSubtitle = isPeaks
     ? "Ordenadas por altitud, de mayor a menor."
-    : "Ordenados alfabéticamente.";
+    : isExp 
+      ? "Agrupadas por categoría."
+      : "Ordenados alfabéticamente.";
 
   // IDs válidos para este modo (para filtrar ascents de Supabase)
   const validIds = useMemo(
@@ -580,7 +662,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
         return;
       }
       const targetId = targetProfile ? targetProfile.id : session.user.id;
-      const [ascentResult, photoResult] = await Promise.all([
+      const [ascentResult, photoResult, expResult] = await Promise.all([
         supabase!
           .from("ascents")
           .select("summit_id, achieved_on, end_date, notes, is_wishlist")
@@ -591,9 +673,14 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
           .select("id, summit_id, public_url, taken_on, caption, created_at, storage_path")
           .eq("user_id", targetId)
           .order("taken_on", { ascending: false }),
+        supabase!
+          .from("experience_records")
+          .select("*")
+          .eq("user_id", targetId)
       ]);
       if (ascentResult.data) setAscents(ascentResult.data as Ascent[]);
       if (photoResult.data) setPhotos(photoResult.data as SummitPhoto[]);
+      if (expResult.data) setExperienceRecords(expResult.data as ExperienceRecord[]);
 
       if (!isReadOnly && !profileOpen) {
         // Ensure we have current user profile if session exists
@@ -819,6 +906,50 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
     openInformation(item);
   }, [openInformation]);
 
+  function handleMapClickForExp(lat: number, lng: number) {
+    if (!selectingLocationForExp) return;
+    
+    const [expId, subItemId] = selectingLocationForExp.split("::");
+    let category = predefinedCategories.find(c => c.experiences.some(e => e.id === expId));
+    let exp = category?.experiences.find(e => e.id === expId);
+    
+    if (exp && category) {
+      const title = subItemId && exp.multiItem ? `${exp.name} - ${exp.multiItem.items.find(i => i.id === subItemId)?.name}` : exp.name;
+      const item: SelectedItem = {
+        id: expId,
+        sub_item_id: subItemId,
+        title: title,
+        subtitle: "Experiencia",
+        label: category.iconName,
+        detail: category.name,
+        note: ""
+      };
+      
+      setSelectingLocationForExp(null);
+      setSelectedLatLng({ lat, lng });
+      setEditingExpRecordId(null);
+      openRecord(item);
+    }
+  }
+
+  function handleExperienceClick(record: ExperienceRecord) {
+    let category = predefinedCategories.find(c => c.experiences.some(e => e.id === record.experience_id));
+    let exp = category?.experiences.find(e => e.id === record.experience_id);
+    if (exp && category) {
+      const title = record.sub_item_id && exp.multiItem ? `${exp.name} - ${exp.multiItem.items.find(i => i.id === record.sub_item_id)?.name}` : exp.name;
+      const item: SelectedItem = {
+        id: record.experience_id,
+        sub_item_id: record.sub_item_id,
+        title: title,
+        subtitle: "Experiencia",
+        label: category.iconName,
+        detail: category.name,
+        note: ""
+      };
+      openInformation(item);
+    }
+  }
+
   const openRecord = useCallback(
     (item?: SelectedItem | null, ascentToEdit?: Ascent) => {
       if (!session) {
@@ -840,6 +971,13 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
       } else {
         setSelected(item);
         if (ascentToEdit) {
+          const isExp = item.id.startsWith("exp-") || item.id.startsWith("cexp-");
+          if (isExp && (ascentToEdit as any).record_id) {
+            setEditingExpRecordId((ascentToEdit as any).record_id);
+            setSelectedLatLng({ lat: (ascentToEdit as any).lat, lng: (ascentToEdit as any).lng });
+          } else if (!isExp) {
+            setEditingExpRecordId(null);
+          }
           const date = ascentToEdit.achieved_on;
           setClimbDate(date && date !== "1900-01-01" ? new Date(date) : null);
           setClimbEndDate(ascentToEdit.end_date ? new Date(ascentToEdit.end_date) : null);
@@ -849,6 +987,11 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
           setIsDateModified(!!date && date !== "1900-01-01");
           setNotes(ascentToEdit.notes ?? "");
         } else {
+          // Si no es ascentToEdit pero setSelectedLatLng ya se configuró (ej. click en mapa), no lo borramos.
+          if (!item.id.startsWith("exp-") && !item.id.startsWith("cexp-")) {
+            setEditingExpRecordId(null);
+            setSelectedLatLng(null);
+          }
           setClimbDate(null);
           setClimbEndDate(null);
           setIsEndDateEnabled(false);
@@ -957,25 +1100,51 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
     }
 
     const finalEndDate = isEndDateEnabled && climbEndDate ? climbEndDate.toISOString().slice(0, 10) : null;
-    const ascentResult = await supabase.from("ascents").upsert(
-      {
-        user_id: session.user.id,
-        summit_id: selected.id,
-        achieved_on: finalDate,
-        end_date: finalEndDate,
-        notes: notes || null,
-        is_wishlist: false,
-      },
-      { onConflict: "user_id,summit_id,achieved_on" },
-    );
+    const isExperience = selected.id.startsWith("exp-") || selected.id.startsWith("cexp-");
+    
+    let dbError = null;
 
-    // Remove wishlist if they register a real ascent
-    if (!ascentResult.error && hasWishlist) {
-      await supabase.from("ascents").delete().match({ user_id: session.user.id, summit_id: selected.id, is_wishlist: true });
+    if (isExperience) {
+      if (editingExpRecordId) {
+        const { error } = await supabase.from("experience_records").update({
+          achieved_on: finalDate, notes: notes || null, lat: selectedLatLng?.lat, lng: selectedLatLng?.lng
+        }).eq("id", editingExpRecordId);
+        dbError = error;
+      } else {
+        const { error } = await supabase.from("experience_records").insert({
+          user_id: session.user.id,
+          experience_id: selected.id,
+          sub_item_id: selected.sub_item_id || null,
+          achieved_on: finalDate,
+          notes: notes || null,
+          lat: selectedLatLng?.lat,
+          lng: selectedLatLng?.lng,
+          is_wishlist: false
+        });
+        dbError = error;
+      }
+    } else {
+      const ascentResult = await supabase.from("ascents").upsert(
+        {
+          user_id: session.user.id,
+          summit_id: selected.id,
+          achieved_on: finalDate,
+          end_date: finalEndDate,
+          notes: notes || null,
+          is_wishlist: false,
+        },
+        { onConflict: "user_id,summit_id,achieved_on" },
+      );
+      dbError = ascentResult.error;
+      
+      // Remove wishlist if they register a real ascent
+      if (!dbError && hasWishlist) {
+        await supabase.from("ascents").delete().match({ user_id: session.user.id, summit_id: selected.id, is_wishlist: true });
+      }
     }
 
-    if (ascentResult.error) {
-      setNotice(ascentResult.error.message);
+    if (dbError) {
+      setNotice(dbError.message);
       setSaving(false);
       return;
     }
@@ -1006,15 +1175,23 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
         .single();
       if (photoResult.data) uploaded.push(photoResult.data as SummitPhoto);
     }
-    setAscents((previous) => {
-      const withoutThisAscentOrWishlist = previous.filter(
-        (a) => !(a.summit_id === selected.id && (a.achieved_on === finalDate || a.achieved_on === originalAchievedOn || a.is_wishlist))
-      );
-      return [
-        { summit_id: selected.id, achieved_on: finalDate, end_date: finalEndDate, notes: notes || null, is_wishlist: false },
-        ...withoutThisAscentOrWishlist,
-      ];
-    });
+    
+    if (isExperience) {
+      // Refresh experience records
+      const { data } = await supabase.from("experience_records").select("*").eq("user_id", session.user.id);
+      if (data) setExperienceRecords(data as ExperienceRecord[]);
+    } else {
+      setAscents((previous) => {
+        const withoutThisAscentOrWishlist = previous.filter(
+          (a) => !(a.summit_id === selected.id && (a.achieved_on === finalDate || a.achieved_on === originalAchievedOn || a.is_wishlist))
+        );
+        return [
+          { summit_id: selected.id, achieved_on: finalDate, end_date: finalEndDate, notes: notes || null, is_wishlist: false },
+          ...withoutThisAscentOrWishlist,
+        ];
+      });
+    }
+
     if (uploaded.length) setPhotos((previous) => [...uploaded, ...previous]);
     if (selectedPhotosForEdit.length > 0) {
       await supabase.from("summit_photos").update({ taken_on: finalDate }).in("id", selectedPhotosForEdit).eq("user_id", session.user.id);
@@ -1040,9 +1217,13 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
     const registeredDates = new Set(selectedAscentsForCheck.map(a => a.achieved_on));
     const hasOtherPhotos = photos.some(p => p.summit_id === selected.id && !registeredDates.has(p.taken_on));
 
+    const isExperience = selected.id.startsWith("exp-") || selected.id.startsWith("cexp-");
+
     let confirmMessage = isPeaks
       ? "¿Seguro que quieres eliminar esta ascensión?"
-      : "¿Seguro que quieres eliminar la visita a este país?";
+      : isExperience 
+        ? "¿Seguro que quieres eliminar esta experiencia?"
+        : "¿Seguro que quieres eliminar la visita a este país?";
 
     if (remainingAscents.length === 0 && hasOtherPhotos) {
       confirmMessage += ' Se eliminarán también las fotos de "Otras fotos".';
@@ -1063,13 +1244,22 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
 
     const remainingAscents = ascents.filter(a => a.summit_id === selected.id && a.achieved_on !== originalAchievedOn && !a.is_wishlist);
 
-    const deleteResult = await supabase
-      .from("ascents")
-      .delete()
-      .match({ user_id: session.user.id, summit_id: selected.id, achieved_on: originalAchievedOn });
+    const isExperience = selected.id.startsWith("exp-") || selected.id.startsWith("cexp-");
+    let deleteError = null;
 
-    if (deleteResult.error) {
-      setNotice(deleteResult.error.message);
+    if (isExperience && editingExpRecordId) {
+      const { error } = await supabase.from("experience_records").delete().eq("id", editingExpRecordId);
+      deleteError = error;
+    } else {
+      const deleteResult = await supabase
+        .from("ascents")
+        .delete()
+        .match({ user_id: session.user.id, summit_id: selected.id, achieved_on: originalAchievedOn });
+      deleteError = deleteResult.error;
+    }
+
+    if (deleteError) {
+      setNotice(deleteError.message);
       setSaving(false);
       return;
     }
@@ -1079,13 +1269,21 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
       setPhotos((prev) => prev.filter(p => p.summit_id !== selected.id));
     }
 
-    setAscents((previous) => previous.filter((a) => !(a.summit_id === selected.id && a.achieved_on === originalAchievedOn)));
+    if (isExperience) {
+      const { data } = await supabase.from("experience_records").select("*").eq("user_id", session.user.id);
+      if (data) setExperienceRecords(data as ExperienceRecord[]);
+    } else {
+      setAscents((previous) => previous.filter((a) => !(a.summit_id === selected.id && a.achieved_on === originalAchievedOn)));
+    }
+    
     setSaving(false);
     setRecordOpen(false);
     setNotice(
       isPeaks
         ? "Ascensión eliminada."
-        : "País eliminado de tu lista."
+        : isExperience 
+          ? "Experiencia eliminada."
+          : "País eliminado de tu lista."
     );
   }
 
@@ -1289,18 +1487,19 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
   // Sorted items for the list
   const sortedItems = useMemo(() => {
     if (isPeaks) {
-      return [...peaks]
-        .sort((a, b) => b.altitude - a.altitude)
-        .map(peakToItem);
+      return [...allItems]
+        .sort((a, b) => parseInt(b.subtitle) - parseInt(a.subtitle)); // Fallback if we sort by altitude
     }
-    return [...countries]
-      .sort((a, b) => a.name.localeCompare(b.name, "es"))
-      .map(countryToItem);
-  }, [isPeaks]);
+    if (isExp) {
+      return allItems; // Ya están en orden de categoría
+    }
+    return [...allItems]
+      .sort((a, b) => a.title.localeCompare(b.title, "es"));
+  }, [allItems, isPeaks, isExp]);
 
   /* ── Render ───────────────────────────── */
   return (
-    <main className={isPeaks ? "" : "mode-countries"}>
+    <main className={isPeaks ? "" : isExp ? "mode-experiences" : "mode-countries"}>
       {/* ── Topbar ──────────────────────── */}
       <header className="topbar">
         <a className="brand" href={isPeaks ? "#inicio" : "#inicio"} onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate(isPeaks ? "/picos" : "/"); }}}>
@@ -1471,7 +1670,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                   {diffMode ? "Comparando" : "Comparar conmigo"}
                 </button>
               )}
-              {myProfile?.enable_experiences && (
+              {!isPeaks && (myProfile?.enable_experiences || experiencesMode) && (
                 <button
                   className={`diff-toggle${experiencesMode ? " diff-toggle--active" : ""}`}
                   onClick={() => setExperiencesMode(!experiencesMode)}
@@ -1500,7 +1699,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                 </button>
               )}
             </div>
-            {diffMode ? (
+            {diffMode && (
               <div className="diff-legend">
                 <span>
                   <i className="legend-diff-dot legend-diff-dot--only-me" /> Solo tú
@@ -1515,10 +1714,11 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                   <i className="legend-diff-dot legend-diff-dot--none" /> Ninguno
                 </span>
               </div>
-            ) : (
+            )}
+            {(!diffMode || isExp) && (
               <div className="map-legend">
                 <span>
-                  <i className="legend-pin">{isPeaks ? "△" : "◇"}</i> Pendiente
+                  <i className="legend-pin" style={{ paddingBottom: isPeaks ? 4 : isExp ? 2 : 0 }}>{isPeaks ? "△" : "◇"}</i> Pendiente
                 </span>
                 <span>
                   <i className="legend-wishlist">★</i> Quiero ir
@@ -1558,6 +1758,20 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
             transition: "opacity 0.3s ease, visibility 0.3s",
             zIndex: !isPeaks ? 2 : 1
           }}>
+            {!isReadOnly && !isPeaks && (myProfile?.enable_experiences || experiencesMode) && experiencesMode && (
+              <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 1000, pointerEvents: 'auto' }}>
+                {selectingLocationForExp ? (
+                  <div style={{ background: 'var(--surface)', padding: '12px 16px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>Haz clic en el mapa para ubicar la experiencia</p>
+                    <button className="button button--quiet button--small" onClick={() => setSelectingLocationForExp(null)}>Cancelar</button>
+                  </div>
+                ) : (
+                  <button className="button button--purple" onClick={() => setExpSelectorOpen(true)} style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
+                    + Añadir Experiencia
+                  </button>
+                )}
+              </div>
+            )}
             <WorldMap
               completed={completedCountryIds}
               wishlist={wishlistCountryIds}
@@ -1571,6 +1785,11 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
               regionsMode={regionsMode}
               completedRegions={completedRegionIds}
               activeId={selected?.id}
+              experiencesMode={experiencesMode}
+              experienceRecords={experienceRecords}
+              selectingLocation={!!selectingLocationForExp}
+              onMapClick={handleMapClickForExp}
+              onExperienceClick={handleExperienceClick}
             />
           </div>
         </div>
@@ -1596,7 +1815,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
             <IconSearch className="search-icon" />
             <input
               type="search"
-              placeholder={isPeaks ? "Buscar pico o provincia..." : "Buscar país o capital..."}
+              placeholder={isPeaks ? "Buscar pico o provincia..." : isExp ? "Buscar experiencia o categoría..." : "Buscar país o capital..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -1604,31 +1823,50 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
         </div>
 
         {/* ── Filter pills ──────────────── */}
-        <div className="list-filters">
+        <div className="list-filters" style={{ overflowX: 'auto', whiteSpace: 'nowrap', display: 'flex' }}>
           <button
             className={`list-filter-pill${listFilter === "all" ? " list-filter-pill--active" : ""}`}
             onClick={() => setListFilter("all")}
           >
             Todos <span className="pill-count">{totalCount}</span>
           </button>
-          <button
-            className={`list-filter-pill${listFilter === "done" ? " list-filter-pill--active" : ""}`}
-            onClick={() => setListFilter("done")}
-          >
-            {isPeaks ? "Completadas" : "Visitados"} <span className="pill-count">{achievedCount}</span>
-          </button>
-          <button
-            className={`list-filter-pill${listFilter === "pending" ? " list-filter-pill--active" : ""}`}
-            onClick={() => setListFilter("pending")}
-          >
-            Pendientes <span className="pill-count">{totalCount - achievedCount - wishlistCount}</span>
-          </button>
-          <button
-            className={`list-filter-pill${listFilter === "wishlist" ? " list-filter-pill--active" : ""}`}
-            onClick={() => setListFilter("wishlist")}
-          >
-            Quiero ir <span className="pill-count">{wishlistCount}</span>
-          </button>
+          
+          {isExp ? (
+            predefinedCategories.map(cat => (
+              <button
+                key={cat.id}
+                className={`list-filter-pill${listFilter === cat.name ? " list-filter-pill--active" : ""}`}
+                onClick={() => setListFilter(cat.name)}
+                style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                <span style={{ display: 'flex', width: 14, height: 14, alignItems: 'center', justifyContent: 'center' }}>
+                  {getIconComponent(cat.iconName)}
+                </span>
+                {cat.name}
+              </button>
+            ))
+          ) : (
+            <>
+              <button
+                className={`list-filter-pill${listFilter === "done" ? " list-filter-pill--active" : ""}`}
+                onClick={() => setListFilter("done")}
+              >
+                {isPeaks ? "Completadas" : "Visitados"} <span className="pill-count">{achievedCount}</span>
+              </button>
+              <button
+                className={`list-filter-pill${listFilter === "pending" ? " list-filter-pill--active" : ""}`}
+                onClick={() => setListFilter("pending")}
+              >
+                Pendientes <span className="pill-count">{totalCount - achievedCount - wishlistCount}</span>
+              </button>
+              <button
+                className={`list-filter-pill${listFilter === "wishlist" ? " list-filter-pill--active" : ""}`}
+                onClick={() => setListFilter("wishlist")}
+              >
+                Quiero ir <span className="pill-count">{wishlistCount}</span>
+              </button>
+            </>
+          )}
         </div>
         <div className="peak-list-grid">
           {sortedItems.filter(item => {
@@ -1645,9 +1883,12 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
             // Status filter
             const done = completedModeAscents.some((a) => a.summit_id === item.id);
             const wish = modeAscents.some((a) => a.summit_id === item.id && a.is_wishlist);
-            if (listFilter === "done") return done;
-            if (listFilter === "pending") return !done && !wish;
-            if (listFilter === "wishlist") return wish;
+            if (isExp && listFilter !== "all" && item.detail !== listFilter) return false;
+            if (!isExp) {
+              if (listFilter === "done") return done;
+              if (listFilter === "pending") return !done && !wish;
+              if (listFilter === "wishlist") return wish;
+            }
             return true;
           }).map((item, index) => {
             const done = completedModeAscents.some((a) => a.summit_id === item.id);
@@ -1656,7 +1897,8 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
             // Diff class logic
             let diffClass = "";
             let diffSymbol: React.ReactNode = null;
-            if (diffMode) {
+            const effectiveDiffMode = diffMode && !isExp;
+            if (effectiveDiffMode) {
               if (diffItemOnlyViewer.has(item.id)) {
                 diffClass = " peak-list-item--diff-only-me";
                 diffSymbol = <IconCheck />;
@@ -1671,7 +1913,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
               }
             }
 
-            const itemClass = diffMode
+            const itemClass = effectiveDiffMode
               ? `peak-list-item${diffClass}`
               : `peak-list-item${done ? " peak-list-item--done" : wish ? " peak-list-item--wishlist" : ""}`;
 
@@ -1682,7 +1924,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                 onClick={() => openInformation(item)}
               >
                 <span className="item-check">
-                  {diffMode ? diffSymbol : (
+                  {effectiveDiffMode ? diffSymbol : (
                     <>
                       {done && <IconCheck />}
                       {wish && <span className="item-wish-star">★</span>}
@@ -1739,7 +1981,14 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
           <button className="icon-button" onClick={closePanel} aria-label="Cerrar">
             <IconClose />
           </button>
-          <span className="eyebrow">{selected.label.toUpperCase()}</span>
+          <span className="eyebrow" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {isExp && selected.label && selected.detail && getIconComponent(selected.label) && (
+              <span style={{ display: 'flex', width: 14, height: 14, alignItems: 'center' }}>
+                {getIconComponent(selected.label)}
+              </span>
+            )}
+            {isExp && selected.detail ? selected.detail.toUpperCase() : selected.label.toUpperCase()}
+          </span>
           <h2>{selected.title}</h2>
           {isPeaks ? (
             <>
@@ -1849,7 +2098,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                 </div>
               );
             })
-          ) : hasWishlist ? (
+          ) : hasWishlist && !isExp ? (
             <div className="pending-card" style={{ background: "var(--amber-bg)", color: "#a67c29", borderColor: "#ecd9a5" }}>
               ★ En tu lista de deseos
             </div>
@@ -1857,7 +2106,9 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
             <div className="pending-card">
               {isPeaks
                 ? (isReadOnly ? "Aún no ha registrado esta cima." : "Aún no has registrado esta cima.")
-                : (isReadOnly ? "Aún no ha registrado este país." : "Aún no has registrado este país.")}
+                : isExp 
+                  ? (isReadOnly ? "Aún no ha vivido esta experiencia." : "Aún no has vivido esta experiencia.")
+                  : (isReadOnly ? "Aún no ha registrado este país." : "Aún no has registrado este país.")}
             </div>
           )}
 
@@ -1905,7 +2156,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                   : isPeaks ? "Marcar como completado" : "Marcar como visitado"}
               </button>
             )}
-            {(!selectedAscents.length || hasWishlist) && !isReadOnly && (
+            {(!selectedAscents.length || hasWishlist) && !isReadOnly && !isExp && (
               <button
                 className="button button--quiet button--wide"
                 style={{ marginTop: 8 }}
@@ -2356,6 +2607,63 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
 
       {/* ── PWA Install Prompt ────────── */}
       <InstallPrompt />
+      {/* ── Experience Selector Modal ───── */}
+      {expSelectorOpen && (
+        <div className="modal-overlay" onClick={() => setExpSelectorOpen(false)}>
+          <div className="modal-content modal-content--wide" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>¿Qué experiencia quieres registrar?</h3>
+              <button className="icon-button" onClick={() => setExpSelectorOpen(false)}><IconClose /></button>
+            </div>
+            <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+              {predefinedCategories.map(cat => (
+                <div key={cat.id} style={{ marginBottom: 16 }}>
+                  <h4 style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 8px 0', color: 'var(--foreground)' }}>
+                     {cat.name}
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {cat.experiences.map(exp => (
+                      <div key={exp.id}>
+                        {!exp.multiItem ? (
+                          <button 
+                            className="button button--outline" 
+                            style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left', padding: '8px 12px' }}
+                            onClick={() => {
+                              setSelectingLocationForExp(`${exp.id}::`);
+                              setExpSelectorOpen(false);
+                            }}
+                          >
+                            {exp.name}
+                          </button>
+                        ) : (
+                          <div style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                            <div style={{ fontWeight: 500, marginBottom: 8 }}>{exp.name}</div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                              {exp.multiItem.items.map(item => (
+                                <button
+                                  key={item.id}
+                                  className="button button--quiet button--small"
+                                  style={{ border: '1px solid var(--border)' }}
+                                  onClick={() => {
+                                    setSelectingLocationForExp(`${exp.id}::${item.id}`);
+                                    setExpSelectorOpen(false);
+                                  }}
+                                >
+                                  {item.name}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
