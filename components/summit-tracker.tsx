@@ -249,10 +249,20 @@ function IconLinkedin() {
   );
 }
 
-export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
+export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMode }: Props) {
   const router = useRouter();
-  const isPeaks = mode === "peaks";
+  const [currentMode, setCurrentMode] = useState<ChallengeMode>(initialModeProp);
+  const isPeaks = currentMode === "peaks";
   const isReadOnly = !!targetProfile;
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (window.location.pathname === "/picos") setCurrentMode("peaks");
+      else if (window.location.pathname === "/") setCurrentMode("countries");
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   const [session, setSession] = useState<Session | null>(null);
   const [myProfile, setMyProfile] = useState<{ username: string; avatar_url: string | null; enable_regions?: boolean } | null>(null);
@@ -428,13 +438,12 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
     return uniquePeakNames.size;
   }, [isPeaks, modeAscents]);
 
-  /* ── Save Last Path for Social Tab ────── */
   useEffect(() => {
     if (typeof window !== "undefined") {
       localStorage.setItem("last_map_path", window.location.pathname);
-      localStorage.setItem("ranking_mode", mode);
+      localStorage.setItem("ranking_mode", currentMode);
     }
-  }, [mode]);
+  }, [currentMode]);
 
   /* ── Auto-dismiss toast ───────────────── */
   useEffect(() => {
@@ -1192,7 +1201,7 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
   }
 
   function switchMode(target: ChallengeMode) {
-    if (target === mode) return;
+    if (target === currentMode) return;
 
     // Clear panels explicitly without using history.back() 
     // to prevent race conditions with navigation.
@@ -1201,13 +1210,15 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
     setProfileOpen(false);
     setAuthOpen(false);
 
+    setCurrentMode(target);
+
     if (onSwitchMode) {
       onSwitchMode(target);
       if (window.location.hash.startsWith("#panel")) {
         window.history.replaceState(null, "", window.location.pathname + window.location.search);
       }
     } else {
-      router.push(target === "peaks" ? "/picos" : "/");
+      window.history.pushState(null, "", target === "peaks" ? "/picos" : "/");
     }
   }
 
@@ -1441,34 +1452,50 @@ export function SummitTracker({ mode, targetProfile, onSwitchMode }: Props) {
             )}
           </div>
         </div>
-        {isPeaks ? (
-          <SpainMap
-            completed={completedPeakCodes}
-            wishlist={wishlistPeakCodes}
-            onInformation={openPeakInformation}
-            onComplete={openPeakRecord}
-            diffMode={diffMode}
-            diffOnlyViewer={diffPeakOnlyViewer}
-            diffOnlyTarget={diffPeakOnlyTarget}
-            diffBoth={diffPeakBoth}
-            activeId={selected?.id}
-          />
-        ) : (
-          <WorldMap
-            completed={completedCountryIds}
-            wishlist={wishlistCountryIds}
-            onInformation={openCountryInformation}
-            onRegionInformation={handleRegionInformation}
-            onComplete={openCountryRecord}
-            diffMode={diffMode}
-            diffOnlyViewer={diffItemOnlyViewer}
-            diffOnlyTarget={diffItemOnlyTarget}
-            diffBoth={diffItemBoth}
-            regionsMode={regionsMode}
-            completedRegions={completedRegionIds}
-            activeId={selected?.id}
-          />
-        )}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr", gridTemplateRows: "1fr" }}>
+          <div style={{
+            gridArea: "1/1",
+            visibility: isPeaks ? "visible" : "hidden",
+            opacity: isPeaks ? 1 : 0,
+            transition: "opacity 0.3s ease, visibility 0.3s",
+            zIndex: isPeaks ? 2 : 1
+          }}>
+            <SpainMap
+              completed={completedPeakCodes}
+              wishlist={wishlistPeakCodes}
+              onInformation={openPeakInformation}
+              onComplete={openPeakRecord}
+              diffMode={diffMode}
+              diffOnlyViewer={diffPeakOnlyViewer}
+              diffOnlyTarget={diffPeakOnlyTarget}
+              diffBoth={diffPeakBoth}
+              activeId={selected?.id}
+            />
+          </div>
+          
+          <div style={{
+            gridArea: "1/1",
+            visibility: !isPeaks ? "visible" : "hidden",
+            opacity: !isPeaks ? 1 : 0,
+            transition: "opacity 0.3s ease, visibility 0.3s",
+            zIndex: !isPeaks ? 2 : 1
+          }}>
+            <WorldMap
+              completed={completedCountryIds}
+              wishlist={wishlistCountryIds}
+              onInformation={openCountryInformation}
+              onRegionInformation={handleRegionInformation}
+              onComplete={openCountryRecord}
+              diffMode={diffMode}
+              diffOnlyViewer={diffItemOnlyViewer}
+              diffOnlyTarget={diffItemOnlyTarget}
+              diffBoth={diffItemBoth}
+              regionsMode={regionsMode}
+              completedRegions={completedRegionIds}
+              activeId={selected?.id}
+            />
+          </div>
+        </div>
       </section>
 
       {/* ── Challenge summary ───────────── */}
