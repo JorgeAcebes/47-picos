@@ -113,9 +113,15 @@ export function MapSearchControl({ items, onSelect, placeholder = "Buscar..." }:
               setQuery(""); 
               setResults([]); 
               if (window.innerWidth <= 768) {
-                setTimeout(() => {
-                  window.scrollTo({ top: scrollYRef.current, behavior: "instant" });
-                }, 100);
+                const legend = document.querySelector(".map-legend-area");
+                if (legend) {
+                  let count = 0;
+                  const interval = setInterval(() => {
+                    legend.scrollIntoView({ behavior: "instant", block: "start" });
+                    count++;
+                    if (count > 15) clearInterval(interval);
+                  }, 20);
+                }
               }
             } 
           }}
@@ -146,10 +152,6 @@ export function MapSearchControl({ items, onSelect, placeholder = "Buscar..." }:
                   if (legend) {
                     legend.scrollIntoView({ behavior: "smooth", block: "start" });
                   }
-                  // Save the position after the smooth scroll is likely done
-                  setTimeout(() => {
-                    scrollYRef.current = window.scrollY;
-                  }, 500);
                 }, 300);
               }
             }}
@@ -193,9 +195,15 @@ export function MapSearchControl({ items, onSelect, placeholder = "Buscar..." }:
                 setQuery("");
                 setResults([]);
                 if (window.innerWidth <= 768) {
-                  setTimeout(() => {
-                    window.scrollTo({ top: scrollYRef.current, behavior: "instant" });
-                  }, 100);
+                  const legend = document.querySelector(".map-legend-area");
+                  if (legend) {
+                    let count = 0;
+                    const interval = setInterval(() => {
+                      legend.scrollIntoView({ behavior: "instant", block: "start" });
+                      count++;
+                      if (count > 15) clearInterval(interval);
+                    }, 20);
+                  }
                 }
               }}
             >
