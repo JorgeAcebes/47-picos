@@ -17,6 +17,10 @@ import { countries, resolveCountryFromFeature, type Country } from "@/data/count
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import { MapSearchControl, type SearchItem } from "./map-search";
+import { SweepOverlay } from "./sweep-overlay";
+
+// Override Leaflet's default canvas padding to preload vector shapes far outside the viewport
+L.Canvas.prototype.options.padding = 1.5;
 
 const WORLD_TOPO_URL =
   "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json";
@@ -98,74 +102,8 @@ function FitWorld() {
   return null;
 }
 
-function SweepDefsInjector({ searchedId }: { searchedId: string | null }) {
-  const map = useMap();
 
-  useEffect(() => {
-    if (!searchedId) return;
-    const overlayPane = map.getPane("overlayPane");
-    if (!overlayPane) return;
-    const svg = overlayPane.querySelector("svg");
-    if (!svg) return;
 
-    let defs = svg.querySelector("defs");
-    if (!defs) {
-      defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
-      svg.prepend(defs);
-    }
-
-    const grad = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
-    grad.setAttribute("id", `sweep-${searchedId}`);
-    grad.setAttribute("x1", "-32%");
-    grad.setAttribute("y1", "0%");
-    grad.setAttribute("x2", "18%");
-    grad.setAttribute("y2", "0%");
-    grad.setAttribute("gradientUnits", "objectBoundingBox");
-
-    const stop1 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
-    stop1.setAttribute("offset", "0%");
-    stop1.setAttribute("stop-color", "#fff");
-    stop1.setAttribute("stop-opacity", "0");
-
-    const stop2 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
-    stop2.setAttribute("offset", "50%");
-    stop2.setAttribute("stop-color", "#fff");
-    stop2.setAttribute("stop-opacity", "1");
-
-    const stop3 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
-    stop3.setAttribute("offset", "100%");
-    stop3.setAttribute("stop-color", "#fff");
-    stop3.setAttribute("stop-opacity", "0");
-
-    const anim1 = document.createElementNS("http://www.w3.org/2000/svg", "animate");
-    anim1.setAttribute("attributeName", "x1");
-    anim1.setAttribute("from", "-32%");
-    anim1.setAttribute("to", "100%");
-    anim1.setAttribute("dur", "0.85s");
-    anim1.setAttribute("fill", "freeze");
-
-    const anim2 = document.createElementNS("http://www.w3.org/2000/svg", "animate");
-    anim2.setAttribute("attributeName", "x2");
-    anim2.setAttribute("from", "18%");
-    anim2.setAttribute("to", "150%");
-    anim2.setAttribute("dur", "0.85s");
-    anim2.setAttribute("fill", "freeze");
-
-    grad.appendChild(stop1);
-    grad.appendChild(stop2);
-    grad.appendChild(stop3);
-    grad.appendChild(anim1);
-    grad.appendChild(anim2);
-
-    defs.appendChild(grad);
-
-    return () => {
-      defs?.removeChild(grad);
-    };
-  }, [searchedId, map]);
-
-  return null;
-}
 
 function MapZoomListener() {
   const map = useMapEvents({
@@ -379,34 +317,7 @@ export function CollectiveMap({ onClose }: Props) {
       setSelectedSummit({ id: item.id, name: item.name, visitors: [] });
     }
 
-    if (layer && item.type === "country") {
-      const mapNode = document.querySelector(".map");
-      if (mapNode) {
-        const el = (layer as any)._path as SVGElement;
-        if (el) {
-          const clone = el.cloneNode(true) as SVGElement;
-          ["style", "class", "fill", "fill-opacity", "stroke", "stroke-width", "stroke-opacity"]
-            .forEach(attr => clone.removeAttribute(attr));
-          clone.setAttribute("fill", `url(#sweep-${item.id})`);
-          clone.setAttribute("fill-opacity", "1");
-          clone.setAttribute("stroke", "#fff");
-          clone.setAttribute("stroke-width", "0");
-          clone.setAttribute("stroke-opacity", "0");
-          clone.setAttribute("vector-effect", "non-scaling-stroke");
-          clone.setAttribute("aria-hidden", "true");
-          clone.classList.add("map-search-scan-overlay");
-          if (el.parentNode) {
-            el.parentNode.appendChild(clone);
-          }
-          
-          scanFrameRef.current = requestAnimationFrame(() => {
-            setTimeout(() => {
-              if (clone.parentNode) clone.parentNode.removeChild(clone);
-            }, 1800);
-          });
-        }
-      }
-    }
+
 
     searchTimeoutRef.current = setTimeout(() => {
       setSearchedId(null);
@@ -479,21 +390,21 @@ export function CollectiveMap({ onClose }: Props) {
             key="map-countries"
             className="map"
             scrollWheelZoom={true}
-            preferCanvas={false}
+            preferCanvas={true}
             minZoom={1}
             maxZoom={12}
             maxBounds={[[-85, -180], [85, 180]]}
             maxBoundsViscosity={0.5}
           >
             <MapZoomListener />
-            <SweepDefsInjector searchedId={searchedId} />
+            <SweepOverlay searchedId={searchedId} layerRefs={layerRefs} />
             <FitWorld />
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              keepBuffer={6}
+              keepBuffer={40}
               updateWhenIdle={false}
-              updateWhenZooming={false}
+              updateWhenZooming={true}
             />
             {worldGeo && (
               <GeoJSON
