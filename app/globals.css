@@ -616,6 +616,7 @@ nav a:hover::after {
   color: #a67c29;
   border-color: #d2a54b;
   font-size: 12px;
+  padding-left: 1px;
 }
 
 .mode-countries .legend-wishlist {
@@ -739,6 +740,7 @@ nav a:hover::after {
   font-weight: 700 !important;
   border-color: #d2a54b !important;
   padding-bottom: 2px !important;
+  padding-left: 1px !important;
 }
 
 .mode-countries .summit-pin--wishlist {
@@ -746,6 +748,7 @@ nav a:hover::after {
   color: #a67c29 !important;
   border-color: #d2a54b !important;
   padding-bottom: 2px !important;
+  padding-left: 1px !important;
 }
 
 /* ── Dynamic map zoom scaling ──────────────── */
