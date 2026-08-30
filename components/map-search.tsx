@@ -29,8 +29,6 @@ export function MapSearchControl({ items, onSelect, placeholder = "Buscar..." }:
   const inputRef = useRef<HTMLInputElement>(null);
   const searchRequestRef = useRef(0);
 
-
-
   useEffect(() => {
     if (divRef.current) {
       L.DomEvent.disableClickPropagation(divRef.current);
@@ -112,7 +110,7 @@ export function MapSearchControl({ items, onSelect, placeholder = "Buscar..." }:
               e.stopPropagation(); 
               setExpanded(false); 
               setQuery(""); 
-              setResults([]);
+              setResults([]); 
             } 
           }}
         >
@@ -135,6 +133,14 @@ export function MapSearchControl({ items, onSelect, placeholder = "Buscar..." }:
             placeholder={placeholder} 
             value={query}
             onChange={e => setQuery(e.target.value)}
+            onFocus={() => {
+              if (window.innerWidth <= 768) {
+                const mapSection = document.querySelector(".map-section");
+                if (mapSection) {
+                  mapSection.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+              }
+            }}
             style={{ border: "none", outline: "none", padding: "4px 8px", width: "100%", background: "transparent", fontSize: 14 }}
           />
         )}
