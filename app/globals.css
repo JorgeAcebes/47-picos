@@ -1099,6 +1099,13 @@ nav a:hover::after {
   main.panel-open {
     padding-right: 420px;
   }
+  main .topbar {
+    transition: margin-right 0.3s ease;
+    margin-right: 0;
+  }
+  main.panel-open .topbar {
+    margin-right: -420px;
+  }
 }
 
 /* ── Tooltips (Labels) ──────────────────── */

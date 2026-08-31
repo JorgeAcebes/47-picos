@@ -615,16 +615,18 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
       if (experienceRecords) {
         const expMarkers = experienceRecords.map((r, i) => {
           const iconHtml = ReactDOMServer.renderToString(
-            <span className="summit-pin summit-pin--experience summit-pin--done">
-              {getIconComponent(r.icon_name)}
-            </span>
+            <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+              <span className="summit-pin summit-pin--experience summit-pin--done" style={{ display: 'inline-flex', justifyContent: 'center', alignItems: 'center', pointerEvents: 'none' }}>
+                {getIconComponent(r.icon_name)}
+              </span>
+            </div>
           );
           
           const expIcon = L.divIcon({
-            className: "",
+            className: "experience-hitbox",
             html: iconHtml,
-            iconSize: [28, 28],
-            iconAnchor: [14, 14],
+            iconSize: [36, 36],
+            iconAnchor: [18, 18],
           });
           
           return (
@@ -632,6 +634,7 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
               key={`exp-${r.id || i}`}
               position={[r.lat, r.lng]}
               icon={expIcon}
+              zIndexOffset={1000}
               eventHandlers={{
                 click: () => onExperienceClick && onExperienceClick(r),
               }}
@@ -666,38 +669,38 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
       <SweepOverlay searchedId={searchedId} layerRefs={layerRefs} regionLayerRefs={regionLayerRefs} />
 
       {experiencesMode && onAddExperience && (
-        <div className="leaflet-control-container">
-          <div className="leaflet-top leaflet-left" style={{ pointerEvents: 'none', zIndex: 1000 }}>
-            <div className="leaflet-control leaflet-bar" style={{ pointerEvents: 'auto', marginTop: 80, marginLeft: 10 }}>
-              <a
-                href="#"
-                role="button"
-                title="Añadir experiencia en el mapa"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: 30,
-                  height: 30,
-                  textDecoration: 'none',
-                  color: 'black'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f4f4f4'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff'}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onAddExperience();
-                }}
-              >
-                <svg style={{ width: 16, height: 16 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <circle cx="12" cy="12" r="6" />
-                  <circle cx="12" cy="12" r="2" />
-                </svg>
-              </a>
-            </div>
-          </div>
+        <div
+          className="leaflet-control"
+          style={{
+            position: 'absolute',
+            top: 56,
+            right: 10,
+            zIndex: 1000,
+            background: 'white',
+            borderRadius: '50%',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.15)',
+            width: 36,
+            height: 36,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'auto',
+            cursor: 'pointer'
+          }}
+          title="Añadir experiencia en el mapa"
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff'}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onAddExperience();
+          }}
+        >
+          <svg style={{ width: 18, height: 18, color: '#666' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <circle cx="12" cy="12" r="6" />
+            <circle cx="12" cy="12" r="2" />
+          </svg>
         </div>
       )}
 

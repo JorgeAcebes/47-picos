@@ -348,6 +348,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
   const [diffMode, setDiffMode] = useState(false);
   const [regionsMode, setRegionsMode] = useState(false);
   const [experiencesMode, setExperiencesMode] = useState(false);
+  const [isEditingExperiences, setIsEditingExperiences] = useState(false);
 
   useEffect(() => {
     if (!isReadOnly) {
@@ -650,7 +651,11 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
   // Contar únicas
   const achievedCount = useMemo(() => {
     if (isExp) {
-      const uniqueExps = new Set(completedModeAscents.map(a => a.summit_id + (a.sub_item_id ? `::${a.sub_item_id}` : '')));
+      const uniqueExps = new Set(
+        completedModeAscents
+          .filter(a => !a.summit_id.startsWith('country-') && !a.summit_id.startsWith('region-'))
+          .map(a => a.summit_id + (a.sub_item_id ? `::${a.sub_item_id}` : ''))
+      );
       return uniqueExps.size;
     }
     if (!isPeaks) {
@@ -667,7 +672,10 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
   const wishlistCount = useMemo(() => {
     const w = modeAscents.filter(a => a.is_wishlist);
     if (isExp) {
-      const uniqueExps = new Set(w.map(a => a.summit_id + (a.sub_item_id ? `::${a.sub_item_id}` : '')));
+      const uniqueExps = new Set(
+        w.filter(a => !a.summit_id.startsWith('country-') && !a.summit_id.startsWith('region-'))
+         .map(a => a.summit_id + (a.sub_item_id ? `::${a.sub_item_id}` : ''))
+      );
       return uniqueExps.size;
     }
     if (!isPeaks) {
@@ -2108,7 +2116,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
           }}>
             {!isReadOnly && !isPeaks && (myProfile?.enable_experiences || experiencesMode) && experiencesMode && (
               <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 1000, pointerEvents: 'auto' }}>
-                {!selectingLocationForExp && (
+                {!selectingLocationForExp && !selected && (
                   <button className="button button--purple" onClick={() => setExpSelectorOpen(true)} style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
                     + Añadir Experiencia
                   </button>
@@ -2195,20 +2203,29 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                 </button>
               ))}
               {!isReadOnly && (
-                <button
-                  className="list-filter-pill"
-                  onClick={() => {
-                    setEditingCustomCategory({ id: 'new', name: '', iconName: 'star' });
-                    setExpSelectorOpen(true);
-                  }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, borderStyle: 'dashed' }}
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                  </svg>
-                  Crear nueva categoría
-                </button>
+                <>
+                  <button
+                    className="list-filter-pill"
+                    onClick={() => {
+                      setEditingCustomCategory({ id: 'new', name: '', iconName: 'star' });
+                    }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, borderStyle: 'dashed' }}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
+                      <line x1="12" y1="5" x2="12" y2="19"></line>
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Crear nueva categoría
+                  </button>
+                  <button
+                    className={`list-filter-pill${isEditingExperiences ? " list-filter-pill--active" : ""}`}
+                    onClick={() => setIsEditingExperiences(!isEditingExperiences)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto', borderStyle: 'solid', borderColor: 'var(--pine)', color: isEditingExperiences ? '#fff' : 'var(--pine)', background: isEditingExperiences ? 'var(--pine)' : 'transparent' }}
+                  >
+                    <IconEdit style={{ width: 14, height: 14 }} strokeWidth={2} />
+                    Modificar experiencias
+                  </button>
+                </>
               )}
             </>
           ) : (
