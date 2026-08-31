@@ -108,6 +108,7 @@ type Props = {
   experienceRecords?: any[];
   selectingLocation?: boolean;
   onMapClick?: (lat: number, lng: number, placeName?: string) => void;
+  onCancelSelectingLocation?: () => void;
   onExperienceClick?: (record: any) => void;
   onAddExperience?: () => void;
 };
@@ -228,7 +229,7 @@ function getLargestPolygonBounds(feature: any) {
 
 import { getIconComponent } from "./icons";
 
-export function WorldMap({ completed, wishlist, onInformation, onRegionInformation, onComplete, diffMode, diffOnlyViewer, diffOnlyTarget, diffBoth, regionsMode, completedRegions, activeId, experiencesMode, experienceRecords, selectingLocation, onMapClick, onExperienceClick, onAddExperience }: Props) {
+export function WorldMap({ completed, wishlist, onInformation, onRegionInformation, onComplete, diffMode, diffOnlyViewer, diffOnlyTarget, diffBoth, regionsMode, completedRegions, activeId, experiencesMode, experienceRecords, selectingLocation, onMapClick, onCancelSelectingLocation, onExperienceClick, onAddExperience }: Props) {
   const [geo, setGeo] = useState<FeatureCollection | null>(_worldGeoCache);
   const [regionsGeo, setRegionsGeo] = useState<FeatureCollection | null>(_regionsGeoCache);
   const [searchedId, setSearchedId] = useState<string | null>(null);
@@ -712,7 +713,11 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
               pointerEvents: 'auto', background: 'var(--pine)', color: '#fff', 
               padding: '12px 16px', borderRadius: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', 
               display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 12, 
-              fontWeight: 500, fontSize: '0.9rem', maxWidth: 360, width: '90%', textAlign: 'center' 
+              fontWeight: 500, fontSize: '0.9rem', maxWidth: 360, width: '90%', textAlign: 'center',
+              cursor: 'pointer'
+            }} onClick={(e) => {
+              e.stopPropagation();
+              if (onCancelSelectingLocation) onCancelSelectingLocation();
             }}>
               <span style={{ display: 'inline', lineHeight: 1.4, fontSize: '14px' }}>
                 Haz clic en el mapa para situar la experiencia o busca el lugar aquí
