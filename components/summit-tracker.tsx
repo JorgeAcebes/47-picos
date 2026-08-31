@@ -33,7 +33,18 @@ const WorldMap = dynamic(
   },
 );
 
-type Ascent = { summit_id: string; achieved_on: string; end_date?: string | null; notes: string | null; is_wishlist: boolean };
+type Ascent = { 
+  summit_id: string; 
+  achieved_on: string; 
+  end_date?: string | null; 
+  notes: string | null; 
+  is_wishlist: boolean;
+  record_id?: string;
+  lat?: number | null;
+  lng?: number | null;
+  location_name?: string | null;
+  sub_item_id?: string | null;
+};
 export type SelectedItem = {
   id: string;
   sub_item_id?: string;
@@ -43,6 +54,7 @@ export type SelectedItem = {
   detail: string;
   note: string;
   iconName?: string;
+  subItems?: any;
 };
 
 export type SummitPhoto = {
@@ -552,7 +564,8 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
             label: "",
             detail: cat.name,
             note: "",
-            iconName: cat.iconName
+            iconName: cat.iconName,
+            subItems: exp.subItems
           }))
         )
       : countries.map(countryToItem), [isPeaks, isExp]);
@@ -1065,6 +1078,34 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
     openInformation(item);
   }, [openInformation]);
 
+  function handleCancelSelectingLocationForExp() {
+    if (!selectingLocationForExp) return;
+    
+    const [expId, subItemId] = selectingLocationForExp.split("::");
+    let category = dynamicCategories.find(c => c.experiences.some(e => e.id === expId));
+    let exp = category?.experiences.find(e => e.id === expId);
+    
+    if (exp && category) {
+      const title = subItemId && exp.subItems ? `${exp.name} - ${exp.subItems.find((i: any) => i.id === subItemId)?.name}` : exp.name;
+      const item: SelectedItem = {
+        id: expId,
+        sub_item_id: subItemId,
+        title: title,
+        subtitle: category.name,
+        label: "",
+        detail: category.name,
+        note: "",
+        iconName: category.iconName,
+        subItems: exp.subItems
+      };
+      setSelectingLocationForExp(null);
+      setSelected(item);
+      setEditingExpRecordId(null);
+    } else {
+      setSelectingLocationForExp(null);
+    }
+  }
+
   async function handleMapClickForExp(lat: number, lng: number, placeNameArg?: string) {
     if (!selectingLocationForExp) return;
     
@@ -1510,20 +1551,23 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
     setSaving(false);
   }
 
-  function handleDeleteCustomCategory() {
-    if (!editingCustomCategory || editingCustomCategory.id === 'new') return;
+  function handleDeleteCustomCategory(catId?: string | React.MouseEvent) {
+    const targetId = typeof catId === 'string' ? catId : (editingCustomCategory && editingCustomCategory.id !== 'new' ? editingCustomCategory.id : null);
+    if (!targetId) return;
     setConfirmAction({
       message: "¿Estás seguro de que quieres eliminar esta categoría? Se eliminarán también todas sus experiencias.",
       onConfirm: async () => {
         if (!supabase || !session) return;
         setSaving(true);
-        const { error } = await supabase.from("custom_experience_categories").delete().eq("id", editingCustomCategory.id);
+        const { error } = await supabase.from("custom_experience_categories").delete().eq("id", targetId);
         if (error) {
           setNotice(error.message);
         } else {
-          setCustomCategories(prev => prev.filter(c => c.id !== editingCustomCategory.id));
-          setCustomExperiences(prev => prev.filter(ce => ce.category_id !== editingCustomCategory.id));
-          setEditingCustomCategory(null);
+          setCustomCategories(prev => prev.filter(c => c.id !== targetId));
+          setCustomExperiences(prev => prev.filter(ce => ce.category_id !== targetId));
+          if (editingCustomCategory && editingCustomCategory.id === targetId) {
+            setEditingCustomCategory(null);
+          }
         }
         setSaving(false);
       }
@@ -2141,7 +2185,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
               })}
               selectingLocation={!!selectingLocationForExp}
               onMapClick={handleMapClickForExp}
-              onCancelSelectingLocation={() => setSelectingLocationForExp(null)}
+              onCancelSelectingLocation={handleCancelSelectingLocationForExp}
               onExperienceClick={handleExperienceClick}
               onAddExperience={() => setExpSelectorOpen(true)}
             />

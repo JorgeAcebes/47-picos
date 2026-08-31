@@ -124,7 +124,7 @@ export const predefinedCategories: ExperienceCategory[] = [
           { id: "gaboon-viper", name: "Víbora de Gabón" }
         ]
       },
-      { id: "exp-blue-whale", name: "Observar la migración pelágica de la ballena azul" }
+      { id: "exp-blue-whale", name: "Observar la migración de la ballena azul" }
     ]
   },
   {

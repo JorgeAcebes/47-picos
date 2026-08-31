@@ -709,7 +709,12 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
       {selectingLocation && (
         <div className="leaflet-control-container">
           <div className="leaflet-top leaflet-center" style={{ pointerEvents: 'none', zIndex: 1000, width: '100%', display: 'flex', justifyContent: 'center', marginTop: 16 }}>
-            <div className="leaflet-control" style={{ 
+            <div className="leaflet-control" ref={(el) => {
+              if (el) {
+                L.DomEvent.disableClickPropagation(el);
+                L.DomEvent.disableScrollPropagation(el);
+              }
+            }} style={{ 
               pointerEvents: 'auto', background: 'var(--pine)', color: '#fff', 
               padding: '12px 16px', borderRadius: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', 
               display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 12, 
