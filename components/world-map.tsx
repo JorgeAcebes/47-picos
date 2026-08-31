@@ -109,6 +109,7 @@ type Props = {
   selectingLocation?: boolean;
   onMapClick?: (lat: number, lng: number) => void;
   onExperienceClick?: (record: any) => void;
+  onAddExperience?: () => void;
 };
 
 function FitWorld() {
@@ -219,7 +220,7 @@ function getLargestPolygonBounds(feature: any) {
 
 import { getIconComponent } from "./icons";
 
-export function WorldMap({ completed, wishlist, onInformation, onRegionInformation, onComplete, diffMode, diffOnlyViewer, diffOnlyTarget, diffBoth, regionsMode, completedRegions, activeId, experiencesMode, experienceRecords, selectingLocation, onMapClick, onExperienceClick }: Props) {
+export function WorldMap({ completed, wishlist, onInformation, onRegionInformation, onComplete, diffMode, diffOnlyViewer, diffOnlyTarget, diffBoth, regionsMode, completedRegions, activeId, experiencesMode, experienceRecords, selectingLocation, onMapClick, onExperienceClick, onAddExperience }: Props) {
   const [geo, setGeo] = useState<FeatureCollection | null>(_worldGeoCache);
   const [regionsGeo, setRegionsGeo] = useState<FeatureCollection | null>(_regionsGeoCache);
   const [searchedId, setSearchedId] = useState<string | null>(null);
@@ -237,6 +238,7 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
   const completedRegionsRef = useRef(completedRegions);
   const onInformationRef = useRef(onInformation);
   const onRegionInformationRef = useRef(onRegionInformation);
+  const selectingLocationRef = useRef(selectingLocation);
   const layerRefs = useRef(new Map<string, L.Path>());
   const regionLayerRefs = useRef(new Map<string, L.Path>());
 
@@ -250,6 +252,7 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
   completedRegionsRef.current = completedRegions;
   onInformationRef.current = onInformation;
   onRegionInformationRef.current = onRegionInformation;
+  selectingLocationRef.current = selectingLocation;
 
 
 
@@ -500,7 +503,10 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
           sticky: true,
           className: `summit-tooltip ${statusClass}`,
         });
-        layer.on("click", () => onInformationRef.current(country));
+        layer.on("click", (e: L.LeafletMouseEvent) => {
+          if (selectingLocationRef.current) return;
+          onInformationRef.current(country);
+        });
 
         layer.on("mouseover", () => {
           if (diffModeRef.current) {
@@ -589,13 +595,16 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
               : completed.has(c.id) ? icons.done : wishlist.has(c.id) ? icons.wishlist : icons.todo
           }
           eventHandlers={{
-            click: () => onInformation(c),
+            click: () => {
+              if (selectingLocation) return;
+              onInformation(c);
+            }
           }}
         />
       ));
       }
 
-      if (experiencesMode && experienceRecords) {
+      if (experienceRecords) {
         const expMarkers = experienceRecords.map((r, i) => {
           const iconHtml = ReactDOMServer.renderToString(
             <span className="summit-pin summit-pin--experience summit-pin--done">
@@ -647,6 +656,56 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
       <MapZoomListener />
       <MapClickListener onMapClick={onMapClick} selectingLocation={selectingLocation} />
       <SweepOverlay searchedId={searchedId} layerRefs={layerRefs} regionLayerRefs={regionLayerRefs} />
+
+      {experiencesMode && onAddExperience && (
+        <div className="leaflet-control-container">
+          <div className="leaflet-top leaflet-left" style={{ pointerEvents: 'none', zIndex: 1000 }}>
+            <div className="leaflet-control leaflet-bar" style={{ pointerEvents: 'auto', marginTop: 80, marginLeft: 10 }}>
+              <a
+                href="#"
+                role="button"
+                title="Añadir experiencia en el mapa"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 30,
+                  height: 30,
+                  textDecoration: 'none',
+                  color: 'black'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f4f4f4'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff'}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onAddExperience();
+                }}
+              >
+                <svg style={{ width: 16, height: 16 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="6" />
+                  <circle cx="12" cy="12" r="2" />
+                </svg>
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectingLocation && (
+        <div className="leaflet-control-container">
+          <div className="leaflet-top leaflet-center" style={{ pointerEvents: 'none', zIndex: 1000, width: '100%', display: 'flex', justifyContent: 'center', marginTop: 16 }}>
+            <div className="leaflet-control" style={{ pointerEvents: 'auto', background: 'var(--pine)', color: '#fff', padding: '12px 24px', borderRadius: 24, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 500, fontSize: '0.95rem' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+              Haz clic en el mapa para situar la experiencia
+            </div>
+          </div>
+        </div>
+      )}
       <MapSearchControl 
         items={searchItems} 
         onSelect={handleSearchSelect} 

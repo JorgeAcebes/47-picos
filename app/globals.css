@@ -1110,20 +1110,23 @@ nav a:hover::after {
   border: 1px solid #d2a54b;
 }
 
-/* Countries */
-.mode-countries .summit-tooltip.tooltip-todo {
+/* Countries and Experiences */
+.mode-countries .summit-tooltip.tooltip-todo,
+.mode-experiences .summit-tooltip.tooltip-todo {
   background: #ece5f3;
   color: #4a2878;
   border: 1px solid #9b8ab8;
 }
 
-.mode-countries .summit-tooltip.tooltip-done {
+.mode-countries .summit-tooltip.tooltip-done,
+.mode-experiences .summit-tooltip.tooltip-done {
   background: #7b52ab;
   color: white;
   border: 1px solid #4a2878;
 }
 
-.mode-countries .summit-tooltip.tooltip-wishlist {
+.mode-countries .summit-tooltip.tooltip-wishlist,
+.mode-experiences .summit-tooltip.tooltip-wishlist {
   background: #ecd9a5;
   color: #a67c29;
   border: 1px solid #d2a54b;

@@ -6,7 +6,7 @@ import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "
 import type { Session } from "@supabase/supabase-js";
 import { peaks, type Peak } from "@/data/peaks";
 import { countries, type Country } from "@/data/countries";
-import { predefinedCategories } from "@/data/experiences";
+import { predefinedCategories, CustomExperience, ExperienceCategory } from "@/data/experiences";
 import { regionsByCountryIsoA2, type Region } from "@/data/regions";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { AuthDialog } from "./auth-dialog";
@@ -41,6 +41,7 @@ export type SelectedItem = {
   label: string;
   detail: string;
   note: string;
+  iconName?: string;
 };
 
 export type SummitPhoto = {
@@ -322,6 +323,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
   const [customExpIcon, setCustomExpIcon] = useState("star");
   const [selectingLocationForExp, setSelectingLocationForExp] = useState<string | null>(null);
   const [expSelectorOpen, setExpSelectorOpen] = useState(false);
+  const [expandedExpCategory, setExpandedExpCategory] = useState<string | null>(null);
   const [selectedLatLng, setSelectedLatLng] = useState<{lat: number, lng: number} | null>(null);
   const [editingExpRecordId, setEditingExpRecordId] = useState<string | null>(null);
 
@@ -501,9 +503,10 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
             id: exp.id,
             title: exp.name,
             subtitle: "",
-            label: cat.iconName,
+            label: "",
             detail: cat.name,
-            note: ""
+            note: "",
+            iconName: cat.iconName
           }))
         )
       : countries.map(countryToItem), [isPeaks, isExp]);
@@ -547,10 +550,24 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
   );
 
   // Filtrar ascents por modo
-  const modeAscents = useMemo(
-    () => ascents.filter((a) => validIds.has(a.summit_id)),
-    [ascents, validIds],
-  );
+  const modeAscents = useMemo(() => {
+    const regularAscents = ascents.filter((a) => validIds.has(a.summit_id));
+    if (isExp) {
+      const expAscents = experienceRecords.map(r => ({
+        summit_id: r.experience_id,
+        achieved_on: r.achieved_on,
+        end_date: null,
+        notes: r.notes || null,
+        is_wishlist: r.is_wishlist,
+        record_id: r.id,
+        lat: r.lat,
+        lng: r.lng,
+        sub_item_id: r.sub_item_id
+      }));
+      return [...regularAscents, ...expAscents].filter((a) => validIds.has(a.summit_id));
+    }
+    return regularAscents;
+  }, [ascents, validIds, isExp, experienceRecords]);
 
   const completedModeAscents = useMemo(
     () => modeAscents.filter((a) => !a.is_wishlist),
@@ -938,7 +955,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
     openInformation(item);
   }, [openInformation]);
 
-  function handleMapClickForExp(lat: number, lng: number) {
+  async function handleMapClickForExp(lat: number, lng: number) {
     if (!selectingLocationForExp) return;
     
     const [expId, subItemId] = selectingLocationForExp.split("::");
@@ -951,11 +968,25 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
         id: expId,
         sub_item_id: subItemId,
         title: title,
-        subtitle: "Experiencia",
-        label: category.iconName,
+        subtitle: category.name,
+        label: "",
         detail: category.name,
-        note: ""
+        note: "",
+        iconName: category.iconName
       };
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&accept-language=es`);
+        const data = await res.json();
+        let placeName = "";
+        if (data && data.address) {
+          placeName = data.address.city || data.address.town || data.address.village || data.address.county || data.address.state || data.address.country || data.address.ocean || data.address.sea || "";
+        }
+        if (placeName) {
+          item.note = placeName;
+        }
+      } catch (e) {
+        console.warn("Reverse geocoding error:", e);
+      }
       
       setSelectingLocationForExp(null);
       setSelectedLatLng({ lat, lng });
@@ -973,17 +1004,18 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
         id: record.experience_id,
         sub_item_id: record.sub_item_id,
         title: title,
-        subtitle: "Experiencia",
-        label: category.iconName,
+        subtitle: category.name,
+        label: "",
         detail: category.name,
-        note: ""
+        note: "",
+        iconName: category.iconName
       };
       openInformation(item);
     }
   }
 
   const openRecord = useCallback(
-    (item?: SelectedItem | null, ascentToEdit?: Ascent) => {
+    (item?: SelectedItem | null, ascentToEdit?: Ascent | any) => {
       if (!session) {
         window.location.hash = "panel";
         setAuthOpen(true);
@@ -1030,7 +1062,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
           setOriginalAchievedOn(null);
           setIsDateUnknown(true);
           setIsDateModified(false);
-          setNotes("");
+          setNotes(item.note || "");
         }
         setFiles([]);
       }
@@ -1119,6 +1151,12 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
 
   async function saveAscent() {
     if (!supabase || !session || !selected) return;
+    const isExperience = selected.id.startsWith("exp-") || selected.id.startsWith("cexp-");
+    if (isExperience && (!selectedLatLng || selectedLatLng.lat === undefined)) {
+      setNotice("Debes situar la experiencia en el mapa primero.");
+      return;
+    }
+
     setSaving(true);
     setNotice("");
     const finalDate = isDateUnknown ? "1900-01-01" : (climbDate?.toISOString().slice(0, 10) ?? new Date().toISOString().slice(0, 10));
@@ -1132,7 +1170,6 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
     }
 
     const finalEndDate = isEndDateEnabled && climbEndDate ? climbEndDate.toISOString().slice(0, 10) : null;
-    const isExperience = selected.id.startsWith("exp-") || selected.id.startsWith("cexp-");
     
     let dbError = null;
 
@@ -1616,6 +1653,8 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
               <>El mapa de <br /><em>@{targetProfile.username}</em></>
             ) : isPeaks ? (
               <>Sube alto.<br /><em>Déjalo escrito.</em></>
+            ) : experiencesMode ? (
+              <>Vive experiencias.<br /><em>Márcalas en tu mapa.</em></>
             ) : (
               <>Explora el mundo.<br /><em>Márcalo en tu mapa.</em></>
             )}
@@ -1841,39 +1880,16 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
               completedRegions={completedRegionIds}
               activeId={selected?.id}
               experiencesMode={experiencesMode}
-              experienceRecords={experienceRecords}
+              experienceRecords={experienceRecords.map(r => {
+                const cat = dynamicCategories.find(c => c.experiences.some(e => e.id === r.experience_id));
+                return { ...r, icon_name: cat?.iconName || "telescope" };
+              })}
               selectingLocation={!!selectingLocationForExp}
               onMapClick={handleMapClickForExp}
               onExperienceClick={handleExperienceClick}
+              onAddExperience={() => setExpSelectorOpen(true)}
             />
-            {experiencesMode && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: 54, // Justo debajo de la lupa (10 + 36 + 8)
-                  right: 10, // A la derecha
-                  zIndex: 2000, // Por encima de Leaflet
-                  background: 'var(--background)',
-                  width: 36, // Mismo tamaño que la lupa
-                  height: 36,
-                  borderRadius: 4,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.15)',
-                  border: '1px solid rgba(0,0,0,0.1)'
-                }}
-                onClick={() => setExpSelectorOpen(true)}
-                title="Añadir experiencia en el mapa"
-              >
-                <svg style={{ width: 16, height: 16, color: 'var(--foreground)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <circle cx="12" cy="12" r="6" />
-                  <circle cx="12" cy="12" r="2" />
-                </svg>
-              </div>
-            )}
+
           </div>
         </div>
       </section>
@@ -2064,170 +2080,232 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
           <button className="icon-button" onClick={closePanel} aria-label="Cerrar">
             <IconClose />
           </button>
-          <span className="eyebrow" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            {isExp && selected.subtitle === "Experiencia" && selected.label && selected.detail && getIconComponent(selected.label) && (
-              <span style={{ display: 'flex', width: 14, height: 14, alignItems: 'center' }}>
-                {getIconComponent(selected.label)}
+          
+          {(selected.id.startsWith("exp-") || selected.id.startsWith("cexp-")) ? (
+            <>
+              <span className="eyebrow" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {selected.label && getIconComponent(selected.label) && (
+                  <span style={{ display: 'flex', width: 14, height: 14, alignItems: 'center' }}>
+                    {getIconComponent(selected.label)}
+                  </span>
+                )}
+                {selected.detail ? selected.detail.toUpperCase() : "EXPERIENCIA"}
               </span>
-            )}
-            {isExp && selected.detail && selected.subtitle === "Experiencia" ? selected.detail.toUpperCase() : 
-            selected.label ? selected.label.toUpperCase() : ""}
-          </span>
-          <h2>{selected.title}</h2>
-          {isPeaks ? (
-            <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 19 }}>
-                <div className="altitude" style={{ marginTop: 0 }}>
-                  {selected.subtitle.replace(" m", "")} <span>m</span>
-                </div>
-              </div>
-              <p className="range">{selected.detail}</p>
-            </>
-          ) : (
-            <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 19 }}>
-                <div className="country-capital" style={{ marginTop: 0 }}>{selected.subtitle}</div>
-              </div>
-              <p className="range">{selected.detail}</p>
-            </>
-          )}
-          <p>{selected.note}</p>
-
-          {selectedAscents.length > 1 && (
-            <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(92, 155, 125, 0.1)', borderRadius: '20px', padding: '3px', position: 'relative', marginBottom: '16px', cursor: 'pointer', userSelect: 'none', width: 'fit-content' }} onClick={() => setAscentsSortOrder(o => o === "asc" ? "desc" : "asc")}>
-              <div style={{ position: 'absolute', top: 3, bottom: 3, left: ascentsSortOrder === "asc" ? 3 : '50%', right: ascentsSortOrder === "asc" ? '50%' : 3, background: 'var(--pine)', borderRadius: '18px', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }} />
-              <span style={{ position: 'relative', zIndex: 1, padding: '4px 12px', fontSize: '12px', fontWeight: 600, color: ascentsSortOrder === "asc" ? 'white' : 'var(--pine)', transition: 'color 0.2s ease', flex: 1, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Más antiguo</span>
-              <span style={{ position: 'relative', zIndex: 1, padding: '4px 12px', fontSize: '12px', fontWeight: 600, color: ascentsSortOrder === "desc" ? 'white' : 'var(--pine)', transition: 'color 0.2s ease', flex: 1, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Más reciente</span>
-            </div>
-          )}
-
-          {selectedAscents.length > 0 ? (
-            selectedAscents.map(ascent => {
-              const ascentPhotos = selectedPhotos.filter(p => p.taken_on === ascent.achieved_on);
-              return (
-                <div key={ascent.achieved_on} className="completed-card">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-                    <b style={{ marginTop: '6px' }}>
-                      {formatDate(ascent.achieved_on)}
-                      {ascent.end_date && ` - ${formatDate(ascent.end_date)}`}
-                    </b>
-                    
-                    {!isReadOnly && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <button 
-                          title="Editar registro"
-                          className="button button--quiet button--small" 
-                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', flexShrink: 0, padding: 0, margin: 0 }} 
-                          onClick={() => openRecord(selected, ascent)}
-                        >
-                          <IconEdit style={{ width: 14, height: 14 }} strokeWidth={1.5} />
-                        </button>
-                        <label
-                          title="Añadir fotos a esta fecha"
-                          className="button button--quiet button--small"
-                          onClick={(e) => {
-                            if (ascentPhotos.length >= 4) {
-                              e.preventDefault();
-                              setNotice("Máximo 4 fotos por registro. Ya has alcanzado el límite.");
-                              setTimeout(() => setNotice(""), 4000);
-                            }
-                          }}
-                          style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            width: '32px', height: '32px', flexShrink: 0, padding: 0, margin: 0,
-                            cursor: ascentPhotos.length >= 4 ? 'not-allowed' : 'pointer',
-                            opacity: ascentPhotos.length >= 4 ? 0.5 : 1
-                          }}
-                        >
-                          <IconCamera style={{ width: 14, height: 14 }} strokeWidth={1.5} />
-                          <input
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            onChange={(e) => handleAddPhotosToDate(e, ascent)}
-                            style={{ display: 'none' }}
-                            disabled={ascentPhotos.length >= 4}
-                          />
-                        </label>
-                      </div>
-                    )}
-                  </div>
-                  {ascent.notes && <p style={{ marginTop: '4px' }}>&ldquo;{ascent.notes}&rdquo;</p>}
-
-                  {ascentPhotos.length > 0 && (
-                    <div className="photo-section" style={{ marginTop: 16 }}>
-                      <div className="photo-grid">
-                        {ascentPhotos.map((photo) => {
-                          const isSelected = selectedPhotosForEdit.includes(photo.id);
-                          return (
-                            <figure key={photo.id} className={isSelected ? 'selected' : ''} onClick={() => handlePhotoClick(photo)}>
-                              {!isReadOnly && (
-                                <button
-                                  type="button"
-                                  className={`photo-select-circle ${isSelected ? 'active' : ''}`}
-                                  onClick={(e) => { e.stopPropagation(); togglePhotoSelection(photo.id); }}
-                                  aria-label="Seleccionar foto"
-                                >
-                                  {isSelected && <IconCheck />}
-                                </button>
-                              )}
-                              <img src={photo.public_url} alt={`${isPeaks ? "Ascensión a" : "Visita a"} ${selected.title}`} loading="lazy" />
-                              {photo.caption && <figcaption>{photo.caption}</figcaption>}
-                            </figure>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          ) : hasWishlist && !isExp ? (
-            <div className="pending-card" style={{ background: "var(--amber-bg)", color: "#a67c29", borderColor: "#ecd9a5" }}>
-              ★ En tu lista de deseos
-            </div>
-          ) : (
-            <div className="pending-card">
-              {isPeaks
-                ? (isReadOnly ? "Aún no ha registrado esta cima." : "Aún no has registrado esta cima.")
-                : isExp 
-                  ? (isReadOnly ? "Aún no ha vivido esta experiencia." : "Aún no has vivido esta experiencia.")
-                  : (isReadOnly ? "Aún no ha registrado este país." : "Aún no has registrado este país.")}
-            </div>
-          )}
-
-          {/* Other photos that don't match any registered date */}
-          {(() => {
-            const registeredDates = new Set(selectedAscents.map(a => a.achieved_on));
-            const otherPhotos = selectedPhotos.filter(p => !registeredDates.has(p.taken_on));
-            if (otherPhotos.length === 0) return null;
-            return (
-              <div className="photo-section" style={{ marginTop: 24 }}>
-                <h3>Otras fotos <small>{otherPhotos.length}</small></h3>
-                <div className="photo-grid">
-                  {otherPhotos.map((photo) => {
-                    const isSelected = selectedPhotosForEdit.includes(photo.id);
+              <h2>{selected.title}</h2>
+              <div style={{ marginTop: '16px' }}>
+                {(() => {
+                  const cat = dynamicCategories.find(c => c.name === selected.detail);
+                  const exp = cat?.experiences.find(e => e.id === selected.id);
+                  if (exp?.subItems) {
                     return (
-                      <figure key={photo.id} className={isSelected ? 'selected' : ''} onClick={() => handlePhotoClick(photo)}>
-                        {!isReadOnly && (
-                          <button
-                            type="button"
-                            className={`photo-select-circle ${isSelected ? 'active' : ''}`}
-                            onClick={(e) => { e.stopPropagation(); togglePhotoSelection(photo.id); }}
-                            aria-label="Seleccionar foto"
-                          >
-                            {isSelected && <IconCheck />}
-                          </button>
-                        )}
-                        <img src={photo.public_url} alt={`Foto en ${selected.title}`} loading="lazy" />
-                        <figcaption>{photo.caption ? photo.caption : formatDate(photo.taken_on)}</figcaption>
-                      </figure>
-                    );
-                  })}
-                </div>
+                      <div style={{ marginTop: 16 }}>
+                        <h4 style={{ marginBottom: 8, fontSize: '0.9rem', color: 'var(--foreground)' }}>Desglose:</h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {exp.subItems.map((item: any) => {
+                            const subItemKey = `${exp.id}::${item.id}`;
+                            const asc = experienceRecords.find(r => r.experience_id === exp.id && r.sub_item_id === item.id);
+                            return (
+                              <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'var(--surface)', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                                <span style={{ fontSize: '13px', fontWeight: 500 }}>{item.name}</span>
+                                {asc ? (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <IconCheck style={{ color: 'var(--pine)', width: 16, height: 16 }} />
+                                    <button className="button button--quiet button--small" style={{ padding: '0 4px' }} onClick={() => openRecord(selected, asc)}>Ver</button>
+                                  </div>
+                                ) : (
+                                  <button className="button button--quiet button--small" style={{ color: 'var(--pine)' }} onClick={() => {
+                                    setSelectingLocationForExp(subItemKey);
+                                    window.location.hash = "mapa";
+                                  }}>Situar</button>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  }
+                  return (
+                    <div className="button-group">
+                      <button
+                        className="button button--purple"
+                        onClick={() => {
+                          setSelectingLocationForExp(`${selected.id}::`);
+                          window.location.hash = "mapa";
+                        }}
+                        style={{ width: '100%', marginBottom: 8 }}
+                      >
+                        Situar en el mapa
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
-            );
-          })()}
+            </>
+          ) : (
+            <>
+              <span className="eyebrow" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {selected.label ? selected.label.toUpperCase() : ""}
+              </span>
+              <h2>{selected.title}</h2>
+              {isPeaks ? (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 19 }}>
+                    <div className="altitude" style={{ marginTop: 0 }}>
+                      {selected.subtitle.replace(" m", "")} <span>m</span>
+                    </div>
+                  </div>
+                  <p className="range">{selected.detail}</p>
+                </>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 19 }}>
+                    <div className="country-capital" style={{ marginTop: 0 }}>{selected.subtitle}</div>
+                  </div>
+                  <p className="range">{selected.detail}</p>
+                </>
+              )}
+              <p>{selected.note}</p>
+            </>
+          )}
+
+          {!(selected.id.startsWith("exp-") || selected.id.startsWith("cexp-")) && (
+            <>
+              {selectedAscents.length > 1 && (
+                <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(92, 155, 125, 0.1)', borderRadius: '20px', padding: '3px', position: 'relative', marginBottom: '16px', cursor: 'pointer', userSelect: 'none', width: 'fit-content' }} onClick={() => setAscentsSortOrder(o => o === "asc" ? "desc" : "asc")}>
+                  <div style={{ position: 'absolute', top: 3, bottom: 3, left: ascentsSortOrder === "asc" ? 3 : '50%', right: ascentsSortOrder === "asc" ? '50%' : 3, background: 'var(--pine)', borderRadius: '18px', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }} />
+                  <span style={{ position: 'relative', zIndex: 1, padding: '4px 12px', fontSize: '12px', fontWeight: 600, color: ascentsSortOrder === "asc" ? 'white' : 'var(--pine)', transition: 'color 0.2s ease', flex: 1, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Más antiguo</span>
+                  <span style={{ position: 'relative', zIndex: 1, padding: '4px 12px', fontSize: '12px', fontWeight: 600, color: ascentsSortOrder === "desc" ? 'white' : 'var(--pine)', transition: 'color 0.2s ease', flex: 1, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Más reciente</span>
+                </div>
+              )}
+
+              {selectedAscents.length > 0 ? (
+                selectedAscents.map(ascent => {
+                  const ascentPhotos = selectedPhotos.filter(p => p.taken_on === ascent.achieved_on);
+                  return (
+                    <div key={ascent.achieved_on} className="completed-card">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                        <b style={{ marginTop: '6px' }}>
+                          {formatDate(ascent.achieved_on)}
+                          {ascent.end_date && ` - ${formatDate(ascent.end_date)}`}
+                        </b>
+                        
+                        {!isReadOnly && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <button 
+                              title="Editar registro"
+                              className="button button--quiet button--small" 
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', flexShrink: 0, padding: 0, margin: 0 }} 
+                              onClick={() => openRecord(selected, ascent)}
+                            >
+                              <IconEdit style={{ width: 14, height: 14 }} strokeWidth={1.5} />
+                            </button>
+                            <label
+                              title="Añadir fotos a esta fecha"
+                              className="button button--quiet button--small"
+                              onClick={(e) => {
+                                if (ascentPhotos.length >= 4) {
+                                  e.preventDefault();
+                                  setNotice("Máximo 4 fotos por registro. Ya has alcanzado el límite.");
+                                  setTimeout(() => setNotice(""), 4000);
+                                }
+                              }}
+                              style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                width: '32px', height: '32px', flexShrink: 0, padding: 0, margin: 0,
+                                cursor: ascentPhotos.length >= 4 ? 'not-allowed' : 'pointer',
+                                opacity: ascentPhotos.length >= 4 ? 0.5 : 1
+                              }}
+                            >
+                              <IconCamera style={{ width: 14, height: 14 }} strokeWidth={1.5} />
+                              <input
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                onChange={(e) => handleAddPhotosToDate(e, ascent)}
+                                style={{ display: 'none' }}
+                                disabled={ascentPhotos.length >= 4}
+                              />
+                            </label>
+                          </div>
+                        )}
+                      </div>
+                      {ascent.notes && <p style={{ marginTop: '4px' }}>&ldquo;{ascent.notes}&rdquo;</p>}
+
+                      {ascentPhotos.length > 0 && (
+                        <div className="photo-section" style={{ marginTop: 16 }}>
+                          <div className="photo-grid">
+                            {ascentPhotos.map((photo) => {
+                              const isSelected = selectedPhotosForEdit.includes(photo.id);
+                              return (
+                                <figure key={photo.id} className={isSelected ? 'selected' : ''} onClick={() => handlePhotoClick(photo)}>
+                                  {!isReadOnly && (
+                                    <button
+                                      type="button"
+                                      className={`photo-select-circle ${isSelected ? 'active' : ''}`}
+                                      onClick={(e) => { e.stopPropagation(); togglePhotoSelection(photo.id); }}
+                                      aria-label="Seleccionar foto"
+                                    >
+                                      {isSelected && <IconCheck />}
+                                    </button>
+                                  )}
+                                  <img src={photo.public_url} alt={`Foto en ${selected.title}`} loading="lazy" />
+                                  <figcaption>{photo.caption ? photo.caption : formatDate(photo.taken_on)}</figcaption>
+                                </figure>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              ) : hasWishlist && !isExp ? (
+                <div className="pending-card" style={{ background: "var(--amber-bg)", color: "#a67c29", borderColor: "#ecd9a5" }}>
+                  ★ En tu lista de deseos
+                </div>
+              ) : (
+                <div className="pending-card">
+                  {isPeaks
+                    ? (isReadOnly ? "Aún no ha registrado esta cima." : "Aún no has registrado esta cima.")
+                    : (selected.id.startsWith("exp-") || selected.id.startsWith("cexp-"))
+                      ? (isReadOnly ? "Aún no ha vivido esta experiencia." : "Aún no has vivido esta experiencia.")
+                      : (isReadOnly ? "Aún no ha registrado este país." : "Aún no has registrado este país.")}
+                </div>
+              )}
+
+              {/* Other photos that don't match any registered date */}
+              {(() => {
+                const registeredDates = new Set(selectedAscents.map(a => a.achieved_on));
+                const otherPhotos = selectedPhotos.filter(p => !registeredDates.has(p.taken_on));
+                if (otherPhotos.length === 0) return null;
+                return (
+                  <div className="photo-section" style={{ marginTop: 24 }}>
+                    <h3>Otras fotos <small>{otherPhotos.length}</small></h3>
+                    <div className="photo-grid">
+                      {otherPhotos.map((photo) => {
+                        const isSelected = selectedPhotosForEdit.includes(photo.id);
+                        return (
+                          <figure key={photo.id} className={isSelected ? 'selected' : ''} onClick={() => handlePhotoClick(photo)}>
+                            {!isReadOnly && (
+                              <button
+                                type="button"
+                                className={`photo-select-circle ${isSelected ? 'active' : ''}`}
+                                onClick={(e) => { e.stopPropagation(); togglePhotoSelection(photo.id); }}
+                                aria-label="Seleccionar foto"
+                              >
+                                {isSelected && <IconCheck />}
+                              </button>
+                            )}
+                            <img src={photo.public_url} alt={`Foto en ${selected.title}`} loading="lazy" />
+                            <figcaption>{photo.caption ? photo.caption : formatDate(photo.taken_on)}</figcaption>
+                          </figure>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
 
           <div className="panel-actions">
             {!isReadOnly && (
@@ -2237,7 +2315,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
               >
                 {selectedAscents.length > 0
                   ? "Registrar otra fecha"
-                  : isPeaks ? "Marcar como completado" : "Marcar como visitado"}
+                  : isPeaks ? "Marcar como completado" : (selected.id.startsWith("exp-") || selected.id.startsWith("cexp-")) ? "Registrar la experiencia" : "Marcar como visitado"}
               </button>
             )}
             {(!selectedAscents.length || hasWishlist) && !isReadOnly && !isExp && (
@@ -2250,6 +2328,8 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
               </button>
             )}
           </div>
+          </>
+        )}
         </aside>
       )}
 
@@ -2269,16 +2349,44 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
               <IconClose />
             </button>
             <span className="eyebrow">
-              {isPeaks ? "REGISTRAR ASCENSIÓN" : "REGISTRAR VISITA"}
+              {isPeaks ? "REGISTRAR ASCENSIÓN" : (selected.id.startsWith("exp-") || selected.id.startsWith("cexp-") ? "REGISTRAR EXPERIENCIA" : "REGISTRAR VISITA")}
             </span>
-            <h2>{selected.title}</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {(selected.id.startsWith("exp-") || selected.id.startsWith("cexp-")) && selected.iconName && getIconComponent(selected.iconName)}
+              <h2 style={{ margin: 0 }}>{selected.title}</h2>
+            </div>
             <p>
-              {selected.label} · {selected.subtitle}
+              {(selected.id.startsWith("exp-") || selected.id.startsWith("cexp-")) ? selected.subtitle : `${selected.label} · ${selected.subtitle}`}
             </p>
+            {(selected.id.startsWith("exp-") || selected.id.startsWith("cexp-")) && (
+              <div style={{ marginBottom: 16 }}>
+                {notes && (
+                  <div style={{ fontSize: '0.85em', color: 'var(--sage)', marginBottom: 8, fontWeight: 500 }}>
+                    📍 {notes}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  className="button button--quiet button--small"
+                  onClick={() => {
+                    setSelectingLocationForExp(selected.sub_item_id ? `${selected.id}::${selected.sub_item_id}` : `${selected.id}::`);
+                    setRecordOpen(false);
+                    window.location.hash = "mapa";
+                  }}
+                  style={{ color: 'var(--pine)', padding: '4px 8px' }}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, marginRight: 6 }}>
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                    <circle cx="12" cy="10" r="3" />
+                  </svg>
+                  Modificar localización en el mapa
+                </button>
+              </div>
+            )}
 
             <div className="field-label" style={{ marginBottom: 18 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <span>{isPeaks ? "Fecha de la ascensión" : "Fecha de la visita"}</span>
+                <span>{isPeaks ? "Fecha de la ascensión" : (selected.id.startsWith("exp-") || selected.id.startsWith("cexp-") ? "Fecha de la experiencia" : "Fecha de la visita")}</span>
                 {!isDateUnknown && !isEndDateEnabled && (
                   <button
                     type="button"
@@ -2446,13 +2554,12 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
             <label className="field-label">
               Notas
               <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                placeholder={(selected.id.startsWith("exp-") || selected.id.startsWith("cexp-")) ? "Acompañantes, sensaciones ..." : "Ciudades visitadas, experiencias, lo que quieras recordar..."}
+                value={notes || ""}
+                onChange={(e) => {
+                  setNotes(e.target.value);
+                }}
                 rows={3}
-                placeholder={isPeaks
-                  ? "Ruta, compañía, el momento que recuerdas…"
-                  : "Ciudades visitadas, experiencias, lo que quieras recordar…"
-                }
               />
             </label>
 
@@ -2710,50 +2817,67 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
               >
                 + Crear Experiencia Personalizada
               </button>
-              {dynamicCategories.map(cat => (
-                <div key={cat.id} style={{ marginBottom: 16 }}>
-                  <h4 style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 8px 0', color: 'var(--foreground)' }}>
-                     {cat.name}
-                  </h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    {cat.experiences.map(exp => (
-                      <div key={exp.id}>
-                        {!exp.subItems ? (
-                          <button 
-                            className="button button--outline" 
-                            style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left', padding: '8px 12px' }}
-                            onClick={() => {
-                              setSelectingLocationForExp(`${exp.id}::`);
-                              setExpSelectorOpen(false);
-                            }}
-                          >
-                            {exp.name}
-                          </button>
-                        ) : (
-                          <div style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: '8px' }}>
-                            <div style={{ fontWeight: 500, marginBottom: 8 }}>{exp.name}</div>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                              {exp.subItems.map((item: any) => (
-                                <button
-                                  key={item.id}
-                                  className="button button--quiet button--small"
-                                  style={{ border: '1px solid var(--border)' }}
+              {dynamicCategories.map(cat => {
+                const isExpanded = expandedExpCategory === cat.id;
+                return (
+                  <div key={cat.id} style={{ marginBottom: 8, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                    <button
+                      className="button button--quiet"
+                      style={{ width: '100%', justifyContent: 'space-between', padding: '12px 16px', borderRadius: 0, borderBottom: isExpanded ? '1px solid var(--border)' : 'none' }}
+                      onClick={() => setExpandedExpCategory(isExpanded ? null : cat.id)}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
+                        {getIconComponent(cat.iconName)}
+                        {cat.name}
+                      </div>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16, transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                      </svg>
+                    </button>
+                    
+                    {isExpanded && (
+                      <div style={{ padding: '12px 16px', background: 'var(--surface)' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          {cat.experiences.map(exp => (
+                            <div key={exp.id}>
+                              {!exp.subItems ? (
+                                <button 
+                                  className="button button--outline" 
+                                  style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left', padding: '8px 12px', background: 'var(--background)' }}
                                   onClick={() => {
-                                    setSelectingLocationForExp(`${exp.id}::${item.id}`);
+                                    setSelectingLocationForExp(`${exp.id}::`);
                                     setExpSelectorOpen(false);
                                   }}
                                 >
-                                  {item.name}
+                                  {exp.name}
                                 </button>
-                              ))}
+                              ) : (
+                                <div style={{ padding: '12px', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--background)' }}>
+                                  <div style={{ fontWeight: 500, marginBottom: 8 }}>{exp.name}</div>
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                    {exp.subItems.map((item: any) => (
+                                      <button
+                                        key={item.id}
+                                        className="button button--outline button--small"
+                                        onClick={() => {
+                                          setSelectingLocationForExp(`${exp.id}::${item.id}`);
+                                          setExpSelectorOpen(false);
+                                        }}
+                                      >
+                                        {item.name}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        )}
+                          ))}
+                        </div>
                       </div>
-                    ))}
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
