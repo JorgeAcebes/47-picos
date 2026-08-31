@@ -92,10 +92,17 @@
   color: #bac2de;
 }
 .mode-experiences .info-message,
-.mode-experiences .pending-card {
+.mode-experiences .pending-card,
+.mode-experiences .completed-card {
   background: rgba(255, 255, 255, 0.05);
   color: #bac2de;
   border-left-color: var(--pine);
+}
+
+.mode-experiences .completed-card span,
+.mode-experiences .completed-card p,
+.mode-experiences .completed-card b {
+  color: #bac2de;
 }
 
 .mode-experiences .legend-pin {
@@ -980,54 +987,52 @@ nav a:hover::after {
 
 /* ── Dynamic map zoom scaling ──────────────── */
 .map[data-zoom="1"] .summit-pin,
-.map[data-zoom="2"] .summit-pin {
+.map[data-zoom="2"] .summit-pin,
+.map[data-zoom="3"] .summit-pin,
+.map[data-zoom="4"] .summit-pin {
   opacity: 0;
   pointer-events: none;
   transform: scale(0.3);
 }
 
-.map[data-zoom="3"] .summit-pin {
+.map[data-zoom="5"] .summit-pin {
   opacity: 0.2;
   transform: scale(0.45);
 }
 
-.map[data-zoom="4"] .summit-pin {
-  opacity: 0.5;
-  transform: scale(0.65);
-}
-
-.map[data-zoom="5"] .summit-pin {
-  opacity: 0.8;
-  transform: scale(0.85);
-}
-
-.map[data-zoom="6"] .summit-pin,
-.map[data-zoom="7"] .summit-pin,
-.map[data-zoom="8"] .summit-pin,
-.map[data-zoom="9"] .summit-pin,
-.map[data-zoom="10"] .summit-pin {
-  opacity: 1;
-  transform: scale(1);
-}
-
-/* Reglas base para ocultar *todos* en zoom bajo (3 al 6) - Spain */
-.map-spain[data-zoom="3"] .summit-pin,
-.map-spain[data-zoom="4"] .summit-pin,
-.map-spain[data-zoom="5"] .summit-pin,
-.map-spain[data-zoom="6"] .summit-pin {
-  opacity: 0;
-  pointer-events: none;
-  transform: scale(0.3);
-}
-
-/* En zoom alto (7 en adelante), mostramos todos los iconos - Spain */
-.map-spain[data-zoom="7"] .summit-pin {
+.map[data-zoom="6"] .summit-pin {
   opacity: 0.8;
   pointer-events: auto;
   transform: scale(0.85);
 }
 
-.map-spain[data-zoom="8"] .summit-pin,
+.map[data-zoom="7"] .summit-pin,
+.map[data-zoom="8"] .summit-pin,
+.map[data-zoom="9"] .summit-pin,
+.map[data-zoom="10"] .summit-pin {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+}
+
+/* Reglas base para ocultar *todos* en zoom bajo (3 al 7) - Spain */
+.map-spain[data-zoom="3"] .summit-pin,
+.map-spain[data-zoom="4"] .summit-pin,
+.map-spain[data-zoom="5"] .summit-pin,
+.map-spain[data-zoom="6"] .summit-pin,
+.map-spain[data-zoom="7"] .summit-pin {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.3);
+}
+
+/* En zoom alto (8 en adelante), mostramos todos los iconos - Spain */
+.map-spain[data-zoom="8"] .summit-pin {
+  opacity: 0.8;
+  pointer-events: auto;
+  transform: scale(0.85);
+}
+
 .map-spain[data-zoom="9"] .summit-pin,
 .map-spain[data-zoom="10"] .summit-pin {
   opacity: 1;
@@ -1035,35 +1040,46 @@ nav a:hover::after {
   transform: scale(1);
 }
 
-/* Retrasar aparición de pines en WorldMap */
+/* Retrasar aparición de pines de países en general, pero adelantar experiences */
 .mode-countries .map[data-zoom="3"] .summit-pin,
 .mode-countries .map[data-zoom="4"] .summit-pin,
-.mode-experiences .map[data-zoom="3"] .summit-pin,
-.mode-experiences .map[data-zoom="4"] .summit-pin {
+.mode-countries .map[data-zoom="5"] .summit-pin,
+.mode-experiences .map[data-zoom="3"] .summit-pin:not(.summit-pin--experience),
+.mode-experiences .map[data-zoom="4"] .summit-pin:not(.summit-pin--experience),
+.mode-experiences .map[data-zoom="5"] .summit-pin:not(.summit-pin--experience) {
   opacity: 0;
   pointer-events: none;
   transform: scale(0.3);
 }
 
-.mode-countries .map[data-zoom="5"] .summit-pin,
-.mode-experiences .map[data-zoom="5"] .summit-pin {
+.mode-countries .map[data-zoom="6"] .summit-pin,
+.mode-experiences .map[data-zoom="6"] .summit-pin:not(.summit-pin--experience) {
   opacity: 0.4;
   pointer-events: auto;
   transform: scale(0.65);
 }
 
-.mode-countries .map[data-zoom="6"] .summit-pin,
-.mode-experiences .map[data-zoom="6"] .summit-pin {
-  opacity: 0.85;
-  pointer-events: auto;
-  transform: scale(0.9);
-}
-
 .mode-countries .map[data-zoom="7"] .summit-pin,
-.mode-experiences .map[data-zoom="7"] .summit-pin {
+.mode-experiences .map[data-zoom="7"] .summit-pin:not(.summit-pin--experience) {
   opacity: 1;
   pointer-events: auto;
   transform: scale(1);
+}
+
+/* Experiences specific zooms: they appear earlier */
+.mode-experiences .map[data-zoom="3"] .summit-pin--experience,
+.mode-experiences .map[data-zoom="4"] .summit-pin--experience {
+  opacity: 0.6;
+  pointer-events: auto;
+  transform: scale(0.7);
+}
+
+.mode-experiences .map[data-zoom="5"] .summit-pin--experience,
+.mode-experiences .map[data-zoom="6"] .summit-pin--experience,
+.mode-experiences .map[data-zoom="7"] .summit-pin--experience {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1.1);
 }
 
 .map .summit-pin:hover {
@@ -1072,8 +1088,17 @@ nav a:hover::after {
 }
 
 .leaflet-popup-content-wrapper {
-  border-radius: 4px;
-  box-shadow: 0 8px 24px rgba(21, 54, 43, 0.2);
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+}
+
+@media (min-width: 1000px) {
+  main {
+    transition: padding-right 0.3s ease;
+  }
+  main.panel-open {
+    padding-right: 420px;
+  }
 }
 
 /* ── Tooltips (Labels) ──────────────────── */
@@ -1319,8 +1344,8 @@ nav a:hover::after {
 }
 
 .info-panel h2 {
-  font-size: 41px;
-  line-height: 0.98;
+  font-size: 32px;
+  line-height: 1.1;
 }
 
 .altitude {
@@ -1731,7 +1756,7 @@ nav a:hover::after {
 .auth-dialog h2,
 .record-dialog h2 {
   font-family: "Playfair Display", Georgia, serif;
-  font-size: 36px;
+  font-size: 26px;
   font-weight: 700;
   line-height: 1.1;
   margin-bottom: 8px;
@@ -1762,7 +1787,7 @@ nav a:hover::after {
   gap: 6px;
 }
 
-.auth-form input[type="text"],
+input[type="text"],
 input[type="email"],
 input[type="password"],
 input[type="date"],
@@ -1797,9 +1822,11 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   opacity: 1;
 }
 
-.auth-form input:focus,
-.field-label input:focus,
-.field-label textarea:focus {
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="date"]:focus,
+textarea:focus {
   outline: 2px solid #9fc5b1;
   border-color: var(--sage);
 }
@@ -2430,7 +2457,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   }
 
   .info-panel h2 {
-    font-size: 32px;
+    font-size: 26px;
   }
 
   .altitude {

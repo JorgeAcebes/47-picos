@@ -69,7 +69,7 @@ export function MapSearchControl({ items, onSelect, placeholder = "Buscar..." }:
         position: "absolute", 
         top: 10, 
         right: 10, 
-        zIndex: 1000, 
+        zIndex: 1001, 
         background: "white", 
         borderRadius: expanded ? 8 : "50%", 
         boxShadow: "0 2px 10px rgba(0,0,0,0.15)", 

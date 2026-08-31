@@ -15,6 +15,7 @@ import { InstallPrompt } from "./install-prompt";
 import { ConfirmModal } from "./confirm-modal";
 import PhotoEditor from "./photo-editor";
 import { getIconComponent } from "./icons";
+import { LocationSearch } from "./location-search";
 
 const SpainMap = dynamic(
   () => import("./spain-map").then((module) => module.SpainMap),
@@ -54,6 +55,14 @@ export type SummitPhoto = {
   storage_path: string;
 };
 
+
+
+export type HiddenItem = {
+  user_id: string;
+  item_id: string;
+  item_type: 'category' | 'experience';
+};
+
 export type ExperienceRecord = {
   id: string;
   user_id: string;
@@ -64,6 +73,7 @@ export type ExperienceRecord = {
   achieved_on: string;
   notes?: string;
   is_wishlist: boolean;
+  location_name?: string | null;
   created_at: string;
 };
 
@@ -318,6 +328,11 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
   // Experience features
   const [experienceRecords, setExperienceRecords] = useState<ExperienceRecord[]>([]);
   const [customExperiences, setCustomExperiences] = useState<any[]>([]); // We use any[] for now or import CustomExperience
+  const [customCategories, setCustomCategories] = useState<any[]>([]);
+  const [hiddenItems, setHiddenItems] = useState<HiddenItem[]>([]);
+  const [editingCustomCategory, setEditingCustomCategory] = useState<any>(null); // null, 'new', or existing category object
+  const [editingCustomExp, setEditingCustomExp] = useState<any>(null); // null, 'new', or existing custom experience
+  const [confirmAction, setConfirmAction] = useState<{message: string, onConfirm: () => void} | null>(null);
   const [creatingCustomExp, setCreatingCustomExp] = useState(false);
   const [customExpName, setCustomExpName] = useState("");
   const [customExpIcon, setCustomExpIcon] = useState("star");
@@ -326,6 +341,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
   const [expandedExpCategory, setExpandedExpCategory] = useState<string | null>(null);
   const [selectedLatLng, setSelectedLatLng] = useState<{lat: number, lng: number} | null>(null);
   const [editingExpRecordId, setEditingExpRecordId] = useState<string | null>(null);
+  const [locationName, setLocationName] = useState("");
 
   const [assignToRecordModalOpen, setAssignToRecordModalOpen] = useState(false);
   const [editorPhoto, setEditorPhoto] = useState<SummitPhoto | null>(null);
@@ -473,27 +489,54 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
   // ── Mode config ────────────────────────────
   const isExp = experiencesMode && !isPeaks;
   const dynamicCategories = useMemo(() => {
-    if (customExperiences.length === 0) return predefinedCategories;
-    
-    // Group custom experiences by icon
-    const customCats = customExperiences.reduce((acc: ExperienceCategory[], ce) => {
-      const icon = ce.icon_name || "star";
-      let cat = acc.find(c => c.iconName === icon);
-      if (!cat) {
-        cat = {
-          id: `cat-custom-${icon}`,
-          name: `Personalizadas (${icon})`,
-          iconName: icon,
-          experiences: []
-        };
-        acc.push(cat);
-      }
-      cat.experiences.push({ id: ce.id, name: ce.name });
-      return acc;
-    }, []);
+    const hiddenCategoryIds = new Set(hiddenItems.filter(h => h.item_type === 'category').map(h => h.item_id));
+    const hiddenExperienceIds = new Set(hiddenItems.filter(h => h.item_type === 'experience').map(h => h.item_id));
 
-    return [...predefinedCategories, ...customCats];
-  }, [customExperiences]);
+    const visiblePredefined = predefinedCategories
+      .filter(cat => !hiddenCategoryIds.has(cat.id))
+      .map(cat => {
+        const linkedCustomExps = customExperiences
+          .filter(ce => ce.static_category_id === cat.id)
+          .map(ce => ({ id: ce.id, name: ce.name, subItems: ce.sub_items }));
+
+        return {
+          ...cat,
+          experiences: [
+            ...cat.experiences.filter(exp => !hiddenExperienceIds.has(exp.id)),
+            ...linkedCustomExps
+          ]
+        };
+      });
+
+    const customCats: ExperienceCategory[] = customCategories.map(cat => ({
+      id: cat.id,
+      name: cat.name,
+      iconName: cat.icon_name,
+      experiences: customExperiences.filter(ce => ce.category_id === cat.id).map(ce => ({
+        id: ce.id,
+        name: ce.name,
+        subItems: ce.sub_items
+      }))
+    }));
+
+    // Group any orphaned experiences (no custom category, no static category)
+    const orphanedExperiences = customExperiences.filter(ce => !ce.category_id && !ce.static_category_id);
+    if (orphanedExperiences.length > 0) {
+      const orphansCat = orphanedExperiences.reduce((acc: ExperienceCategory[], ce) => {
+        const icon = ce.icon_name || "star";
+        let c = acc.find(x => x.iconName === icon);
+        if (!c) {
+          c = { id: `cat-custom-${icon}`, name: `Personalizadas (${icon})`, iconName: icon, experiences: [] };
+          acc.push(c);
+        }
+        c.experiences.push({ id: ce.id, name: ce.name, subItems: ce.sub_items } as any);
+        return acc;
+      }, []);
+      customCats.push(...orphansCat);
+    }
+
+    return [...visiblePredefined, ...customCats];
+  }, [customExperiences, customCategories, hiddenItems]);
 
   const allItems = useMemo(() => isPeaks
     ? peaks.map(peakToItem)
@@ -543,10 +586,13 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
       const ids = new Set(allItems.map((i) => i.id));
       if (!isPeaks) {
         Object.values(regionsByCountryIsoA2).flat().forEach((r) => ids.add(r.id));
+        if (isExp) {
+          countries.forEach((c) => ids.add(c.id));
+        }
       }
       return ids;
     },
-    [allItems, isPeaks],
+    [allItems, isPeaks, isExp],
   );
 
   // Filtrar ascents por modo
@@ -562,6 +608,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
         record_id: r.id,
         lat: r.lat,
         lng: r.lng,
+        location_name: r.location_name,
         sub_item_id: r.sub_item_id
       }));
       return [...regularAscents, ...expAscents].filter((a) => validIds.has(a.summit_id));
@@ -602,6 +649,10 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
 
   // Contar únicas
   const achievedCount = useMemo(() => {
+    if (isExp) {
+      const uniqueExps = new Set(completedModeAscents.map(a => a.summit_id + (a.sub_item_id ? `::${a.sub_item_id}` : '')));
+      return uniqueExps.size;
+    }
     if (!isPeaks) {
       const uniqueCountries = new Set(completedModeAscents.filter((a) => a.summit_id.startsWith("country-")).map(a => a.summit_id));
       return uniqueCountries.size;
@@ -611,10 +662,14 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
       completedModeAscents.map((a) => peaks.find((p) => p.id === a.summit_id)?.name).filter(Boolean)
     );
     return uniquePeakNames.size;
-  }, [isPeaks, completedModeAscents]);
+  }, [isPeaks, isExp, completedModeAscents]);
 
   const wishlistCount = useMemo(() => {
     const w = modeAscents.filter(a => a.is_wishlist);
+    if (isExp) {
+      const uniqueExps = new Set(w.map(a => a.summit_id + (a.sub_item_id ? `::${a.sub_item_id}` : '')));
+      return uniqueExps.size;
+    }
     if (!isPeaks) {
       const uniqueCountries = new Set(w.filter((a) => a.summit_id.startsWith("country-")).map(a => a.summit_id));
       return uniqueCountries.size;
@@ -623,7 +678,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
       w.map((a) => peaks.find((p) => p.id === a.summit_id)?.name).filter(Boolean)
     );
     return uniquePeakNames.size;
-  }, [isPeaks, modeAscents]);
+  }, [isPeaks, isExp, modeAscents]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -706,7 +761,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
         return;
       }
       const targetId = targetProfile ? targetProfile.id : session.user.id;
-      const [ascentResult, photoResult, expResult, customExpResult] = await Promise.all([
+      const [ascentResult, photoResult, expResult, customExpResult, customCatResult, hiddenItemsResult] = await Promise.all([
         supabase!
           .from("ascents")
           .select("summit_id, achieved_on, end_date, notes, is_wishlist")
@@ -724,12 +779,22 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
         supabase!
           .from("custom_experiences")
           .select("*")
+          .eq("user_id", targetId),
+        supabase!
+          .from("custom_experience_categories")
+          .select("*")
+          .eq("user_id", targetId),
+        supabase!
+          .from("hidden_items")
+          .select("*")
           .eq("user_id", targetId)
       ]);
       if (ascentResult.data) setAscents(ascentResult.data as Ascent[]);
       if (photoResult.data) setPhotos(photoResult.data as SummitPhoto[]);
       if (expResult.data) setExperienceRecords(expResult.data as ExperienceRecord[]);
       if (customExpResult.data) setCustomExperiences(customExpResult.data);
+      if (customCatResult.data) setCustomCategories(customCatResult.data);
+      if (hiddenItemsResult.data) setHiddenItems(hiddenItemsResult.data as HiddenItem[]);
 
       if (!isReadOnly && !profileOpen) {
         // Ensure we have current user profile if session exists
@@ -861,7 +926,24 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
 
   const selectedAscents = useMemo(() => {
     if (!selected) return [];
-    return modeAscents.filter((a) => a.summit_id === selected.id && !a.is_wishlist).sort((a, b) => {
+    
+    const allAscents = [
+      ...ascents,
+      ...experienceRecords.map(r => ({
+        summit_id: r.experience_id,
+        achieved_on: r.achieved_on,
+        end_date: null,
+        notes: r.notes || null,
+        is_wishlist: r.is_wishlist,
+        record_id: r.id,
+        lat: r.lat,
+        lng: r.lng,
+        location_name: r.location_name,
+        sub_item_id: r.sub_item_id
+      }))
+    ];
+    
+    return allAscents.filter((a) => a.summit_id === selected.id && !a.is_wishlist).sort((a, b) => {
       const order = ascentsSortOrder === "asc" ? 1 : -1;
       if (a.achieved_on !== b.achieved_on) {
         return a.achieved_on.localeCompare(b.achieved_on) * order;
@@ -870,12 +952,30 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
       const bEnd = b.end_date || b.achieved_on;
       return aEnd.localeCompare(bEnd) * order;
     });
-  }, [selected, modeAscents, ascentsSortOrder]);
+  }, [selected, ascents, experienceRecords, ascentsSortOrder]);
+
+  const selectedExperienceRecords = useMemo(() => {
+    if (!selected) return [];
+    return experienceRecords.filter((r) => r.experience_id === selected.id && !r.sub_item_id).sort((a, b) => {
+      const order = ascentsSortOrder === "asc" ? 1 : -1;
+      if (a.achieved_on !== b.achieved_on) {
+        return a.achieved_on.localeCompare(b.achieved_on) * order;
+      }
+      return 0;
+    });
+  }, [selected, experienceRecords, ascentsSortOrder]);
 
   const hasWishlist = useMemo(() => {
     if (!selected) return false;
-    return modeAscents.some(a => a.summit_id === selected.id && a.is_wishlist);
-  }, [selected, modeAscents]);
+    const allAscents = [
+      ...ascents,
+      ...experienceRecords.map(r => ({
+        summit_id: r.experience_id,
+        is_wishlist: r.is_wishlist
+      }))
+    ];
+    return allAscents.some(a => a.summit_id === selected.id && a.is_wishlist);
+  }, [selected, ascents, experienceRecords]);
   const selectedPhotos = selected
     ? photos.filter((p) => p.summit_id === selected.id)
     : [];
@@ -955,7 +1055,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
     openInformation(item);
   }, [openInformation]);
 
-  async function handleMapClickForExp(lat: number, lng: number) {
+  async function handleMapClickForExp(lat: number, lng: number, placeNameArg?: string) {
     if (!selectingLocationForExp) return;
     
     const [expId, subItemId] = selectingLocationForExp.split("::");
@@ -974,22 +1074,22 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
         note: "",
         iconName: category.iconName
       };
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&accept-language=es`);
-        const data = await res.json();
-        let placeName = "";
-        if (data && data.address) {
-          placeName = data.address.city || data.address.town || data.address.village || data.address.county || data.address.state || data.address.country || data.address.ocean || data.address.sea || "";
+      let placeName = placeNameArg || "";
+      if (!placeName) {
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&accept-language=es`);
+          const data = await res.json();
+          if (data && data.address) {
+            placeName = data.address.city || data.address.town || data.address.village || data.address.county || data.address.state || data.address.country || data.address.ocean || data.address.sea || "";
+          }
+        } catch (e) {
+          console.warn("Reverse geocoding error:", e);
         }
-        if (placeName) {
-          item.note = placeName;
-        }
-      } catch (e) {
-        console.warn("Reverse geocoding error:", e);
       }
       
       setSelectingLocationForExp(null);
       setSelectedLatLng({ lat, lng });
+      setLocationName(placeName || "");
       setEditingExpRecordId(null);
       openRecord(item);
     }
@@ -1036,10 +1136,16 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
         setSelected(item);
         if (ascentToEdit) {
           const isExp = item.id.startsWith("exp-") || item.id.startsWith("cexp-");
-          if (isExp && (ascentToEdit as any).record_id) {
-            setEditingExpRecordId((ascentToEdit as any).record_id);
-            setSelectedLatLng({ lat: (ascentToEdit as any).lat, lng: (ascentToEdit as any).lng });
-          } else if (!isExp) {
+          if (isExp) {
+            const recId = (ascentToEdit as any).record_id || (ascentToEdit as any).id;
+            if (recId) {
+              setEditingExpRecordId(recId);
+              setSelectedLatLng({ lat: (ascentToEdit as any).lat, lng: (ascentToEdit as any).lng });
+              setLocationName((ascentToEdit as any).location_name || "");
+            } else {
+              setEditingExpRecordId(null);
+            }
+          } else {
             setEditingExpRecordId(null);
           }
           const date = ascentToEdit.achieved_on;
@@ -1052,9 +1158,10 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
           setNotes(ascentToEdit.notes ?? "");
         } else {
           // Si no es ascentToEdit pero setSelectedLatLng ya se configuró (ej. click en mapa), no lo borramos.
+          setEditingExpRecordId(null);
           if (!item.id.startsWith("exp-") && !item.id.startsWith("cexp-")) {
-            setEditingExpRecordId(null);
             setSelectedLatLng(null);
+            setLocationName("");
           }
           setClimbDate(null);
           setClimbEndDate(null);
@@ -1063,6 +1170,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
           setIsDateUnknown(true);
           setIsDateModified(false);
           setNotes(item.note || "");
+          // locationName is already set by handleMapClickForExp if coming from there
         }
         setFiles([]);
       }
@@ -1176,7 +1284,11 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
     if (isExperience) {
       if (editingExpRecordId) {
         const { error } = await supabase.from("experience_records").update({
-          achieved_on: finalDate, notes: notes || null, lat: selectedLatLng?.lat, lng: selectedLatLng?.lng
+          achieved_on: finalDate, 
+          notes: notes || null, 
+          lat: selectedLatLng?.lat, 
+          lng: selectedLatLng?.lng,
+          location_name: locationName || null
         }).eq("id", editingExpRecordId);
         dbError = error;
       } else {
@@ -1188,7 +1300,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
           notes: notes || null,
           lat: selectedLatLng?.lat,
           lng: selectedLatLng?.lng,
-          is_wishlist: false
+          location_name: locationName || null
         });
         dbError = error;
       }
@@ -1355,6 +1467,147 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
           : "País eliminado de tu lista."
     );
   }
+
+  async function handleSaveCustomCategory() {
+    if (!editingCustomCategory || !editingCustomCategory.name?.trim()) return;
+    if (!supabase || !session) return;
+    setSaving(true);
+    
+    if (editingCustomCategory.id === 'new') {
+      const newCat = {
+        user_id: session.user.id,
+        name: editingCustomCategory.name.trim(),
+        icon_name: editingCustomCategory.icon_name || "star"
+      };
+      const { data, error } = await supabase.from("custom_experience_categories").insert(newCat).select().single();
+      if (error) setNotice(error.message);
+      else if (data) {
+        setCustomCategories(prev => [...prev, data]);
+        setEditingCustomCategory(null);
+        setExpSelectorOpen(true);
+      }
+    } else {
+      const updates = {
+        name: editingCustomCategory.name.trim(),
+        icon_name: editingCustomCategory.icon_name || "star"
+      };
+      const { data, error } = await supabase.from("custom_experience_categories").update(updates).eq('id', editingCustomCategory.id).select().single();
+      if (error) setNotice(error.message);
+      else if (data) {
+        setCustomCategories(prev => prev.map(c => c.id === data.id ? data : c));
+        setEditingCustomCategory(null);
+        setExpSelectorOpen(true);
+      }
+    }
+    setSaving(false);
+  }
+
+  function handleDeleteCustomCategory() {
+    if (!editingCustomCategory || editingCustomCategory.id === 'new') return;
+    setConfirmAction({
+      message: "¿Estás seguro de que quieres eliminar esta categoría? Se eliminarán también todas sus experiencias.",
+      onConfirm: async () => {
+        if (!supabase || !session) return;
+        setSaving(true);
+        const { error } = await supabase.from("custom_experience_categories").delete().eq("id", editingCustomCategory.id);
+        if (error) {
+          setNotice(error.message);
+        } else {
+          setCustomCategories(prev => prev.filter(c => c.id !== editingCustomCategory.id));
+          setCustomExperiences(prev => prev.filter(ce => ce.category_id !== editingCustomCategory.id));
+          setEditingCustomCategory(null);
+        }
+        setSaving(false);
+      }
+    });
+  }
+
+  function handleDeleteCustomExperience(expId: string) {
+    setConfirmAction({
+      message: "¿Estás seguro de que quieres eliminar esta experiencia? Se eliminarán también todos los registros asociados.",
+      onConfirm: async () => {
+        if (!supabase || !session) return;
+        setSaving(true);
+        const { error } = await supabase.from("custom_experiences").delete().eq("id", expId);
+        if (error) {
+          setNotice(error.message);
+        } else {
+          setCustomExperiences(prev => prev.filter(ce => ce.id !== expId));
+          setEditingCustomExp(null);
+        }
+        setSaving(false);
+      }
+    });
+  }
+  const handleHideItem = (itemId: string, itemType: 'category' | 'experience') => {
+    setConfirmAction({
+      message: `¿Estás seguro de que quieres ocultar est${itemType === 'category' ? 'a categoría' : 'a experiencia'}?`,
+      onConfirm: async () => {
+        const { data, error } = await supabase!.from('hidden_items').insert({
+          user_id: session!.user.id,
+          item_id: itemId,
+          item_type: itemType
+        }).select().single();
+        if (!error && data) {
+          setHiddenItems(prev => [...prev, data as HiddenItem]);
+        } else if (error) {
+          setNotice(`Error al ocultar: ${error.message}`);
+          setTimeout(() => setNotice(""), 3000);
+        }
+      }
+    });
+  };
+  async function handleSaveCustomExperience() {
+    if (!editingCustomExp || !editingCustomExp.name?.trim()) return;
+    if (!supabase || !session) return;
+    setSaving(true);
+
+    let subItems: { id: string, name: string }[] | undefined = undefined;
+    if (editingCustomExp.sub_items_input !== undefined) {
+      const lines = editingCustomExp.sub_items_input.split('\n').map((s: string) => s.trim()).filter((s: string) => s.length > 0);
+      if (lines.length > 0) {
+        subItems = lines.map((line: string) => {
+          const existing = (editingCustomExp.sub_items || []).find((s: any) => s.name === line);
+          return existing ? existing : { id: `sub-${crypto.randomUUID()}`, name: line };
+        });
+      } else {
+        subItems = [];
+      }
+    } else if (editingCustomExp.sub_items) {
+      subItems = editingCustomExp.sub_items;
+    }
+
+    if (editingCustomExp.id === 'new') {
+      const newExp = {
+        user_id: session.user.id,
+        name: editingCustomExp.name.trim(),
+        category_id: editingCustomExp.category_id || null,
+        static_category_id: editingCustomExp.static_category_id || null,
+        sub_items: subItems || []
+      };
+      const { data, error } = await supabase.from("custom_experiences").insert(newExp).select().single();
+      if (error) setNotice(error.message);
+      else if (data) {
+        setCustomExperiences(prev => [...prev, data]);
+        setEditingCustomExp(null);
+        setExpSelectorOpen(true);
+        setExpandedExpCategory(data.category_id || data.static_category_id);
+      }
+    } else {
+      const updates: any = { name: editingCustomExp.name.trim() };
+      if (subItems !== undefined) updates.sub_items = subItems;
+      
+      const { data, error } = await supabase.from("custom_experiences").update(updates).eq('id', editingCustomExp.id).select().single();
+      if (error) setNotice(error.message);
+      else if (data) {
+        setCustomExperiences(prev => prev.map(c => c.id === data.id ? data : c));
+        setEditingCustomExp(null);
+        setExpSelectorOpen(true);
+      }
+    }
+    setSaving(false);
+  }
+
 
   async function handleCreateCustomExperience() {
     if (!customExpName.trim()) return;
@@ -1591,7 +1844,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
 
   /* ── Render ───────────────────────────── */
   return (
-    <main className={isPeaks ? "" : isExp ? "mode-experiences" : "mode-countries"}>
+    <main className={`${isPeaks ? "" : isExp ? "mode-experiences" : "mode-countries"} ${selected ? "panel-open" : ""}`}>
       {/* ── Topbar ──────────────────────── */}
       <header className="topbar">
         <a className="brand" href={isPeaks ? "#inicio" : "#inicio"} onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate(isPeaks ? "/picos" : "/"); }}}>
@@ -1614,6 +1867,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
               <a href="#mapa" onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate(isPeaks ? "/picos" : "/"); }}}>Mapa</a>
             </>
           )}
+
           <a href="/social" onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("/social"); }}}>Social</a>
           <a href="/ranking" onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("/ranking"); }}}>Ranking</a>
           {session ? (
@@ -1854,12 +2108,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
           }}>
             {!isReadOnly && !isPeaks && (myProfile?.enable_experiences || experiencesMode) && experiencesMode && (
               <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 1000, pointerEvents: 'auto' }}>
-                {selectingLocationForExp ? (
-                  <div style={{ background: 'var(--surface)', padding: '12px 16px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>Haz clic en el mapa para ubicar la experiencia</p>
-                    <button className="button button--quiet button--small" onClick={() => setSelectingLocationForExp(null)}>Cancelar</button>
-                  </div>
-                ) : (
+                {!selectingLocationForExp && (
                   <button className="button button--purple" onClick={() => setExpSelectorOpen(true)} style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
                     + Añadir Experiencia
                   </button>
@@ -1931,19 +2180,37 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
           </button>
           
           {isExp ? (
-            dynamicCategories.map(cat => (
-              <button
-                key={cat.id}
-                className={`list-filter-pill${listFilter === cat.name ? " list-filter-pill--active" : ""}`}
-                onClick={() => setListFilter(cat.name)}
-                style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-              >
-                <span style={{ display: 'flex', width: 14, height: 14, alignItems: 'center', justifyContent: 'center' }}>
-                  {getIconComponent(cat.iconName)}
-                </span>
-                {cat.name}
-              </button>
-            ))
+            <>
+              {dynamicCategories.map(cat => (
+                <button
+                  key={cat.id}
+                  className={`list-filter-pill${listFilter === cat.name ? " list-filter-pill--active" : ""}`}
+                  onClick={() => setListFilter(cat.name)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  <span style={{ display: 'flex', width: 14, height: 14, alignItems: 'center', justifyContent: 'center' }}>
+                    {getIconComponent(cat.iconName)}
+                  </span>
+                  {cat.name}
+                </button>
+              ))}
+              {!isReadOnly && (
+                <button
+                  className="list-filter-pill"
+                  onClick={() => {
+                    setEditingCustomCategory({ id: 'new', name: '', iconName: 'star' });
+                    setExpSelectorOpen(true);
+                  }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, borderStyle: 'dashed' }}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                  Crear nueva categoría
+                </button>
+              )}
+            </>
           ) : (
             <>
               <button
@@ -2000,13 +2267,13 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
             if (effectiveDiffMode) {
               if (diffItemOnlyViewer.has(item.id)) {
                 diffClass = " peak-list-item--diff-only-me";
-                diffSymbol = <IconCheck />;
+                diffSymbol = "✓";
               } else if (diffItemOnlyTarget.has(item.id)) {
                 diffClass = " peak-list-item--diff-only-them";
                 diffSymbol = <span style={{ fontSize: 11, fontWeight: 700 }}>✗</span>;
               } else if (diffItemBoth.has(item.id)) {
                 diffClass = " peak-list-item--diff-both";
-                diffSymbol = <IconCheck />;
+                diffSymbol = "✓";
               } else {
                 diffClass = " peak-list-item--diff-none";
               }
@@ -2022,12 +2289,15 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                 className={itemClass}
                 onClick={() => openInformation(item)}
               >
-                <span className="item-check">
-                  {effectiveDiffMode ? diffSymbol : (
-                    <>
-                      {done && <IconCheck />}
-                      {wish && <span className="item-wish-star">★</span>}
-                    </>
+                <span style={{ flexShrink: 0, width: 20, display: 'flex', justifyContent: 'center' }}>
+                  {effectiveDiffMode ? (
+                    <span className="item-check">{diffSymbol}</span>
+                  ) : done ? (
+                    <i className="legend-done" style={{ margin: 0 }}>✓</i>
+                  ) : wish ? (
+                    <i className="legend-wishlist" style={{ margin: 0 }}>★</i>
+                  ) : (
+                    <i className="legend-pin" style={{ margin: 0, paddingBottom: isPeaks ? 4 : isExp ? 2 : 0 }}>{isPeaks ? "△" : "◇"}</i>
                   )}
                 </span>
                 <span className="item-info">
@@ -2135,7 +2405,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                         }}
                         style={{ width: '100%', marginBottom: 8 }}
                       >
-                        Situar en el mapa
+                        Registrar experiencia
                       </button>
                     </div>
                   );
@@ -2230,6 +2500,15 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                           </div>
                         )}
                       </div>
+                      {ascent.location_name && (
+                        <div style={{ marginTop: '8px', fontSize: '13px', fontWeight: 500, display: 'flex', alignItems: 'flex-start', gap: 4 }}>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, flexShrink: 0, marginTop: 2 }}>
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                            <circle cx="12" cy="10" r="3" />
+                          </svg>
+                          {ascent.location_name}
+                        </div>
+                      )}
                       {ascent.notes && <p style={{ marginTop: '4px' }}>&ldquo;{ascent.notes}&rdquo;</p>}
 
                       {ascentPhotos.length > 0 && (
@@ -2330,6 +2609,139 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
           </div>
           </>
         )}
+
+        {(selected.id.startsWith("exp-") || selected.id.startsWith("cexp-")) && (
+          <>
+            {selectedExperienceRecords.length > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(92, 155, 125, 0.1)', borderRadius: '20px', padding: '3px', position: 'relative', marginBottom: '16px', cursor: 'pointer', userSelect: 'none', width: 'fit-content' }} onClick={() => setAscentsSortOrder(o => o === "asc" ? "desc" : "asc")}>
+                <div style={{ position: 'absolute', top: 3, bottom: 3, left: ascentsSortOrder === "asc" ? 3 : '50%', right: ascentsSortOrder === "asc" ? '50%' : 3, background: 'var(--pine)', borderRadius: '18px', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }} />
+                <span style={{ position: 'relative', zIndex: 1, padding: '4px 12px', fontSize: '12px', fontWeight: 600, color: ascentsSortOrder === "asc" ? 'white' : 'var(--pine)', transition: 'color 0.2s ease', flex: 1, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Más antiguo</span>
+                <span style={{ position: 'relative', zIndex: 1, padding: '4px 12px', fontSize: '12px', fontWeight: 600, color: ascentsSortOrder === "desc" ? 'white' : 'var(--pine)', transition: 'color 0.2s ease', flex: 1, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Más reciente</span>
+              </div>
+            )}
+
+            {selectedExperienceRecords.length > 0 ? (
+              selectedExperienceRecords.map(ascent => {
+                const ascentPhotos = selectedPhotos.filter(p => p.taken_on === ascent.achieved_on);
+                return (
+                  <div key={ascent.id} className="completed-card">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                      <b style={{ marginTop: '6px' }}>
+                        {formatDate(ascent.achieved_on)}
+                      </b>
+                      
+                      {!isReadOnly && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <button 
+                            title="Editar registro"
+                            className="button button--quiet button--small" 
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', flexShrink: 0, padding: 0, margin: 0 }} 
+                            onClick={() => openRecord(selected, ascent)}
+                          >
+                            <IconEdit style={{ width: 14, height: 14 }} strokeWidth={1.5} />
+                          </button>
+                          <label
+                            title="Añadir fotos a esta fecha"
+                            className="button button--quiet button--small"
+                            onClick={(e) => {
+                              if (ascentPhotos.length >= 4) {
+                                e.preventDefault();
+                                setNotice("Máximo 4 fotos por registro. Ya has alcanzado el límite.");
+                                setTimeout(() => setNotice(""), 4000);
+                              }
+                            }}
+                            style={{
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              width: '32px', height: '32px', flexShrink: 0, padding: 0, margin: 0,
+                              cursor: ascentPhotos.length >= 4 ? 'not-allowed' : 'pointer',
+                              opacity: ascentPhotos.length >= 4 ? 0.5 : 1
+                            }}
+                          >
+                            <IconCamera style={{ width: 14, height: 14 }} strokeWidth={1.5} />
+                            <input
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              onChange={(e) => handleAddPhotosToDate(e, ascent as any)}
+                              style={{ display: 'none' }}
+                              disabled={ascentPhotos.length >= 4}
+                            />
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                    {ascent.location_name && (
+                      <div style={{ marginTop: '8px', fontSize: '13px', fontWeight: 500, display: 'flex', alignItems: 'flex-start', gap: 4 }}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, flexShrink: 0, marginTop: 2 }}>
+                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                          <circle cx="12" cy="10" r="3" />
+                        </svg>
+                        {ascent.location_name}
+                      </div>
+                    )}
+                    {ascent.notes && <p style={{ marginTop: '4px' }}>&ldquo;{ascent.notes}&rdquo;</p>}
+
+                    {ascentPhotos.length > 0 && (
+                      <div className="photo-section" style={{ marginTop: 16 }}>
+                        <div className="photo-grid">
+                          {ascentPhotos.map((photo) => {
+                            const publicUrl = photo.public_url || supabase?.storage.from("summit-photos").getPublicUrl(photo.storage_path).data.publicUrl;
+                            if (!publicUrl) return null;
+                            return (
+                              <figure 
+                                key={photo.id}
+                                onClick={() => handlePhotoClick(photo)}
+                              >
+                                <img src={publicUrl} alt="Foto de la experiencia" loading="lazy" />
+                              </figure>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            ) : (
+              <div className="pending-card">
+                {isReadOnly ? "Aún no ha vivido esta experiencia." : "Aún no has vivido esta experiencia."}
+              </div>
+            )}
+            
+            {/* Otras fotos (experiencias) */}
+            {(() => {
+              const registeredDates = new Set(selectedExperienceRecords.map(a => a.achieved_on));
+              const otherPhotos = selectedPhotos.filter(p => !registeredDates.has(p.taken_on));
+              if (otherPhotos.length === 0) return null;
+              return (
+                <div className="photo-section" style={{ marginTop: 24 }}>
+                  <h3>Otras fotos <small>{otherPhotos.length}</small></h3>
+                  <div className="photo-grid">
+                    {otherPhotos.map((photo) => {
+                      const isSelected = selectedPhotosForEdit.includes(photo.id);
+                      return (
+                        <figure key={photo.id} className={isSelected ? 'selected' : ''} onClick={() => handlePhotoClick(photo)}>
+                          {!isReadOnly && (
+                            <button
+                              type="button"
+                              className={`photo-select-circle ${isSelected ? 'active' : ''}`}
+                              onClick={(e) => { e.stopPropagation(); togglePhotoSelection(photo.id); }}
+                              aria-label="Seleccionar foto"
+                            >
+                              {isSelected && <IconCheck />}
+                            </button>
+                          )}
+                          <img src={photo.public_url} alt={`Foto en ${selected.title}`} loading="lazy" />
+                          <figcaption>{photo.caption ? photo.caption : formatDate(photo.taken_on)}</figcaption>
+                        </figure>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+          </>
+        )}
         </aside>
       )}
 
@@ -2359,28 +2771,38 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
               {(selected.id.startsWith("exp-") || selected.id.startsWith("cexp-")) ? selected.subtitle : `${selected.label} · ${selected.subtitle}`}
             </p>
             {(selected.id.startsWith("exp-") || selected.id.startsWith("cexp-")) && (
-              <div style={{ marginBottom: 16 }}>
-                {notes && (
-                  <div style={{ fontSize: '0.85em', color: 'var(--sage)', marginBottom: 8, fontWeight: 500 }}>
-                    📍 {notes}
-                  </div>
-                )}
-                <button
-                  type="button"
-                  className="button button--quiet button--small"
-                  onClick={() => {
-                    setSelectingLocationForExp(selected.sub_item_id ? `${selected.id}::${selected.sub_item_id}` : `${selected.id}::`);
-                    setRecordOpen(false);
-                    window.location.hash = "mapa";
-                  }}
-                  style={{ color: 'var(--pine)', padding: '4px 8px' }}
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, marginRight: 6 }}>
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                    <circle cx="12" cy="10" r="3" />
-                  </svg>
-                  Modificar localización en el mapa
-                </button>
+              <div style={{ marginBottom: 16, zIndex: 50 }}>
+                <div style={{ marginBottom: 8 }}>
+                  <label className="field-label" style={{ display: 'block', marginBottom: 4 }}>Ubicación</label>
+                  <LocationSearch
+                    value={locationName}
+                    onChange={setLocationName}
+                    onSelect={(lat, lng, name) => {
+                      setSelectedLatLng({ lat, lng });
+                      setLocationName(name);
+                    }}
+                    placeholder="Buscar país, región, ciudad..."
+                    className="notes-input"
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginTop: -4 }}>
+                  <button
+                    type="button"
+                    className="button button--quiet button--small"
+                    onClick={() => {
+                      setSelectingLocationForExp(selected.sub_item_id ? `${selected.id}::${selected.sub_item_id}` : `${selected.id}::`);
+                      setRecordOpen(false);
+                      window.location.hash = "mapa";
+                    }}
+                    style={{ color: 'var(--pine)', padding: '4px 8px' }}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, marginRight: 6 }}>
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    Modificar ubicación
+                  </button>
+                </div>
               </div>
             )}
 
@@ -2800,65 +3222,184 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
       <InstallPrompt />
       {/* ── Experience Selector Modal ───── */}
       {expSelectorOpen && (
-        <div className="modal-overlay" onClick={() => setExpSelectorOpen(false)}>
-          <div className="modal-content modal-content--wide" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>¿Qué experiencia quieres registrar?</h3>
+        <div className="modal-backdrop" onClick={() => setExpSelectorOpen(false)}>
+          <div className="auth-dialog" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 500, padding: 0 }}>
+            <div className="modal-header" style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, paddingRight: 32 }}>¿Qué experiencia quieres registrar?</h3>
               <button className="icon-button" onClick={() => setExpSelectorOpen(false)}><IconClose /></button>
             </div>
-            <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-              <button 
-                className="button" 
-                style={{ width: '100%', marginBottom: 16 }}
-                onClick={() => {
-                  setExpSelectorOpen(false);
-                  setCreatingCustomExp(true);
-                }}
-              >
-                + Crear Experiencia Personalizada
-              </button>
+            <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: '20px 24px' }}>
               {dynamicCategories.map(cat => {
+                const isCustom = cat.id.startsWith('cat-custom-') || customCategories.some(c => c.id === cat.id);
                 const isExpanded = expandedExpCategory === cat.id;
                 return (
-                  <div key={cat.id} style={{ marginBottom: 8, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-                    <button
-                      className="button button--quiet"
-                      style={{ width: '100%', justifyContent: 'space-between', padding: '12px 16px', borderRadius: 0, borderBottom: isExpanded ? '1px solid var(--border)' : 'none' }}
-                      onClick={() => setExpandedExpCategory(isExpanded ? null : cat.id)}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
-                        {getIconComponent(cat.iconName)}
-                        {cat.name}
-                      </div>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16, transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
-                        <polyline points="6 9 12 15 18 9"></polyline>
-                      </svg>
-                    </button>
+                  <div key={cat.id} style={{ marginBottom: 8, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', transform: 'translateZ(0)' }}>
+                    <div style={{ display: 'flex', width: '100%' }}>
+                      <button
+                        className="button button--quiet"
+                        style={{ flex: 1, justifyContent: 'space-between', padding: '12px 16px', borderRadius: 0, borderBottom: isExpanded ? '1px solid var(--border)' : 'none', background: 'transparent' }}
+                        onClick={() => setExpandedExpCategory(isExpanded ? null : cat.id)}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
+                          {getIconComponent(cat.iconName)}
+                          {cat.name}
+                        </div>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16, transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+                          <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                      </button>
+                      {isCustom ? (
+                        <button 
+                          className="button button--quiet" 
+                          style={{ padding: '0 12px', borderRadius: 0, borderBottom: isExpanded ? '1px solid var(--border)' : 'none', borderLeft: '1px solid var(--border)', background: 'transparent', color: 'var(--pine)' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingCustomCategory(customCategories.find(c => c.id === cat.id) || { id: cat.id, name: cat.name, icon_name: cat.iconName });
+                            setExpSelectorOpen(false);
+                          }}
+                        >
+                          <IconEdit style={{ width: 14, height: 14 }} strokeWidth={2} />
+                        </button>
+                      ) : (
+                        <button 
+                          className="button button--quiet" 
+                          style={{ padding: '0 12px', borderRadius: 0, borderBottom: isExpanded ? '1px solid var(--border)' : 'none', borderLeft: '1px solid var(--border)', background: 'transparent', color: 'var(--danger, #a34f3d)' }}
+                          title="Ocultar categoría predefinida"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleHideItem(cat.id, 'category');
+                          }}
+                        >
+                          <IconTrash style={{ width: 14, height: 14 }} strokeWidth={2} />
+                        </button>
+                      )}
+                    </div>
                     
                     {isExpanded && (
                       <div style={{ padding: '12px 16px', background: 'var(--surface)' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                          {cat.experiences.map(exp => (
-                            <div key={exp.id}>
+                          <button
+                            className="button button--outline"
+                            style={{ width: '100%', marginBottom: 8, borderStyle: 'dashed' }}
+                            onClick={() => {
+                              const newExp = isCustom ? { id: 'new', name: '', category_id: cat.id } : { id: 'new', name: '', static_category_id: cat.id };
+                              setEditingCustomExp(newExp);
+                              setExpSelectorOpen(false);
+                            }}
+                          >
+                            + Añadir Experiencia aquí
+                          </button>
+                          {cat.experiences.map(exp => {
+                            const isCustomExp = exp.id.startsWith('exp-') === false && exp.id.startsWith('cexp-') === false || customExperiences.some(c => c.id === exp.id);
+                            return (
+                              <div key={exp.id} style={{ marginBottom: '8px' }}>
                               {!exp.subItems ? (
-                                <button 
-                                  className="button button--outline" 
-                                  style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left', padding: '8px 12px', background: 'var(--background)' }}
-                                  onClick={() => {
-                                    setSelectingLocationForExp(`${exp.id}::`);
-                                    setExpSelectorOpen(false);
-                                  }}
-                                >
-                                  {exp.name}
-                                </button>
+                                <div style={{ display: 'flex', gap: 6 }}>
+                                  <button 
+                                    className="button" 
+                                    style={{ flex: 1, justifyContent: 'space-between', alignItems: 'center', textAlign: 'left', padding: '12px 16px', background: 'var(--background)', color: 'var(--foreground)', border: '1px solid var(--border)', borderRadius: '8px', fontWeight: 500, boxShadow: '0 2px 4px rgba(0,0,0,0.02)', transition: 'all 0.2s ease' }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--pine)'; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.05)'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02)'; }}
+                                    onClick={() => {
+                                      setSelectingLocationForExp(`${exp.id}::`);
+                                      setExpSelectorOpen(false);
+                                    }}
+                                  >
+                                    {exp.name}
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="var(--pine)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16, opacity: 0.7 }}>
+                                      <circle cx="12" cy="12" r="10"></circle>
+                                      <polyline points="12 16 16 12 12 8"></polyline>
+                                      <line x1="8" y1="12" x2="16" y2="12"></line>
+                                    </svg>
+                                  </button>
+                                  {isCustomExp ? (
+                                    <div style={{ display: 'flex', gap: 6 }}>
+                                      <button 
+                                        className="button button--quiet" 
+                                        style={{ padding: '0 14px', background: 'var(--background)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--pine)' }}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setEditingCustomExp(customExperiences.find(c => c.id === exp.id) || { id: exp.id, name: exp.name });
+                                          setExpSelectorOpen(false);
+                                        }}
+                                      >
+                                        <IconEdit style={{ width: 14, height: 14 }} strokeWidth={2} />
+                                      </button>
+                                      <button 
+                                        className="button button--quiet" 
+                                        style={{ padding: '0 14px', background: 'var(--background)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--danger, #a34f3d)' }}
+                                        title="Eliminar experiencia personalizada"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeleteCustomExperience(exp.id);
+                                        }}
+                                      >
+                                        <IconTrash style={{ width: 14, height: 14 }} strokeWidth={2} />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <button 
+                                      className="button button--quiet" 
+                                      style={{ padding: '0 14px', background: 'var(--background)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--danger, #a34f3d)' }}
+                                      title="Ocultar experiencia predefinida"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleHideItem(exp.id, 'experience');
+                                      }}
+                                    >
+                                      <IconTrash style={{ width: 14, height: 14 }} strokeWidth={2} />
+                                    </button>
+                                  )}
+                                </div>
                               ) : (
-                                <div style={{ padding: '12px', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--background)' }}>
-                                  <div style={{ fontWeight: 500, marginBottom: 8 }}>{exp.name}</div>
-                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                <div style={{ padding: '14px', border: '1px solid var(--border)', borderRadius: '10px', background: 'var(--background)', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                    <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--foreground)' }}>{exp.name}</div>
+                                    {isCustomExp ? (
+                                      <div style={{ display: 'flex', gap: 6 }}>
+                                        <button 
+                                          className="button button--quiet" 
+                                          style={{ padding: '0 8px', color: 'var(--pine)' }}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setEditingCustomExp(customExperiences.find(c => c.id === exp.id) || { id: exp.id, name: exp.name });
+                                            setExpSelectorOpen(false);
+                                          }}
+                                        >
+                                          <IconEdit style={{ width: 14, height: 14 }} strokeWidth={2} />
+                                        </button>
+                                        <button 
+                                          className="button button--quiet" 
+                                          style={{ padding: '0 8px', color: 'var(--danger, #a34f3d)' }}
+                                          title="Eliminar experiencia personalizada"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteCustomExperience(exp.id);
+                                          }}
+                                        >
+                                          <IconTrash style={{ width: 14, height: 14 }} strokeWidth={2} />
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <button 
+                                        className="button button--quiet" 
+                                        style={{ padding: '0 8px', color: 'var(--danger, #a34f3d)' }}
+                                        title="Ocultar experiencia predefinida"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleHideItem(exp.id, 'experience');
+                                        }}
+                                      >
+                                        <IconTrash style={{ width: 14, height: 14 }} strokeWidth={2} />
+                                      </button>
+                                    )}
+                                  </div>
+                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8 }}>
                                     {exp.subItems.map((item: any) => (
                                       <button
                                         key={item.id}
                                         className="button button--outline button--small"
+                                        style={{ justifyContent: 'center', transition: 'all 0.2s' }}
                                         onClick={() => {
                                           setSelectingLocationForExp(`${exp.id}::${item.id}`);
                                           setExpSelectorOpen(false);
@@ -2871,41 +3412,54 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                                 </div>
                               )}
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     )}
                   </div>
                 );
               })}
+              <div style={{ marginTop: 16 }}>
+                <button 
+                  className="button button--quiet" 
+                  style={{ width: '100%', border: '1px dashed var(--pine)', background: 'var(--background)', color: 'var(--pine)', padding: '12px 16px', borderRadius: '8px' }}
+                  onClick={() => {
+                    setExpSelectorOpen(false);
+                    setEditingCustomCategory({ id: 'new', name: '', icon_name: 'star' });
+                  }}
+                >
+                  + Crear Categoría Personalizada
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {creatingCustomExp && (
-        <div className="modal-overlay" onClick={() => setCreatingCustomExp(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Crear Experiencia Personalizada</h3>
-              <button className="icon-button" onClick={() => setCreatingCustomExp(false)}><IconClose /></button>
+      {editingCustomCategory && (
+        <div className="modal-backdrop" onClick={() => { setEditingCustomCategory(null); setExpSelectorOpen(true); }}>
+          <div className="auth-dialog" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 400, padding: 0 }}>
+            <div className="modal-header" style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0 }}>{editingCustomCategory.id === 'new' ? "Crear Categoría" : "Editar Categoría"}</h3>
+              <button className="icon-button" onClick={() => { setEditingCustomCategory(null); setExpSelectorOpen(true); }}><IconClose /></button>
             </div>
-            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '20px 24px' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Nombre de la Experiencia</label>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Nombre de la Categoría</label>
                 <input 
                   type="text" 
-                  value={customExpName} 
-                  onChange={e => setCustomExpName(e.target.value)}
-                  placeholder="Ej. Bucear con tiburones..."
+                  value={editingCustomCategory.name || ""} 
+                  onChange={e => setEditingCustomCategory({ ...editingCustomCategory, name: e.target.value })}
+                  placeholder="Ej. Buceo, Fauna..."
                   style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--foreground)' }}
                 />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Icono</label>
                 <select 
-                  value={customExpIcon}
-                  onChange={e => setCustomExpIcon(e.target.value)}
+                  value={editingCustomCategory.icon_name || "star"}
+                  onChange={e => setEditingCustomCategory({ ...editingCustomCategory, icon_name: e.target.value })}
                   style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--foreground)' }}
                 >
                   <option value="star">Estrella (General)</option>
@@ -2918,16 +3472,84 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                 </select>
               </div>
             </div>
-            <div className="modal-footer" style={{ marginTop: 24, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button className="button button--outline" onClick={() => setCreatingCustomExp(false)}>Cancelar</button>
-              <button className="button" disabled={saving || !customExpName.trim()} onClick={handleCreateCustomExperience}>
-                {saving ? "Creando..." : "Crear"}
-              </button>
+            <div className="modal-footer" style={{ padding: '20px 24px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'space-between' }}>
+              {editingCustomCategory.id !== 'new' ? (
+                <button className="button button--quiet" style={{ color: 'var(--danger, #a34f3d)' }} disabled={saving} onClick={handleDeleteCustomCategory}>Eliminar</button>
+              ) : <div></div>}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="button button--outline" onClick={() => { setEditingCustomCategory(null); setExpSelectorOpen(true); }}>Cancelar</button>
+                <button className="button" disabled={saving || !editingCustomCategory.name?.trim()} onClick={handleSaveCustomCategory}>
+                  {saving ? "Guardando..." : "Guardar"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
+      {editingCustomExp && (
+        <div className="modal-backdrop" onClick={() => { setEditingCustomExp(null); setExpSelectorOpen(true); }}>
+          <div className="auth-dialog" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 400, padding: 0 }}>
+            <div className="modal-header" style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0 }}>{editingCustomExp.id === 'new' ? "Crear Experiencia" : "Editar Experiencia"}</h3>
+              <button className="icon-button" onClick={() => { setEditingCustomExp(null); setExpSelectorOpen(true); }}><IconClose /></button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '20px 24px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Nombre</label>
+                <input 
+                  type="text" 
+                  value={editingCustomExp.name || ""} 
+                  onChange={e => setEditingCustomExp({ ...editingCustomExp, name: e.target.value })}
+                  placeholder="Ej. Bucear con tiburones..."
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--foreground)' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Mini-experiencias (opcional)</label>
+                <textarea 
+                  value={editingCustomExp.sub_items_input !== undefined ? editingCustomExp.sub_items_input : (editingCustomExp.subItems || editingCustomExp.sub_items ? (editingCustomExp.subItems || editingCustomExp.sub_items).map((s: any) => s.name).join('\n') : "")} 
+                  onChange={e => setEditingCustomExp({ ...editingCustomExp, sub_items_input: e.target.value })}
+                  placeholder="Una por línea (ej. Vía ferrata A\nVía ferrata B)"
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--foreground)', minHeight: '80px', resize: 'vertical' }}
+                />
+              </div>
+            </div>
+            <div className="modal-footer" style={{ padding: '20px 24px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'space-between' }}>
+              {editingCustomExp.id !== 'new' ? (
+                <button className="button button--quiet" style={{ color: 'var(--danger, #a34f3d)' }} disabled={saving} onClick={() => handleDeleteCustomExperience(editingCustomExp.id)}>Eliminar</button>
+              ) : <div></div>}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="button button--outline" onClick={() => { setEditingCustomExp(null); setExpSelectorOpen(true); }}>Cancelar</button>
+                <button className="button" disabled={saving || !editingCustomExp.name?.trim()} onClick={handleSaveCustomExperience}>
+                  {saving ? "Guardando..." : "Guardar"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmAction && (
+        <div className="modal-backdrop" onClick={() => setConfirmAction(null)}>
+          <div className="auth-dialog" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 400, padding: 0 }}>
+            <div className="modal-header" style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0 }}>Confirmar acción</h3>
+              <button className="icon-button" onClick={() => setConfirmAction(null)}><IconClose /></button>
+            </div>
+            <div style={{ padding: '20px 24px', fontSize: '15px' }}>
+              <p style={{ margin: 0 }}>{confirmAction.message}</p>
+            </div>
+            <div className="modal-footer" style={{ padding: '20px 24px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="button button--outline" onClick={() => setConfirmAction(null)}>Cancelar</button>
+              <button className="button" style={{ background: 'var(--danger, #a34f3d)', color: 'white', border: 'none' }} onClick={() => {
+                confirmAction.onConfirm();
+                setConfirmAction(null);
+              }}>Confirmar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

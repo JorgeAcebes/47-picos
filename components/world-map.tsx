@@ -107,7 +107,7 @@ type Props = {
   experiencesMode?: boolean;
   experienceRecords?: any[];
   selectingLocation?: boolean;
-  onMapClick?: (lat: number, lng: number) => void;
+  onMapClick?: (lat: number, lng: number, placeName?: string) => void;
   onExperienceClick?: (record: any) => void;
   onAddExperience?: () => void;
 };
@@ -148,11 +148,19 @@ function FitWorld() {
   return null;
 }
 
-function MapClickListener({ onMapClick, selectingLocation }: { onMapClick?: (lat: number, lng: number) => void, selectingLocation?: boolean }) {
+function MapClickListener({ onMapClick, selectingLocation }: { onMapClick?: (lat: number, lng: number, placeName?: string) => void, selectingLocation?: boolean }) {
   const map = useMapEvents({
     click(e) {
-      if (selectingLocation && onMapClick) {
-        onMapClick(e.latlng.lat, e.latlng.lng);
+      if (onMapClick && selectingLocation) {
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${e.latlng.lat}&lon=${e.latlng.lng}&zoom=10`)
+          .then(res => res.json())
+          .then(data => {
+            const placeName = data.address?.city || data.address?.town || data.address?.village || data.address?.county || data.address?.state || data.name || undefined;
+            onMapClick(e.latlng.lat, e.latlng.lng, placeName);
+          })
+          .catch(() => {
+            onMapClick(e.latlng.lat, e.latlng.lng);
+          });
       }
     }
   });
@@ -635,7 +643,7 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
 
       return cMarkers;
     },
-    [completed, wishlist, diffMode, regionsMode, experiencesMode, experienceRecords, diffOnlyViewer, diffOnlyTarget, diffBoth, icons, onInformation, onExperienceClick],
+    [completed, wishlist, diffMode, regionsMode, experiencesMode, experienceRecords, diffOnlyViewer, diffOnlyTarget, diffBoth, icons, onInformation, onExperienceClick, selectingLocation],
   );
 
   return (
@@ -693,24 +701,34 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
         </div>
       )}
 
+
       {selectingLocation && (
         <div className="leaflet-control-container">
           <div className="leaflet-top leaflet-center" style={{ pointerEvents: 'none', zIndex: 1000, width: '100%', display: 'flex', justifyContent: 'center', marginTop: 16 }}>
-            <div className="leaflet-control" style={{ pointerEvents: 'auto', background: 'var(--pine)', color: '#fff', padding: '12px 24px', borderRadius: 24, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 500, fontSize: '0.95rem' }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                <circle cx="12" cy="10" r="3" />
-              </svg>
-              Haz clic en el mapa para situar la experiencia
+            <div className="leaflet-control" style={{ 
+              pointerEvents: 'auto', background: 'var(--pine)', color: '#fff', 
+              padding: '12px 16px', borderRadius: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', 
+              display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 12, 
+              fontWeight: 500, fontSize: '0.9rem', maxWidth: 360, width: '90%', textAlign: 'center' 
+            }}>
+              <span style={{ display: 'inline', lineHeight: 1.4, fontSize: '14px' }}>
+                Haz clic en el mapa para situar la experiencia o busca el lugar aquí
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16, display: 'inline-block', verticalAlign: 'text-bottom', marginLeft: 4, opacity: 0.8 }}>
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+              </span>
             </div>
           </div>
         </div>
       )}
-      <MapSearchControl 
-        items={searchItems} 
-        onSelect={handleSearchSelect} 
-        placeholder={regionsMode ? "Buscar región..." : "Buscar país..."} 
-      />
+      {!selectingLocation && (
+        <MapSearchControl 
+          items={searchItems} 
+          onSelect={handleSearchSelect} 
+          placeholder={regionsMode ? "Buscar región..." : "Buscar país..."} 
+        />
+      )}
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

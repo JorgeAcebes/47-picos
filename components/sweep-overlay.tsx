@@ -26,9 +26,10 @@ export function SweepOverlay({ searchedId, layerRefs, regionLayerRefs }: Props) 
       renderer: svgRenderer,
       interactive: false,
       style: {
-        fillOpacity: 1,
+        fillOpacity: 0,
+        opacity: 0,
         stroke: false,
-        color: "#ffffff",
+        color: "transparent",
         weight: 0
       }
     } as any);
