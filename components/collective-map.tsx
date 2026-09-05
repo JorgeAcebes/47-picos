@@ -7,6 +7,8 @@ import {
   TileLayer,
   useMap,
   useMapEvents,
+  Marker,
+  Tooltip,
 } from "react-leaflet";
 import type { Path } from "leaflet";
 import type { FeatureCollection, Position } from "geojson";
@@ -14,6 +16,9 @@ import { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import { feature } from "topojson-client";
 import type { Topology } from "topojson-specification";
 import { countries, resolveCountryFromFeature, type Country } from "@/data/countries";
+import * as ReactDOMServer from "react-dom/server";
+import { getIconComponent } from "./icons";
+import { predefinedCategories } from "@/data/experiences";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import { MapSearchControl, type SearchItem } from "./map-search";
@@ -132,6 +137,69 @@ type Props = {
   onClose: () => void;
 };
 
+function ExperiencesToggleControl({ showExperiences, setShowExperiences, experienceMarkersCount }: { showExperiences: boolean, setShowExperiences: (v: boolean) => void, experienceMarkersCount: number }) {
+  const divRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    const el = divRef.current;
+    if (el) {
+      L.DomEvent.disableClickPropagation(el);
+      L.DomEvent.disableScrollPropagation(el);
+
+      const handleClick = (e: MouseEvent) => {
+        e.stopPropagation();
+        setShowExperiences(!showExperiences);
+      };
+
+      el.addEventListener('click', handleClick);
+      return () => {
+        el.removeEventListener('click', handleClick);
+      };
+    }
+  }, [showExperiences, setShowExperiences]);
+
+  return (
+    <div 
+      ref={divRef}
+      className="leaflet-control leaflet-bar"
+      style={{
+        position: "absolute",
+        top: 56,
+        right: 10,
+        zIndex: 1001,
+        background: showExperiences ? "#2c7a7b" : "white",
+        color: showExperiences ? "white" : "#666",
+        width: 36,
+        height: 36,
+        borderRadius: "50%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: "pointer",
+        pointerEvents: "auto",
+        boxShadow: "0 2px 10px rgba(0,0,0,0.15)",
+        border: "none"
+      }}
+      title="Mostrar experiencias"
+    >
+      <svg 
+        width="18" 
+        height="18" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+      >
+        <circle cx="12" cy="12" r="10" />
+        <circle cx="12" cy="12" r="6" />
+        <circle cx="12" cy="12" r="2" />
+      </svg>
+    </div>
+  );
+}
+
 export function CollectiveMap({ onClose }: Props) {
   const [scope, setScope] = useState<"all" | "following">("all");
 
@@ -139,8 +207,10 @@ export function CollectiveMap({ onClose }: Props) {
   const [collectiveData, setCollectiveData] = useState<Map<string, CollectiveSummitData>>(new Map());
   const [loading, setLoading] = useState(true);
   
-  const [selectedSummit, setSelectedSummit] = useState<{ id: string, name: string, visitors: { id: string; username: string; avatar: string }[] } | null>(null);
+  const [selectedSummit, setSelectedSummit] = useState<{ id: string, name: string, visitors: { id: string; username: string; avatar: string }[], isExperience?: boolean } | null>(null);
   const [searchedId, setSearchedId] = useState<string | null>(null);
+  const [showExperiences, setShowExperiences] = useState(false);
+  const [experienceMarkers, setExperienceMarkers] = useState<any[]>([]);
   
   const layerRefs = useRef(new Map<string, L.Path>());
   const searchTimeoutRef = useRef<NodeJS.Timeout>(null);
@@ -153,9 +223,9 @@ export function CollectiveMap({ onClose }: Props) {
     }
   }, [worldGeo]);
 
-  // Fetch collective data
+  // Fetch collective data (countries)
   useEffect(() => {
-    async function fetchData() {
+    async function fetchCountries() {
       if (!supabase) {
         setLoading(false);
         return;
@@ -166,7 +236,7 @@ export function CollectiveMap({ onClose }: Props) {
       layerRefs.current.clear();
       
       const { data, error } = await supabase.rpc('get_collective_summits', {
-        p_mode: "countries", // Always countries now
+        p_mode: "countries",
         p_following_only: scope === "following"
       });
       
@@ -184,8 +254,94 @@ export function CollectiveMap({ onClose }: Props) {
       setCollectiveData(map);
       setLoading(false);
     }
-    fetchData();
+    fetchCountries();
   }, [scope]);
+
+  // Fetch experiences
+  useEffect(() => {
+    async function fetchExperiences() {
+      if (!showExperiences || !supabase) {
+        setExperienceMarkers([]);
+        return;
+      }
+      
+      let allowedUserIds: string[] | null = null;
+      
+      if (scope === "following") {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const { data: following } = await supabase
+            .from('connections')
+            .select('following_id')
+            .eq('follower_id', session.user.id)
+            .eq('status', 'accepted');
+          if (following) {
+            allowedUserIds = following.map(f => f.following_id);
+            allowedUserIds.push(session.user.id); // Incluirse a uno mismo
+          } else {
+            allowedUserIds = [session.user.id];
+          }
+        } else {
+          allowedUserIds = [];
+        }
+      }
+      
+      let query = supabase
+        .from('experience_records')
+        .select('id, lat, lng, location_name, user_id, experience_id')
+        .not('lat', 'is', null);
+        
+      if (allowedUserIds) {
+        query = query.in('user_id', allowedUserIds);
+      }
+      
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error("Error fetching experiences:", error);
+        return;
+      }
+      
+      if (data && data.length > 0) {
+        const userIds = [...new Set(data.map(d => d.user_id))];
+        
+        let profilesQuery = supabase
+          .from('profiles')
+          .select('id, username, avatar_url, is_public')
+          .in('id', userIds);
+          
+        if (scope === 'all') {
+          profilesQuery = profilesQuery.eq('is_public', true);
+        }
+        
+        const { data: profilesData, error: profilesError } = await profilesQuery;
+        
+        if (profilesError) {
+          console.error("Error fetching profiles:", profilesError);
+          return;
+        }
+        
+        const profilesMap = new Map();
+        if (profilesData) {
+          for (const p of profilesData) {
+            profilesMap.set(p.id, p);
+          }
+        }
+        
+        const markers = data
+          .filter(d => profilesMap.has(d.user_id))
+          .map(d => ({
+            ...d,
+            profiles: profilesMap.get(d.user_id)
+          }));
+          
+        setExperienceMarkers(markers);
+      } else {
+        setExperienceMarkers([]);
+      }
+    }
+    fetchExperiences();
+  }, [scope, showExperiences]);
 
   const getVisitorCount = useCallback((summitId: string) => {
     const data = collectiveData.get(summitId);
@@ -352,7 +508,7 @@ export function CollectiveMap({ onClose }: Props) {
           </span>
         </div>
         
-        <div className="collective-map-toggles" style={{ marginLeft: 'auto', marginRight: '16px' }}>
+        <div className="collective-map-toggles" style={{ marginLeft: 'auto', marginRight: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <div className="list-filters" style={{ margin: 0, display: "flex", gap: "6px" }}>
             <button
               className={`list-filter-pill ${scope === 'all' ? 'list-filter-pill--active' : ''}`}
@@ -415,11 +571,59 @@ export function CollectiveMap({ onClose }: Props) {
               />
             )}
             
+            {showExperiences && experienceMarkers.map(marker => {
+               // Find icon name
+               const cat = predefinedCategories.find(c => c.experiences.some(e => e.id === marker.experience_id));
+               const iconName = cat?.iconName || "star";
+               
+               // Find experience name
+               const expName = cat?.experiences.find(e => e.id === marker.experience_id)?.name || marker.location_name || 'Experiencia';
+
+               const iconHtml = ReactDOMServer.renderToString(
+                 <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                   <span className="summit-pin summit-pin--experience summit-pin--done" style={{ display: 'inline-flex', justifyContent: 'center', alignItems: 'center', pointerEvents: 'none' }}>
+                     {getIconComponent(iconName)}
+                   </span>
+                 </div>
+               );
+               
+               const customIcon = L.divIcon({
+                 html: iconHtml,
+                 className: 'experience-hitbox',
+                 iconSize: [36, 36],
+                 iconAnchor: [18, 18],
+               });
+
+               return (
+                 <Marker 
+                   key={marker.id} 
+                   position={[marker.lat, marker.lng]} 
+                   icon={customIcon}
+                   eventHandlers={{
+                     click: () => {
+                       setSelectedSummit({ 
+                         id: marker.id, 
+                         name: expName, 
+                         visitors: [{ id: marker.user_id, username: marker.profiles?.username, avatar: marker.profiles?.avatar_url }],
+                         isExperience: true
+                       });
+                     }
+                   }}
+                 >
+                   <Tooltip direction="top" offset={[0, -16]} className="summit-tooltip tooltip-done">
+                     {marker.profiles?.username} - {expName}
+                   </Tooltip>
+                 </Marker>
+               );
+            })}
+            
             <MapSearchControl
               items={searchItems}
               onSelect={handleSearchSelect}
               placeholder="Buscar país..."
             />
+            
+            <ExperiencesToggleControl showExperiences={showExperiences} setShowExperiences={setShowExperiences} experienceMarkersCount={experienceMarkers.length} />
           </MapContainer>
         )}
 
@@ -454,7 +658,7 @@ export function CollectiveMap({ onClose }: Props) {
             {selectedSummit.visitors.length > 0 ? (
               <>
                 <p className="collective-visitors-count">
-                  {selectedSummit.visitors.length} {selectedSummit.visitors.length === 1 ? 'persona ha' : 'personas han'} visitado este lugar
+                  {selectedSummit.visitors.length} {selectedSummit.visitors.length === 1 ? 'persona ha' : 'personas han'} {(selectedSummit as any).isExperience ? 'vivido esta experiencia' : 'visitado este lugar'}
                 </p>
                 <ul className="collective-visitors-list">
                   {selectedSummit.visitors.map((v) => (

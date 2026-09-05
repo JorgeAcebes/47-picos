@@ -6,6 +6,7 @@ import { SummitTracker } from "./summit-tracker";
 import type { Session } from "@supabase/supabase-js";
 import Link from "next/link";
 import { AuthDialog } from "./auth-dialog";
+import { useRouter } from "next/navigation";
 
 type Profile = {
   id: string;
@@ -24,6 +25,11 @@ export function ProfileView({ username, initialMode = "countries" }: { username:
   const [error, setError] = useState("");
   const [mapLink, setMapLink] = useState("/");
   const [mode, setMode] = useState<"peaks" | "countries">(initialMode);
+  const router = useRouter();
+
+  const handleNavigate = (path: string) => {
+    router.push(path);
+  };
 
   useEffect(() => {
     if (!supabase) return;
@@ -157,6 +163,6 @@ export function ProfileView({ username, initialMode = "countries" }: { username:
   const isMe = session?.user.id === profile.id;
 
   return (
-    <SummitTracker mode={mode} onSwitchMode={setMode} targetProfile={isMe ? undefined : { id: profile.id, username: profile.username }} />
+    <SummitTracker mode={mode} onSwitchMode={setMode} targetProfile={isMe ? undefined : { id: profile.id, username: profile.username }} onNavigate={handleNavigate} />
   );
 }

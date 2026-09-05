@@ -25,7 +25,13 @@ type ContinentFilter = "Todos" | "África" | "América" | "Asia" | "Europa" | "O
 type ScopeFilter = "all" | "following";
 type ModeFilter = "countries" | "peaks";
 
-export function RankingTab({ onNavigate }: { onNavigate?: (tab: string) => void }) {
+export function RankingTab({ 
+  onNavigate, 
+  isActive = true 
+}: { 
+  onNavigate?: (tab: string) => void;
+  isActive?: boolean;
+}) {
   const [session, setSession] = useState<Session | null>(null);
   const [entries, setEntries] = useState<RankingEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,12 +47,13 @@ export function RankingTab({ onNavigate }: { onNavigate?: (tab: string) => void 
   const [authOpen, setAuthOpen] = useState(false);
 
   useEffect(() => {
+    if (!isActive) return;
     if (session) {
       supabase?.from("profiles").select("username, avatar_url").eq("id", session.user.id).single().then(({ data }) => {
         if (data) setMyProfile(data);
       });
     }
-  }, [session]);
+  }, [session, isActive]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -67,15 +74,17 @@ export function RankingTab({ onNavigate }: { onNavigate?: (tab: string) => void 
   }, []);
 
   useEffect(() => {
+    if (!isActive) return;
     async function fetchTotalUsers() {
       if (!supabase) return;
       const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
       if (count !== null) setTotalUsersCount(count);
     }
     fetchTotalUsers();
-  }, []);
+  }, [isActive]);
 
   useEffect(() => {
+    if (!isActive) return;
     let ignore = false;
 
     async function fetchRanking() {
@@ -121,7 +130,7 @@ export function RankingTab({ onNavigate }: { onNavigate?: (tab: string) => void 
     return () => {
       ignore = true;
     };
-  }, [mode, scope, session]);
+  }, [mode, scope, session, isActive]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -154,8 +163,8 @@ export function RankingTab({ onNavigate }: { onNavigate?: (tab: string) => void 
           <img src="/icon.svg" alt="Logo" width={32} height={32} style={{ filter: "brightness(0)" }} />
         </a>
         <nav>
-          <a href={mapLink} onClick={(e) => { if (onNavigate) { e.preventDefault(); let currentMap = localStorage.getItem("last_map_path") || "/"; if (currentMap !== "/" && currentMap !== "/picos") currentMap = "/"; onNavigate(currentMap); }}}>Mapa</a>
-          <a href="/social" onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("/social"); }}}>Social</a>
+          <a href={mapLink} onClick={(e) => { if (onNavigate) { e.preventDefault(); let currentMap = localStorage.getItem("last_map_path") || "/"; if (currentMap !== "/" && currentMap !== "/picos") currentMap = "/"; onNavigate(currentMap); }}} onMouseEnter={() => { import('./summit-tracker'); }}>Mapa</a>
+          <a href="/social" onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("/social"); }}} onMouseEnter={() => { import('./social-tab'); }}>Social</a>
           <a href="/ranking" style={{ fontWeight: 'bold', color: 'var(--purple)' }} onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("/ranking"); }}}>Ranking</a>
           {session ? (
             <Link href={myProfile?.username ? `/perfil/${myProfile.username}` : "/"} className="account-button">
@@ -177,7 +186,7 @@ export function RankingTab({ onNavigate }: { onNavigate?: (tab: string) => void 
       </header>
 
       {/* ── Narrow Main Container (like Social) ────────────────── */}
-      <main className="peak-list-section" style={{ paddingTop: '80px', maxWidth: '800px', margin: '0 auto', paddingBottom: '4rem' }}>
+      <main className="peak-list-section page-container" style={{ maxWidth: '800px', margin: '0 auto', paddingTop: '67px', paddingBottom: '4rem' }}>
         
         <div className="section-heading">
           <div style={{ width: '100%' }}>

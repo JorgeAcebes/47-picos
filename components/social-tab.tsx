@@ -7,6 +7,10 @@ import Link from "next/link";
 import { AuthDialog } from "./auth-dialog";
 import { ProfileSettings } from "./profile-settings";
 import { ConfirmModal } from "./confirm-modal";
+import { FeedTab } from "./feed-tab";
+import { countries } from "@/data/countries";
+import { peaks } from "@/data/peaks";
+import { predefinedCategories } from "@/data/experiences";
 
 type Profile = {
   id: string;
@@ -17,7 +21,7 @@ type Profile = {
 
 type ConnectionStatus = 'pending' | 'accepted' | null;
 
-export function SocialTab({ onNavigate, isActive }: { onNavigate?: (tab: string) => void, isActive?: boolean }) {
+export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: string) => void, isActive?: boolean }) {
   const [session, setSession] = useState<Session | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -29,7 +33,11 @@ export function SocialTab({ onNavigate, isActive }: { onNavigate?: (tab: string)
   const [recommended, setRecommended] = useState<Profile[]>([]);
   const [followers, setFollowers] = useState<Profile[]>([]);
   const [following, setFollowing] = useState<Profile[]>([]);
-  const [activeTab, setActiveTab] = useState<'discover' | 'followers' | 'following'>('discover');
+  const [activeTab, setActiveTab] = useState<'feed' | 'discover' | 'followers' | 'following'>('feed');
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  
+  const [progressCounts, setProgressCounts] = useState({ countries: 0, peaks: 0, experiences: 0 });
+  const [totalCounts, setTotalCounts] = useState({ countries: 196, peaks: 47, experiences: 0 });
   
   // A mapping of profile id to connection status
   const [connections, setConnections] = useState<Record<string, ConnectionStatus>>({});
@@ -59,15 +67,16 @@ export function SocialTab({ onNavigate, isActive }: { onNavigate?: (tab: string)
   }, []);
 
   useEffect(() => {
+    if (!isActive) return;
     if (session && !profileOpen) {
       supabase?.from("profiles").select("*").eq("id", session.user.id).single().then(({ data }) => {
         if (data) setMyProfile(data);
       });
     }
-  }, [session, profileOpen]);
+  }, [session, profileOpen, isActive]);
 
   useEffect(() => {
-    if (!session || !supabase) return;
+    if (!isActive || !session || !supabase) return;
     
     async function fetchConnections() {
       // Fetch who I am following
@@ -140,9 +149,42 @@ export function SocialTab({ onNavigate, isActive }: { onNavigate?: (tab: string)
       setRecommended(combined);
     }
     
+    async function fetchProgress() {
+      if (!session) return;
+      const { data: ascData } = await supabase!.from('ascents').select('summit_id').eq('user_id', session.user.id).eq('is_wishlist', false);
+      const { count: expCount } = await supabase!.from('experience_records').select('*', { count: 'exact', head: true }).eq('user_id', session.user.id).eq('is_wishlist', false);
+      
+      let pCount = 0;
+      let cCount = 0;
+      
+      if (ascData) {
+        const countryIds = new Set(countries.map(c => c.id));
+        const peakIds = new Set(peaks.map(p => p.id));
+        
+        const uniqueSummits = new Set(ascData.map(a => a.summit_id));
+        
+        for (const summit_id of uniqueSummits) {
+          if (countryIds.has(summit_id)) cCount++;
+          if (peakIds.has(summit_id)) pCount++;
+        }
+      }
+      
+      setProgressCounts({
+        countries: cCount,
+        peaks: pCount,
+        experiences: expCount || 0
+      });
+      setTotalCounts({
+        countries: countries.length,
+        peaks: peaks.length,
+        experiences: predefinedCategories.reduce((acc, cat) => acc + cat.experiences.length, 0)
+      });
+    }
+
     fetchConnections();
     fetchRecommended();
-  }, [session]);
+    fetchProgress();
+  }, [session, isActive]);
 
   useEffect(() => {
     if (!supabase || searchQuery.length < 2) {
@@ -271,9 +313,10 @@ export function SocialTab({ onNavigate, isActive }: { onNavigate?: (tab: string)
     const isMe = session?.user.id === profile.id;
     const followingStatus = connections[profile.id];
     const followerStatus = followerStatuses[profile.id];
+    const isPendingFollower = context === 'followers' && followerStatus === 'pending';
     
     return (
-      <div key={profile.id} className="peak-list-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', marginBottom: '0.5rem', background: '#fff', borderRadius: '8px' }}>
+      <div key={profile.id} className={`peak-list-item ${isPendingFollower ? 'shake-once' : ''}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', marginBottom: '0.5rem', background: '#fff', borderRadius: '8px' }}>
         <Link href={`/perfil/${profile.username}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#ccc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: 'white' }}>
             {profile.avatar_url ? (
@@ -321,7 +364,7 @@ export function SocialTab({ onNavigate, isActive }: { onNavigate?: (tab: string)
           <img src="/icon.svg" alt="Logo" width={32} height={32} style={{ filter: "brightness(0)" }} />
         </a>
         <nav>
-          <a href={mapLink} onClick={(e) => { if (onNavigate) { e.preventDefault(); let currentMap = localStorage.getItem("last_map_path") || "/"; if (currentMap !== "/" && currentMap !== "/picos") currentMap = "/"; onNavigate(currentMap); }}}>Mapa</a>
+          <a href={mapLink} onClick={(e) => { if (onNavigate) { e.preventDefault(); let currentMap = localStorage.getItem("last_map_path") || "/"; if (currentMap !== "/" && currentMap !== "/picos") currentMap = "/"; onNavigate(currentMap); }}} onMouseEnter={() => { import('./summit-tracker'); }}>Mapa</a>
           <a href="/social" style={{ fontWeight: 'bold', position: 'relative' }} onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("/social"); }}}>
             Social
             {hasPendingRequests ? (
@@ -343,7 +386,7 @@ export function SocialTab({ onNavigate, isActive }: { onNavigate?: (tab: string)
               />
             ) : null}
           </a>
-          <a href="/ranking" onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("/ranking"); }}}>Ranking</a>
+          <a href="/ranking" onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("/ranking"); } }} onMouseEnter={() => { import('./ranking-tab'); }}>Ranking</a>
           {session ? (
             <button className="account-button" onClick={() => setProfileOpen(true)}>
               {myProfile?.avatar_url ? (
@@ -363,20 +406,140 @@ export function SocialTab({ onNavigate, isActive }: { onNavigate?: (tab: string)
         </nav>
       </header>
 
-      <section className="peak-list-section" style={{ paddingTop: '80px', maxWidth: '800px', margin: '0 auto' }}>
-        <div className="section-heading">
-          <div>
-            <span className="eyebrow">RED SOCIAL</span>
-            <h2>Encuentra a otros usuarios</h2>
-            <p>Busca usuarios y conecta con ellos para ver sus progresos.</p>
+      <section className="social-grid-layout page-container" style={{ paddingBottom: '70px', paddingLeft: '24px', paddingRight: '24px' }}>
+        
+        {/* Left Sidebar (Desktop only) */}
+        <div className="sidebar-left">
+          {session && myProfile ? (
+            <>
+              {/* Desktop Profile Card */}
+              <div className="hide-on-mobile" style={{ background: 'white', borderRadius: '12px', padding: '24px', border: '1px solid var(--line)', cursor: 'pointer' }} onClick={() => onNavigate?.('profile')}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div className="profile-avatar-container" style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'var(--pine)', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '24px', fontWeight: 'bold' }}>
+                    {myProfile.avatar_url ? (
+                      <img src={myProfile.avatar_url} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      myProfile.username.charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  <div>
+                    <h3 style={{ margin: '0 0 4px', fontSize: '18px' }}>@{myProfile.username}</h3>
+                    <div style={{ display: 'flex', gap: '16px', fontSize: '14px', color: 'var(--ink)' }}>
+                      <div onClick={(e) => { e.stopPropagation(); setActiveTab('followers'); }} style={{ cursor: 'pointer' }}><span style={{ fontWeight: 'bold' }}>{followers.length}</span> seguidores</div>
+                      <div onClick={(e) => { e.stopPropagation(); setActiveTab('following'); }} style={{ cursor: 'pointer' }}><span style={{ fontWeight: 'bold' }}>{following.length}</span> siguiendo</div>
+                    </div>
+                  </div>
+                </div>
+
+                {(progressCounts.countries > 0 || progressCounts.peaks > 0 || progressCounts.experiences > 0) && (
+                  <div className="profile-stats-row" style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                    {progressCounts.countries > 0 && (
+                      <div className="profile-stats-col" style={{ textAlign: 'center' }}>
+                        <div className="profile-stats-val" style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--pine)' }}>{progressCounts.countries}/{totalCounts.countries}</div>
+                        <div style={{ fontSize: '12px', color: 'var(--muted)' }}>Países</div>
+                      </div>
+                    )}
+                    {progressCounts.peaks > 0 && (
+                      <div className="profile-stats-col" style={{ textAlign: 'center' }}>
+                        <div className="profile-stats-val" style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--pine)' }}>{progressCounts.peaks}/{totalCounts.peaks}</div>
+                        <div style={{ fontSize: '12px', color: 'var(--muted)' }}>Picos</div>
+                      </div>
+                    )}
+                    {progressCounts.experiences > 0 && (
+                      <div className="profile-stats-col" style={{ textAlign: 'center' }}>
+                        <div className="profile-stats-val" style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--pine)' }}>{progressCounts.experiences}/{totalCounts.experiences}</div>
+                        <div style={{ fontSize: '12px', color: 'var(--muted)' }}>Experiencias</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div style={{ background: 'white', borderRadius: '12px', padding: '24px', border: '1px solid var(--line)', textAlign: 'center' }}>
+              <h3 style={{ margin: '0 0 8px' }}>Únete a la comunidad</h3>
+              <p style={{ margin: '0 0 16px', fontSize: '14px', color: 'var(--muted)' }}>Conecta con otros usuarios y descubre sus experiencias.</p>
+              <button className="button button--green button--wide" onClick={() => setAuthOpen(true)}>Iniciar sesión</button>
+            </div>
+          )}
+
+          <div className="sidebar-nav-desktop" style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '16px' }}>
+            <button className={`social-nav-btn ${activeTab === 'feed' ? 'active' : ''}`} onClick={() => setActiveTab('feed')}>
+              Novedades
+            </button>
+            <button className={`social-nav-btn ${activeTab === 'discover' ? 'active' : ''}`} onClick={() => setActiveTab('discover')}>
+              Descubrir
+            </button>
+            <button className={`social-nav-btn ${activeTab === 'followers' ? 'active' : ''}`} onClick={() => setActiveTab('followers')}>
+              Seguidores
+              {hasPendingRequests && <span style={{ width: 8, height: 8, background: 'red', borderRadius: '50%' }} />}
+            </button>
+            <button className={`social-nav-btn ${activeTab === 'following' ? 'active' : ''}`} onClick={() => setActiveTab('following')}>
+              Siguiendo
+            </button>
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: "10px", marginBottom: "20px", alignItems: "center" }}>
-          <button className={`button ${activeTab === 'discover' ? 'button--green' : 'button--outline'}`} style={{ flex: 1 }} onClick={() => setActiveTab('discover')}>Descubrir</button>
-          <button className={`button ${activeTab === 'followers' ? 'button--green' : 'button--outline'}`} style={{ flex: 1 }} onClick={() => setActiveTab('followers')}>Seguidores</button>
-          <button className={`button ${activeTab === 'following' ? 'button--green' : 'button--outline'}`} style={{ flex: 1 }} onClick={() => setActiveTab('following')}>Siguiendo</button>
-        </div>
+        {/* Main Feed Area */}
+        <div className="feed-main">
+          {/* Mobile Profile Card (Condensed) */}
+          {session && myProfile && (
+            <div className="hide-on-desktop" style={{ background: 'white', borderRadius: '12px', padding: '16px', border: '1px solid var(--line)', cursor: 'pointer', marginBottom: '20px' }} onClick={() => onNavigate?.('profile')}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--pine)', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '24px', fontWeight: 'bold' }}>
+                  {myProfile.avatar_url ? (
+                    <img src={myProfile.avatar_url} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    myProfile.username.charAt(0).toUpperCase()
+                  )}
+                </div>
+                <div>
+                  <h3 style={{ margin: '0 0 4px', fontSize: '16px' }}>@{myProfile.username}</h3>
+                  <div style={{ display: 'flex', gap: '16px', fontSize: '14px', color: 'var(--ink)' }}>
+                    <div onClick={(e) => { e.stopPropagation(); setActiveTab('followers'); }} style={{ cursor: 'pointer' }}><span style={{ fontWeight: 'bold' }}>{followers.length}</span> seguidores</div>
+                    <div onClick={(e) => { e.stopPropagation(); setActiveTab('following'); }} style={{ cursor: 'pointer' }}><span style={{ fontWeight: 'bold' }}>{following.length}</span> siguiendo</div>
+                  </div>
+                </div>
+              </div>
+              {(progressCounts.countries > 0 || progressCounts.peaks > 0 || progressCounts.experiences > 0) && (
+                <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--line)', display: 'flex', justifyContent: 'space-around', gap: '8px' }}>
+                  {progressCounts.countries > 0 && (
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--pine)' }}>{progressCounts.countries}/{totalCounts.countries}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--muted)' }}>Países</div>
+                    </div>
+                  )}
+                  {progressCounts.peaks > 0 && (
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--pine)' }}>{progressCounts.peaks}/{totalCounts.peaks}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--muted)' }}>Picos</div>
+                    </div>
+                  )}
+                  {progressCounts.experiences > 0 && (
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--pine)' }}>{progressCounts.experiences}/{totalCounts.experiences}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--muted)' }}>Experiencias</div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Mobile Horizontal Navigation */}
+          <div className="social-mobile-nav" style={{ display: "flex", gap: "10px", marginBottom: "20px", alignItems: "center", overflowX: "auto", paddingBottom: "4px" }}>
+            <button className={`button ${activeTab === 'feed' ? 'button--green' : 'button--outline'}`} style={{ flex: 1, whiteSpace: "nowrap" }} onClick={() => setActiveTab('feed')}>Novedades</button>
+            <button className={`button ${activeTab === 'discover' ? 'button--green' : 'button--outline'}`} style={{ flex: 1, whiteSpace: "nowrap" }} onClick={() => setActiveTab('discover')}>Descubrir</button>
+            <button className={`button ${activeTab === 'followers' ? 'button--green' : 'button--outline'}`} style={{ flex: 1, position: 'relative', whiteSpace: "nowrap" }} onClick={() => setActiveTab('followers')}>
+              Seguidores
+              {hasPendingRequests && <span style={{ position: 'absolute', top: '-4px', right: '-4px', width: '8px', height: '8px', backgroundColor: 'red', borderRadius: '50%' }} />}
+            </button>
+            <button className={`button ${activeTab === 'following' ? 'button--green' : 'button--outline'}`} style={{ flex: 1, whiteSpace: "nowrap" }} onClick={() => setActiveTab('following')}>Siguiendo</button>
+          </div>
+
+          {activeTab === 'feed' && (
+            <FeedTab session={session} isActive={isActive} onAuthRequired={() => setAuthOpen(true)} />
+          )}
 
         {activeTab === 'discover' && (
           <>
@@ -475,6 +638,23 @@ export function SocialTab({ onNavigate, isActive }: { onNavigate?: (tab: string)
             )}
           </div>
         )}
+        </div>
+
+        {/* Right Sidebar (Desktop only) */}
+        <div className="sidebar-right">
+          {announcements.length > 0 && (
+            <div style={{ background: '#eef2ff', border: '1px solid #c7d2fe', padding: '20px', borderRadius: '12px' }}>
+              <h4 style={{ margin: '0 0 8px 0', color: '#4f46e5', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Anuncio
+              </h4>
+              <p style={{ margin: 0, fontSize: '14px', lineHeight: '1.5' }}>{announcements[0].message}</p>
+              {announcements[0].link && (
+                <a href={announcements[0].link} style={{ display: 'inline-block', marginTop: '12px', color: '#4338ca', fontWeight: 'bold', fontSize: '14px', textDecoration: 'none' }}>Saber más &rarr;</a>
+              )}
+            </div>
+          )}
+        </div>
       </section>
       
       {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} />}

@@ -10,7 +10,7 @@ import {
   useMapEvents,
 } from "react-leaflet";
 import type { FeatureCollection } from "geojson";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
 import { peakByCode, type Peak } from "@/data/peaks";
 import { MapSearchControl, type SearchItem } from "./map-search";
 import { SweepOverlay } from "./sweep-overlay";
@@ -102,7 +102,7 @@ function MapZoomListener() {
 // ── Stable marker list (never changes) ────
 const peakEntries = Object.values(peakByCode);
 
-export function SpainMap({ completed, wishlist, onInformation, onComplete, diffMode, diffOnlyViewer, diffOnlyTarget, diffBoth, activeId }: Props) {
+export const SpainMap = memo(function SpainMap({ completed, wishlist, onInformation, onComplete, diffMode, diffOnlyViewer, diffOnlyTarget, diffBoth, activeId }: Props) {
   const [geo, setGeo] = useState<FeatureCollection | null>(_geoCache);
   const [searchedId, setSearchedId] = useState<string | null>(null);
   const scanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -419,4 +419,4 @@ export function SpainMap({ completed, wishlist, onInformation, onComplete, diffM
     </MapContainer>
     </>
   );
-}
+});

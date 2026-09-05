@@ -16,6 +16,8 @@ import { ConfirmModal } from "./confirm-modal";
 import PhotoEditor from "./photo-editor";
 import { getIconComponent } from "./icons";
 import { LocationSearch } from "./location-search";
+import { Link as LinkIcon, Camera, MapPin, Briefcase, Video } from "lucide-react";
+import { usePendingRequests } from "./use-pending-requests";
 
 const SpainMap = dynamic(
   () => import("./spain-map").then((module) => module.SpainMap),
@@ -33,17 +35,19 @@ const WorldMap = dynamic(
   },
 );
 
-type Ascent = { 
-  summit_id: string; 
-  achieved_on: string; 
-  end_date?: string | null; 
-  notes: string | null; 
+type Ascent = {
+  summit_id: string;
+  achieved_on: string;
+  end_date?: string | null;
+  notes: string | null;
   is_wishlist: boolean;
   record_id?: string;
   lat?: number | null;
   lng?: number | null;
   location_name?: string | null;
   sub_item_id?: string | null;
+  link?: string | null;
+  link_name?: string | null;
 };
 export type SelectedItem = {
   id: string;
@@ -70,6 +74,7 @@ export type SummitPhoto = {
 
 
 export type HiddenItem = {
+  id: string;
   user_id: string;
   item_id: string;
   item_type: 'category' | 'experience';
@@ -84,6 +89,8 @@ export type ExperienceRecord = {
   lng: number;
   achieved_on: string;
   notes?: string;
+  link?: string;
+  link_name?: string;
   is_wishlist: boolean;
   location_name?: string | null;
   created_at: string;
@@ -292,15 +299,17 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
   const [currentMode, setCurrentMode] = useState<ChallengeMode>(initialModeProp);
   const isPeaks = currentMode === "peaks";
   const isReadOnly = !!targetProfile;
+  const hasPendingRequests = usePendingRequests();
 
   useEffect(() => {
+    if (!isActive) return;
     const handlePopState = () => {
       if (window.location.pathname === "/picos") setCurrentMode("peaks");
       else if (window.location.pathname === "/") setCurrentMode("countries");
     };
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
+  }, [isActive]);
 
   const [session, setSession] = useState<Session | null>(null);
   const [myProfile, setMyProfile] = useState<{ username: string; avatar_url: string | null; enable_regions?: boolean; enable_experiences?: boolean } | null>(null);
@@ -322,12 +331,15 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
     onConfirm: () => void;
   } | null>(null);
   const [notes, setNotes] = useState("");
+  const [link, setLink] = useState("");
+  const [linkName, setLinkName] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [listFilter, setListFilter] = useState<string>("all");
   const [selectedPhotoFiles, setSelectedPhotoFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
+  const [showTrashModal, setShowTrashModal] = useState(false);
   const [lightboxPhoto, setLightboxPhoto] = useState<SummitPhoto | null>(null);
   const [lightboxMenuOpen, setLightboxMenuOpen] = useState(false);
   const [lightboxCaptionModalOpen, setLightboxCaptionModalOpen] = useState(false);
@@ -337,6 +349,17 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
   const [lightboxNewDate, setLightboxNewDate] = useState<string | null>(null);
   const [selectedPhotosForEdit, setSelectedPhotosForEdit] = useState<string[]>([]);
 
+  useEffect(() => {
+    if (lightboxPhoto !== null) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [lightboxPhoto]);
+
   // Experience features
   const [experienceRecords, setExperienceRecords] = useState<ExperienceRecord[]>([]);
   const [customExperiences, setCustomExperiences] = useState<any[]>([]); // We use any[] for now or import CustomExperience
@@ -344,7 +367,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
   const [hiddenItems, setHiddenItems] = useState<HiddenItem[]>([]);
   const [editingCustomCategory, setEditingCustomCategory] = useState<any>(null); // null, 'new', or existing category object
   const [editingCustomExp, setEditingCustomExp] = useState<any>(null); // null, 'new', or existing custom experience
-  const [confirmAction, setConfirmAction] = useState<{message: string, onConfirm: () => void} | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ message: string, onConfirm: () => void } | null>(null);
   const [creatingCustomExp, setCreatingCustomExp] = useState(false);
   const [customExpName, setCustomExpName] = useState("");
   const [customExpIcon, setCustomExpIcon] = useState("star");
@@ -352,7 +375,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
   const [selectingCategoryForNewExp, setSelectingCategoryForNewExp] = useState(false);
   const [expSelectorOpen, setExpSelectorOpen] = useState(false);
   const [expandedExpCategory, setExpandedExpCategory] = useState<string | null>(null);
-  const [selectedLatLng, setSelectedLatLng] = useState<{lat: number, lng: number} | null>(null);
+  const [selectedLatLng, setSelectedLatLng] = useState<{ lat: number, lng: number } | null>(null);
   const [editingExpRecordId, setEditingExpRecordId] = useState<string | null>(null);
   const [locationName, setLocationName] = useState("");
 
@@ -394,7 +417,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
     if (!lightboxPhoto || !selected) return [];
     const registeredDates = new Set(ascents.filter(a => a.summit_id === selected.id && !a.is_wishlist).map(a => a.achieved_on));
     const isRegistered = registeredDates.has(lightboxPhoto.taken_on);
-    
+
     if (isRegistered) {
       return photos.filter(p => p.summit_id === selected.id && p.taken_on === lightboxPhoto.taken_on);
     } else {
@@ -419,14 +442,14 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
   }, [hasNextPhoto, currentPhotoGroup, lightboxIndex]);
 
   useEffect(() => {
-    if (!lightboxPhoto) return;
+    if (!lightboxPhoto || !isActive) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft") showPrevPhoto();
       else if (e.key === "ArrowRight") showNextPhoto();
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [lightboxPhoto, showPrevPhoto, showNextPhoto]);
+  }, [lightboxPhoto, showPrevPhoto, showNextPhoto, isActive]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.changedTouches[0].clientX;
@@ -436,9 +459,9 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
     if (touchStartX.current === null) return;
     const touchEndX = e.changedTouches[0].clientX;
     const distance = touchStartX.current - touchEndX;
-    
+
     const minSwipeDistance = 50;
-    
+
     if (distance > minSwipeDistance) {
       showNextPhoto();
     } else if (distance < -minSwipeDistance) {
@@ -457,6 +480,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
 
   // Handle back button to close panels
   useEffect(() => {
+    if (!isActive) return;
     const handleHashChange = () => {
       const hash = window.location.hash;
       if (hash === "#editor") {
@@ -481,7 +505,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
       window.removeEventListener("hashchange", handleHashChange);
       window.removeEventListener("popstate", handleHashChange);
     };
-  }, []);
+  }, [isActive]);
 
   useEffect(() => {
     if (!isActive) {
@@ -489,6 +513,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
       document.body.classList.remove("mode-countries");
       return;
     }
+    setTimeout(() => window.dispatchEvent(new Event("resize")), 50);
     if (experiencesMode && !isPeaks) {
       document.body.classList.add("mode-experiences");
       document.body.classList.remove("mode-countries");
@@ -510,32 +535,42 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
     const visiblePredefined = predefinedCategories
       .filter(cat => !hiddenCategoryIds.has(cat.id))
       .map(cat => {
+        const override = customCategories.find(c => c.static_id === cat.id);
+        const name = override ? override.name : cat.name;
+        const iconName = override ? override.icon_name : cat.iconName;
+
         const linkedCustomExps = customExperiences
           .filter(ce => ce.static_category_id === cat.id)
           .map(ce => ({ id: ce.id, name: ce.name, subItems: ce.sub_items }));
 
         return {
           ...cat,
+          name,
+          iconName,
           experiences: [
             ...cat.experiences.filter(exp => !hiddenExperienceIds.has(exp.id)),
-            ...linkedCustomExps
+            ...linkedCustomExps.filter(exp => !hiddenExperienceIds.has(exp.id))
           ]
         };
       });
 
-    const customCats: ExperienceCategory[] = customCategories.map(cat => ({
+    const customCats: ExperienceCategory[] = customCategories
+      .filter(cat => !cat.static_id && !hiddenCategoryIds.has(cat.id))
+      .map(cat => ({
       id: cat.id,
       name: cat.name,
       iconName: cat.icon_name,
-      experiences: customExperiences.filter(ce => ce.category_id === cat.id).map(ce => ({
-        id: ce.id,
-        name: ce.name,
-        subItems: ce.sub_items
-      }))
+      experiences: customExperiences
+        .filter(ce => ce.category_id === cat.id && !hiddenExperienceIds.has(ce.id))
+        .map(ce => ({
+          id: ce.id,
+          name: ce.name,
+          subItems: ce.sub_items
+        }))
     }));
 
     // Group any orphaned experiences (no custom category, no static category)
-    const orphanedExperiences = customExperiences.filter(ce => !ce.category_id && !ce.static_category_id);
+    const orphanedExperiences = customExperiences.filter(ce => !ce.category_id && !ce.static_category_id && !hiddenExperienceIds.has(ce.id));
     if (orphanedExperiences.length > 0) {
       const orphansCat = orphanedExperiences.reduce((acc: ExperienceCategory[], ce) => {
         const icon = ce.icon_name || "star";
@@ -556,20 +591,20 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
   const allItems = useMemo(() => isPeaks
     ? peaks.map(peakToItem)
     : isExp
-      ? dynamicCategories.flatMap(cat => 
-          cat.experiences.map(exp => ({
-            id: exp.id,
-            title: exp.name,
-            subtitle: "",
-            label: "",
-            detail: cat.name,
-            note: "",
-            iconName: cat.iconName,
-            subItems: exp.subItems
-          }))
-        )
-      : countries.map(countryToItem), [isPeaks, isExp]);
-  
+      ? dynamicCategories.flatMap(cat =>
+        cat.experiences.map(exp => ({
+          id: exp.id,
+          title: exp.name,
+          subtitle: "",
+          label: "",
+          detail: cat.name,
+          note: "",
+          iconName: cat.iconName,
+          subItems: exp.subItems
+        }))
+      )
+      : countries.map(countryToItem), [isPeaks, isExp, dynamicCategories]);
+
   const totalCount = isPeaks ? 47 : allItems.length;
   const modeLabel = isPeaks ? "47 PICOS" : "196 PAÍSES";
   const modeLabelShort = isPeaks ? "47" : "196";
@@ -579,20 +614,20 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
   const modeHeroEyebrow = isPeaks ? "UN RETO, 47 PICOS" : isExp ? "UN RETO, EXPERIENCIAS GLOBALES" : "UN RETO, 196 PAÍSES";
   const modeHeroSubtitle = isPeaks
     ? "El mapa para conquistar el techo de cada provincia española."
-    : isExp 
+    : isExp
       ? "El mapa para registrar todas las experiencias de tu vida."
       : "El mapa para registrar cada país del mundo que has visitado.";
   const modeChallengeTitle = isPeaks
     ? <>Un país por descubrir,<br />una cima cada vez.</>
-    : isExp 
+    : isExp
       ? <>Un mundo por explorar,<br />una experiencia cada vez.</>
       : <>Un mundo por explorar,<br />un país cada vez.</>;
-  
+
   const modeListEyebrow = isPeaks ? "52 Territorios - 47 Picos" : isExp ? `${totalCount} Experiencias` : "196 Países del mundo";
   const modeListTitle = isPeaks ? "Todas las cumbres" : isExp ? (isReadOnly ? "Todas sus experiencias" : "Todas tus experiencias") : "Todos los países";
   const modeListSubtitle = isPeaks
     ? "Ordenadas por altitud, de mayor a menor."
-    : isExp 
+    : isExp
       ? "Agrupadas por categoría."
       : "Ordenados alfabéticamente.";
 
@@ -645,16 +680,16 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
       if (id) {
         let item = allItems.find((i) => i.id === id);
         if (!item && !isPeaks) {
-           for (const [countryId, regions] of Object.entries(regionsByCountryIsoA2)) {
-             const region = regions.find((r) => r.id === id);
-             if (region) {
-               const country = countries.find((c) => c.iso_a2 === countryId);
-               if (country) {
-                 item = regionToItem(region, country);
-                 break;
-               }
-             }
-           }
+          for (const [countryId, regions] of Object.entries(regionsByCountryIsoA2)) {
+            const region = regions.find((r) => r.id === id);
+            if (region) {
+              const country = countries.find((c) => c.iso_a2 === countryId);
+              if (country) {
+                item = regionToItem(region, country);
+                break;
+              }
+            }
+          }
         }
         if (item && (!selected || selected.id !== item.id)) {
           setSelected(item);
@@ -666,12 +701,21 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
   // Contar únicas
   const achievedCount = useMemo(() => {
     if (isExp) {
-      const uniqueExps = new Set(
-        completedModeAscents
-          .filter(a => !a.summit_id.startsWith('country-') && !a.summit_id.startsWith('region-'))
-          .map(a => a.summit_id + (a.sub_item_id ? `::${a.sub_item_id}` : ''))
-      );
-      return uniqueExps.size;
+      let count = 0;
+      for (const item of allItems) {
+        if (!item.subItems || item.subItems.length === 0) {
+           if (completedModeAscents.some(a => a.summit_id === item.id)) count++;
+        } else {
+           const subItemIds = item.subItems.map((s: any) => s.id);
+           const completedSubItems = new Set(
+             completedModeAscents.filter(a => a.summit_id === item.id && a.sub_item_id).map(a => a.sub_item_id)
+           );
+           if (subItemIds.length > 0 && subItemIds.every((id: string) => completedSubItems.has(id))) {
+             count++;
+           }
+        }
+      }
+      return count;
     }
     if (!isPeaks) {
       const uniqueCountries = new Set(completedModeAscents.filter((a) => a.summit_id.startsWith("country-")).map(a => a.summit_id));
@@ -689,7 +733,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
     if (isExp) {
       const uniqueExps = new Set(
         w.filter(a => !a.summit_id.startsWith('country-') && !a.summit_id.startsWith('region-'))
-         .map(a => a.summit_id + (a.sub_item_id ? `::${a.sub_item_id}` : ''))
+          .map(a => a.summit_id + (a.sub_item_id ? `::${a.sub_item_id}` : ''))
       );
       return uniqueExps.size;
     }
@@ -949,7 +993,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
 
   const selectedAscents = useMemo(() => {
     if (!selected) return [];
-    
+
     const allAscents = [
       ...ascents,
       ...experienceRecords.map(r => ({
@@ -965,7 +1009,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
         sub_item_id: r.sub_item_id
       }))
     ];
-    
+
     return allAscents.filter((a) => a.summit_id === selected.id && !a.is_wishlist).sort((a, b) => {
       const order = ascentsSortOrder === "asc" ? 1 : -1;
       if (a.achieved_on !== b.achieved_on) {
@@ -1000,7 +1044,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
     return allAscents.some(a => a.summit_id === selected.id && a.is_wishlist);
   }, [selected, ascents, experienceRecords]);
   const selectedPhotos = selected
-    ? photos.filter((p) => p.summit_id === selected.id)
+    ? photos.filter((p) => p.summit_id === selected.id || p.summit_id.startsWith(selected.id + "::"))
     : [];
   const completion = Math.round((achievedCount / totalCount) * 100);
 
@@ -1047,7 +1091,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
       const { data } = supabase.storage.from("summit-photos").getPublicUrl(path);
       const photoResult = await supabase.from("summit_photos").insert({
         user_id: session.user.id,
-        summit_id: selected.id,
+        summit_id: ascent.sub_item_id ? `${selected.id}::${ascent.sub_item_id}` : selected.id,
         storage_path: path,
         public_url: data.publicUrl,
         taken_on: ascent.achieved_on,
@@ -1080,13 +1124,13 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
 
   function handleCancelSelectingLocationForExp() {
     if (!selectingLocationForExp) return;
-    
+
     const [expId, subItemId] = selectingLocationForExp.split("::");
     let category = dynamicCategories.find(c => c.experiences.some(e => e.id === expId));
     let exp = category?.experiences.find(e => e.id === expId);
-    
+
     if (exp && category) {
-      const title = subItemId && exp.subItems ? `${exp.name} - ${exp.subItems.find((i: any) => i.id === subItemId)?.name}` : exp.name;
+      const title = exp.name;
       const item: SelectedItem = {
         id: expId,
         sub_item_id: subItemId,
@@ -1100,6 +1144,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
       };
       setSelectingLocationForExp(null);
       setSelected(item);
+      setRecordOpen(true);
       setEditingExpRecordId(null);
     } else {
       setSelectingLocationForExp(null);
@@ -1108,13 +1153,13 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
 
   async function handleMapClickForExp(lat: number, lng: number, placeNameArg?: string) {
     if (!selectingLocationForExp) return;
-    
+
     const [expId, subItemId] = selectingLocationForExp.split("::");
     let category = dynamicCategories.find(c => c.experiences.some(e => e.id === expId));
     let exp = category?.experiences.find(e => e.id === expId);
-    
+
     if (exp && category) {
-      const title = subItemId && exp.subItems ? `${exp.name} - ${exp.subItems.find((i: any) => i.id === subItemId)?.name}` : exp.name;
+      const title = exp.name;
       const item: SelectedItem = {
         id: expId,
         sub_item_id: subItemId,
@@ -1123,7 +1168,8 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
         label: "",
         detail: category.name,
         note: "",
-        iconName: category.iconName
+        iconName: category.iconName,
+        subItems: exp.subItems
       };
       let placeName = placeNameArg || "";
       if (!placeName) {
@@ -1137,7 +1183,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
           console.warn("Reverse geocoding error:", e);
         }
       }
-      
+
       setSelectingLocationForExp(null);
       setSelectedLatLng({ lat, lng });
       setLocationName(placeName || "");
@@ -1150,7 +1196,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
     let category = dynamicCategories.find(c => c.experiences.some(e => e.id === record.experience_id));
     let exp = category?.experiences.find(e => e.id === record.experience_id);
     if (exp && category) {
-      const title = record.sub_item_id && exp.subItems ? `${exp.name} - ${exp.subItems.find((i: any) => i.id === record.sub_item_id)?.name}` : exp.name;
+      const title = exp.name;
       const item: SelectedItem = {
         id: record.experience_id,
         sub_item_id: record.sub_item_id,
@@ -1159,7 +1205,8 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
         label: "",
         detail: category.name,
         note: "",
-        iconName: category.iconName
+        iconName: category.iconName,
+        subItems: exp.subItems
       };
       openInformation(item);
     }
@@ -1182,6 +1229,8 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
         setIsDateUnknown(true);
         setIsDateModified(false);
         setNotes("");
+        setLink("");
+        setLinkName("");
         setFiles([]);
       } else {
         setSelected(item);
@@ -1207,6 +1256,8 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
           setIsDateUnknown(!date || date === "1900-01-01");
           setIsDateModified(!!date && date !== "1900-01-01");
           setNotes(ascentToEdit.notes ?? "");
+          setLink((ascentToEdit as any).link ?? "");
+          setLinkName((ascentToEdit as any).link_name ?? "");
         } else {
           // Si no es ascentToEdit pero setSelectedLatLng ya se configuró (ej. click en mapa), no lo borramos.
           setEditingExpRecordId(null);
@@ -1220,7 +1271,9 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
           setOriginalAchievedOn(null);
           setIsDateUnknown(true);
           setIsDateModified(false);
-          setNotes(item.note || "");
+          setNotes("");
+          setLink("");
+          setLinkName("");
           // locationName is already set by handleMapClickForExp if coming from there
         }
         setFiles([]);
@@ -1329,15 +1382,17 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
     }
 
     const finalEndDate = isEndDateEnabled && climbEndDate ? climbEndDate.toISOString().slice(0, 10) : null;
-    
+
     let dbError = null;
 
     if (isExperience) {
       if (editingExpRecordId) {
         const { error } = await supabase.from("experience_records").update({
-          achieved_on: finalDate, 
-          notes: notes || null, 
-          lat: selectedLatLng?.lat, 
+          achieved_on: finalDate,
+          notes: notes || null,
+          link: link || null,
+          link_name: linkName || null,
+          lat: selectedLatLng?.lat,
           lng: selectedLatLng?.lng,
           location_name: locationName || null
         }).eq("id", editingExpRecordId);
@@ -1349,6 +1404,8 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
           sub_item_id: selected.sub_item_id || null,
           achieved_on: finalDate,
           notes: notes || null,
+          link: link || null,
+          link_name: linkName || null,
           lat: selectedLatLng?.lat,
           lng: selectedLatLng?.lng,
           location_name: locationName || null
@@ -1363,12 +1420,14 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
           achieved_on: finalDate,
           end_date: finalEndDate,
           notes: notes || null,
+          link: link || null,
+          link_name: linkName || null,
           is_wishlist: false,
         },
         { onConflict: "user_id,summit_id,achieved_on" },
       );
       dbError = ascentResult.error;
-      
+
       // Remove wishlist if they register a real ascent
       if (!dbError && hasWishlist) {
         await supabase.from("ascents").delete().match({ user_id: session.user.id, summit_id: selected.id, is_wishlist: true });
@@ -1398,7 +1457,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
         .from("summit_photos")
         .insert({
           user_id: session.user.id,
-          summit_id: selected.id,
+          summit_id: selected.sub_item_id ? `${selected.id}::${selected.sub_item_id}` : selected.id,
           storage_path: path,
           public_url: data.publicUrl,
           taken_on: finalDate,
@@ -1407,7 +1466,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
         .single();
       if (photoResult.data) uploaded.push(photoResult.data as SummitPhoto);
     }
-    
+
     if (isExperience) {
       // Refresh experience records
       const { data } = await supabase.from("experience_records").select("*").eq("user_id", session.user.id);
@@ -1453,7 +1512,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
 
     let confirmMessage = isPeaks
       ? "¿Seguro que quieres eliminar esta ascensión?"
-      : isExperience 
+      : isExperience
         ? "¿Seguro que quieres eliminar esta experiencia?"
         : "¿Seguro que quieres eliminar la visita a este país?";
 
@@ -1507,13 +1566,13 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
     } else {
       setAscents((previous) => previous.filter((a) => !(a.summit_id === selected.id && a.achieved_on === originalAchievedOn)));
     }
-    
+
     setSaving(false);
     setRecordOpen(false);
     setNotice(
       isPeaks
         ? "Ascensión eliminada."
-        : isExperience 
+        : isExperience
           ? "Experiencia eliminada."
           : "País eliminado de tu lista."
     );
@@ -1523,12 +1582,14 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
     if (!editingCustomCategory || !editingCustomCategory.name?.trim()) return;
     if (!supabase || !session) return;
     setSaving(true);
-    
-    if (editingCustomCategory.id === 'new') {
+
+    if (editingCustomCategory.id === 'new' || editingCustomCategory.id.startsWith('cat-')) {
+      const isOverride = editingCustomCategory.id.startsWith('cat-');
       const newCat = {
         user_id: session.user.id,
         name: editingCustomCategory.name.trim(),
-        icon_name: editingCustomCategory.icon_name || "star"
+        icon_name: editingCustomCategory.icon_name || "star",
+        ...(isOverride ? { static_id: editingCustomCategory.id } : {})
       };
       const { data, error } = await supabase.from("custom_experience_categories").insert(newCat).select().single();
       if (error) setNotice(error.message);
@@ -1554,17 +1615,24 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
   function handleDeleteCustomCategory(catId?: string | React.MouseEvent) {
     const targetId = typeof catId === 'string' ? catId : (editingCustomCategory && editingCustomCategory.id !== 'new' ? editingCustomCategory.id : null);
     if (!targetId) return;
+    
+    const catToDelete = customCategories.find(c => c.id === targetId);
+    const itemToHide = catToDelete?.static_id ? catToDelete.static_id : targetId;
+
     setConfirmAction({
-      message: "¿Estás seguro de que quieres eliminar esta categoría? Se eliminarán también todas sus experiencias.",
+      message: "¿Estás seguro de que quieres eliminar esta categoría? Se eliminarán también todas sus experiencias asociadas.",
       onConfirm: async () => {
         if (!supabase || !session) return;
         setSaving(true);
-        const { error } = await supabase.from("custom_experience_categories").delete().eq("id", targetId);
+        const { data, error } = await supabase.from('hidden_items').insert({
+          user_id: session.user.id,
+          item_id: itemToHide,
+          item_type: 'category'
+        }).select().single();
         if (error) {
           setNotice(error.message);
-        } else {
-          setCustomCategories(prev => prev.filter(c => c.id !== targetId));
-          setCustomExperiences(prev => prev.filter(ce => ce.category_id !== targetId));
+        } else if (data) {
+          setHiddenItems(prev => [...prev, data as HiddenItem]);
           if (editingCustomCategory && editingCustomCategory.id === targetId) {
             setEditingCustomCategory(null);
           }
@@ -1593,7 +1661,9 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
   }
   const handleHideItem = (itemId: string, itemType: 'category' | 'experience') => {
     setConfirmAction({
-      message: `¿Estás seguro de que quieres ocultar est${itemType === 'category' ? 'a categoría' : 'a experiencia'}?`,
+      message: itemType === 'category' 
+        ? '¿Estás seguro de que quieres eliminar esta categoría? Se eliminarán también todas sus experiencias asociadas.'
+        : '¿Estás seguro de que quieres eliminar esta experiencia?',
       onConfirm: async () => {
         const { data, error } = await supabase!.from('hidden_items').insert({
           user_id: session!.user.id,
@@ -1609,6 +1679,64 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
       }
     });
   };
+
+  async function handleRestoreHiddenItem(id: string) {
+    if (!supabase || !session) return;
+    setSaving(true);
+    const { error } = await supabase.from('hidden_items').delete().eq('id', id);
+    if (error) {
+      setNotice(error.message);
+    } else {
+      setHiddenItems(prev => prev.filter(h => h.id !== id));
+      setNotice("Elemento restaurado.");
+    }
+    setSaving(false);
+  }
+
+  async function handlePermanentDelete(item: HiddenItem) {
+    setConfirmAction({
+      message: "ATENCIÓN: Esto eliminará definitivamente este elemento y TODAS las experiencias registradas asociadas a él de la base de datos. Esta acción no se puede deshacer. ¿Continuar?",
+      onConfirm: async () => {
+        if (!supabase || !session) return;
+        setSaving(true);
+        try {
+          if (item.item_type === 'category') {
+            const staticCat = predefinedCategories.find(c => c.id === item.item_id);
+            const expIds = staticCat ? staticCat.experiences.map(e => e.id) : [];
+            const customExps = customExperiences.filter(c => c.category_id === item.item_id || c.static_category_id === item.item_id);
+            expIds.push(...customExps.map(c => c.id));
+
+            if (expIds.length > 0) {
+              await supabase.from('experience_records').delete().in('experience_id', expIds);
+            }
+            
+            const customExpIds = customExps.map(c => c.id);
+            if (customExpIds.length > 0) {
+              await supabase.from('custom_experiences').delete().in('id', customExpIds);
+            }
+            
+            await supabase.from('custom_experience_categories').delete().eq('id', item.item_id);
+            await supabase.from('custom_experience_categories').delete().eq('static_id', item.item_id);
+            
+            setCustomCategories(prev => prev.filter(c => c.id !== item.item_id && c.static_id !== item.item_id));
+            setCustomExperiences(prev => prev.filter(c => c.category_id !== item.item_id));
+          } else {
+            await supabase.from('experience_records').delete().eq('experience_id', item.item_id);
+            await supabase.from('custom_experiences').delete().eq('id', item.item_id);
+            setCustomExperiences(prev => prev.filter(c => c.id !== item.item_id));
+          }
+
+          await supabase.from('hidden_items').delete().eq('id', item.id);
+          setHiddenItems(prev => prev.filter(h => h.id !== item.id));
+          
+          setNotice("Elemento eliminado definitivamente.");
+        } catch (e: any) {
+          setNotice("Error: " + e.message);
+        }
+        setSaving(false);
+      }
+    });
+  }
   async function handleSaveCustomExperience() {
     if (!editingCustomExp || !editingCustomExp.name?.trim()) return;
     if (!supabase || !session) return;
@@ -1646,7 +1774,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
     } else {
       const updates: any = { name: editingCustomExp.name.trim() };
       if (subItems !== undefined) updates.sub_items = subItems;
-      
+
       const { data, error } = await supabase.from("custom_experiences").update(updates).eq('id', editingCustomExp.id).select().single();
       if (error) setNotice(error.message);
       else if (data) {
@@ -1663,14 +1791,14 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
     if (!customExpName.trim()) return;
     if (!supabase || !session) return;
     setSaving(true);
-    
+
     // In local UI we just generate a random UUID so we can optimistic update, or let DB do it
     const newExp = {
       user_id: session.user.id,
       name: customExpName.trim(),
       icon_name: customExpIcon
     };
-    
+
     const { data, error } = await supabase.from("custom_experiences").insert(newExp).select().single();
     if (error) {
       setNotice(error.message);
@@ -1847,13 +1975,14 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
   }
 
   function closePanel() {
-    if (window.location.hash.startsWith("#panel")) {
-      window.history.back();
-    } else {
-      setSelected(null);
-      setRecordOpen(false);
-      setProfileOpen(false);
-      setAuthOpen(false);
+    setSelected(null);
+    setRecordOpen(false);
+    setProfileOpen(false);
+    setAuthOpen(false);
+    if (window.location.hash) {
+      window.history.pushState(null, "", window.location.pathname + window.location.search);
+      // Trigger a popstate manually if needed, or state update is enough
+      // Since we just set states above, the UI will update correctly.
     }
   }
 
@@ -1892,12 +2021,130 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
       .sort((a, b) => a.title.localeCompare(b.title, "es"));
   }, [allItems, isPeaks, isExp]);
 
+  const renderExpRecord = (ascent: any) => {
+    if (!selected) return null;
+    const expectedSummitId = ascent.sub_item_id ? `${selected.id}::${ascent.sub_item_id}` : selected.id;
+    const ascentPhotos = selectedPhotos.filter(p => p.taken_on === ascent.achieved_on && (p.summit_id === expectedSummitId || p.summit_id === selected.id));
+    return (
+      <div key={ascent.id} className="completed-card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+          <b style={{ marginTop: '6px' }}>
+            {formatDate(ascent.achieved_on)}
+          </b>
+
+          {!isReadOnly && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <button
+                title="Editar registro"
+                className="button button--quiet button--small"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', flexShrink: 0, padding: 0, margin: 0 }}
+                onClick={() => openRecord(selected, ascent)}
+              >
+                <IconEdit style={{ width: 14, height: 14 }} strokeWidth={1.5} />
+              </button>
+              <label
+                title="Añadir fotos a esta fecha"
+                className="button button--quiet button--small"
+                onClick={(e) => {
+                  if (ascentPhotos.length >= 4) {
+                    e.preventDefault();
+                    setNotice("Máximo 4 fotos por registro. Ya has alcanzado el límite.");
+                    setTimeout(() => setNotice(""), 4000);
+                  }
+                }}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: '32px', height: '32px', flexShrink: 0, padding: 0, margin: 0,
+                  cursor: ascentPhotos.length >= 4 ? 'not-allowed' : 'pointer',
+                  opacity: ascentPhotos.length >= 4 ? 0.5 : 1
+                }}
+              >
+                <IconCamera style={{ width: 14, height: 14 }} strokeWidth={1.5} />
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => handleAddPhotosToDate(e, ascent as any)}
+                  style={{ display: 'none' }}
+                  disabled={ascentPhotos.length >= 4}
+                />
+              </label>
+            </div>
+          )}
+        </div>
+        {ascent.location_name && (
+          <div style={{ marginTop: '8px', fontSize: '13px', fontWeight: 500, display: 'flex', alignItems: 'flex-start', gap: 4 }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, flexShrink: 0, marginTop: 2 }}>
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+            {ascent.location_name}
+          </div>
+        )}
+        {ascent.notes && <p style={{ marginTop: '4px' }}>&ldquo;{ascent.notes}&rdquo;</p>}
+        {ascent.link && (() => {
+          let Icon = LinkIcon;
+          const urlStr = ascent.link.toLowerCase();
+          if (urlStr.includes("youtube.com") || urlStr.includes("youtu.be")) Icon = Video;
+          else if (urlStr.includes("instagram.com")) Icon = Camera;
+          else if (urlStr.includes("linkedin.com")) Icon = Briefcase;
+          else if (urlStr.includes("google.com/maps") || urlStr.includes("wikiloc.com") || urlStr.includes("komoot.com") || urlStr.includes("strava.com")) Icon = MapPin;
+          
+          const displayName = (ascent as any).link_name || (
+            urlStr.includes("youtube.com") || urlStr.includes("youtu.be") ? "Vídeo en YouTube" :
+            urlStr.includes("instagram.com") ? "Publicación en Instagram" :
+            urlStr.includes("linkedin.com") ? "Publicación en LinkedIn" :
+            urlStr.includes("google.com/maps") ? "Ver en Google Maps" :
+            urlStr.includes("wikiloc.com") ? "Ruta en Wikiloc" :
+            urlStr.includes("strava.com") ? "Actividad en Strava" :
+            urlStr.includes("komoot.com") ? "Ruta en Komoot" :
+            "Enlace adjunto"
+          );
+
+          return (
+            <a href={ascent.link} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '12px', color: 'var(--pine)', textDecoration: 'none', fontWeight: 600, fontSize: '13px' }}>
+              <Icon size={16} />
+              <span style={{ textDecoration: 'underline' }}>{displayName}</span>
+            </a>
+          );
+        })()}
+
+        {ascentPhotos.length > 0 && (
+          <div className="photo-section" style={{ marginTop: 16 }}>
+            <div className="photo-grid">
+              {ascentPhotos.map((photo) => {
+                const publicUrl = photo.public_url || supabase?.storage.from("summit-photos").getPublicUrl(photo.storage_path).data.publicUrl;
+                if (!publicUrl) return null;
+                return (
+                  <figure
+                    key={photo.id}
+                    onClick={() => handlePhotoClick(photo)}
+                  >
+                    <img src={publicUrl} alt="Foto de la experiencia" loading="lazy" />
+                  </figure>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const expToggleSort = (
+    <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(92, 155, 125, 0.1)', borderRadius: '20px', padding: '3px', position: 'relative', marginBottom: '16px', cursor: 'pointer', userSelect: 'none', width: 'fit-content' }} onClick={() => setAscentsSortOrder(o => o === "asc" ? "desc" : "asc")}>
+      <div style={{ position: 'absolute', top: 3, bottom: 3, left: ascentsSortOrder === "asc" ? 3 : '50%', right: ascentsSortOrder === "asc" ? '50%' : 3, background: 'var(--pine)', borderRadius: '18px', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }} />
+      <span style={{ position: 'relative', zIndex: 1, padding: '4px 12px', fontSize: '12px', fontWeight: 600, color: ascentsSortOrder === "asc" ? 'white' : 'var(--pine)', transition: 'color 0.2s ease', flex: 1, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Más antiguo</span>
+      <span style={{ position: 'relative', zIndex: 1, padding: '4px 12px', fontSize: '12px', fontWeight: 600, color: ascentsSortOrder === "desc" ? 'white' : 'var(--pine)', transition: 'color 0.2s ease', flex: 1, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Más reciente</span>
+    </div>
+  );
+
   /* ── Render ───────────────────────────── */
   return (
     <main className={`${isPeaks ? "" : isExp ? "mode-experiences" : "mode-countries"} ${selected ? "panel-open" : ""}`}>
       {/* ── Topbar ──────────────────────── */}
       <header className="topbar">
-        <a className="brand" href={isPeaks ? "#inicio" : "#inicio"} onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate(isPeaks ? "/picos" : "/"); }}}>
+        <a className="brand" href={isPeaks ? "#inicio" : "#inicio"} onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate(isPeaks ? "/picos" : "/"); } }}>
           <IconLogo className="brand-icon" />
           <span>
             {modeLabelShort} <b>{modeLabelBold}</b>
@@ -1910,16 +2157,31 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
         <nav>
           {isReadOnly ? (
             <>
-              <a href="/" onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("/"); }}}>Mapa</a>
+              <a href="/" onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("/"); } }}>Mapa</a>
             </>
           ) : (
             <>
-              <a href="#mapa" onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate(isPeaks ? "/picos" : "/"); }}}>Mapa</a>
+              <a href="#mapa" onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate(isPeaks ? "/picos" : "/"); } }}>Mapa</a>
             </>
           )}
 
-          <a href="/social" onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("/social"); }}}>Social</a>
-          <a href="/ranking" onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("/ranking"); }}}>Ranking</a>
+          <a href="/social" style={{ position: 'relative' }} onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("/social"); } }} onMouseEnter={() => { import('./social-tab'); }}>
+            Social
+            {hasPendingRequests ? (
+              <span 
+                style={{ 
+                  position: 'absolute', 
+                  top: '-4px', 
+                  right: '-10px', 
+                  width: '8px', 
+                  height: '8px', 
+                  backgroundColor: 'red', 
+                  borderRadius: '50%'
+                }} 
+              />
+            ) : null}
+          </a>
+          <a href="/ranking" onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("/ranking"); } }} onMouseEnter={() => { import('./ranking-tab'); }}>Ranking</a>
           {session ? (
             <button className="account-button" onClick={() => {
               window.location.hash = "panel";
@@ -2113,7 +2375,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                 </span>
               </div>
             )}
-            {(!diffMode || isExp) && (
+            {!diffMode && (
               <div className="map-legend">
                 <span>
                   <i className="legend-pin" style={{ paddingBottom: isPeaks ? 4 : isExp ? 2 : 0 }}>{isPeaks ? "△" : "◇"}</i> Pendiente
@@ -2148,7 +2410,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
               activeId={selected?.id}
             />
           </div>
-          
+
           <div style={{
             gridArea: "1/1",
             visibility: !isPeaks ? "visible" : "hidden",
@@ -2229,51 +2491,54 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
           >
             Todos <span className="pill-count">{totalCount}</span>
           </button>
-          
+
           {isExp ? (
             <>
               {dynamicCategories.map(cat => {
                 const isCustomCat = cat.id.startsWith('cat-custom-') || customCategories.some(c => c.id === cat.id);
                 return (
-                <div key={cat.id} style={{ position: 'relative' }}>
-                  <button
-                    className={`list-filter-pill${listFilter === cat.name ? " list-filter-pill--active" : ""}`}
-                    onClick={() => setListFilter(cat.name)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', height: '100%' }}
-                  >
-                    <span style={{ display: 'flex', width: 14, height: 14, alignItems: 'center', justifyContent: 'center' }}>
-                      {getIconComponent(cat.iconName)}
-                    </span>
-                    {cat.name}
-                  </button>
-                  <button 
-                    className={`edit-action-btn ${isEditingExperiences ? 'is-active' : ''}`}
-                    title="Editar categoría"
-                        style={{ position: 'absolute', top: '-6px', right: '14px', background: 'var(--pine)', color: 'white', width: '16px', height: '16px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', padding: 0, zIndex: 10 }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingCustomCategory(customCategories.find(c => c.id === cat.id) || { id: cat.id, name: cat.name, icon_name: cat.iconName });
-                        }}
-                      >
-                        <IconEdit style={{ width: 10, height: 10 }} strokeWidth={2.5} />
-                      </button>
-                  <button 
-                    className={`edit-action-btn ${isEditingExperiences ? 'is-active' : ''}`}
-                    title={isCustomCat ? "Eliminar categoría" : "Ocultar categoría"}
-                        style={{ position: 'absolute', top: '-6px', right: '-6px', background: '#e74c3c', color: 'white', width: '16px', height: '16px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', padding: 0, zIndex: 10 }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (isCustomCat) {
-                            handleDeleteCustomCategory(cat.id);
-                          } else {
-                            handleHideItem(cat.id, 'category');
-                          }
-                        }}
-                      >
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                  </button>
-                </div>
-              )})}
+                  <div key={cat.id} style={{ position: 'relative' }}>
+                    <button
+                      className={`list-filter-pill${listFilter === cat.name ? " list-filter-pill--active" : ""}`}
+                      onClick={() => setListFilter(cat.name)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', height: '100%' }}
+                    >
+                      <span style={{ display: 'flex', width: 14, height: 14, alignItems: 'center', justifyContent: 'center' }}>
+                        {getIconComponent(cat.iconName)}
+                      </span>
+                      {cat.name}
+                    </button>
+                    <button
+                      className={`edit-action-btn ${isEditingExperiences ? 'is-active' : ''}`}
+                      title="Editar categoría"
+                      style={{ position: 'absolute', top: '-6px', right: '14px', background: 'var(--pine)', color: 'white', width: '16px', height: '16px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', padding: 0, zIndex: 10 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // If it's a predefined category, customCategories.find might match on static_id
+                        const existingOverride = customCategories.find(c => c.static_id === cat.id || c.id === cat.id);
+                        setEditingCustomCategory(existingOverride || { id: cat.id, name: cat.name, icon_name: cat.iconName });
+                      }}
+                    >
+                      <IconEdit style={{ width: 10, height: 10 }} strokeWidth={2.5} />
+                    </button>
+                    <button
+                      className={`edit-action-btn ${isEditingExperiences ? 'is-active' : ''}`}
+                      title="Eliminar categoría"
+                      style={{ position: 'absolute', top: '-6px', right: '-6px', background: '#e74c3c', color: 'white', width: '16px', height: '16px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', padding: 0, zIndex: 10 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isCustomCat) {
+                          handleDeleteCustomCategory(cat.id);
+                        } else {
+                          handleHideItem(cat.id, 'category');
+                        }
+                      }}
+                    >
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                  </div>
+                )
+              })}
               {!isReadOnly && (
                 <>
                   <button
@@ -2294,8 +2559,16 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                     onClick={() => setIsEditingExperiences(!isEditingExperiences)}
                     style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto', borderStyle: 'solid', borderColor: 'var(--pine)', color: isEditingExperiences ? '#fff' : 'var(--pine)', background: isEditingExperiences ? 'var(--pine)' : 'transparent' }}
                   >
-                    <IconEdit style={{ width: 14, height: 14 }} strokeWidth={2} />
+                    <IconEdit style={{ width: 14, height: 14 }} />
                     Modificar experiencias
+                  </button>
+                  <button
+                    className="list-filter-pill"
+                    onClick={() => setShowTrashModal(true)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, borderStyle: 'solid', borderColor: '#e74c3c', color: '#e74c3c', background: 'transparent' }}
+                  >
+                    <IconTrash style={{ width: 14, height: 14 }} />
+                    Papelera
                   </button>
                 </>
               )}
@@ -2323,7 +2596,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
             </>
           )}
         </div>
-        
+
         {isEditingExperiences && isExp && listFilter !== "all" && (
           <div style={{ display: 'flex', padding: '0 clamp(22px, 6vw, 92px)', marginBottom: 16 }}>
             <button
@@ -2342,19 +2615,49 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
         )}
 
         <div className="peak-list-grid">
+          {isEditingExperiences && isExp && (
+            <button
+              className="peak-list-item peak-list-item--diff-none"
+              style={{ borderStyle: 'dashed' }}
+              onClick={() => {
+                const cat = listFilter !== "all" ? dynamicCategories.find(c => c.name === listFilter) : undefined;
+                if (cat) {
+                  const isCustomCat = cat.id.startsWith('cat-custom-') || customCategories.some(c => c.id === cat.id);
+                  setEditingCustomExp(isCustomCat ? { id: 'new', name: '', category_id: cat.id } : { id: 'new', name: '', static_category_id: cat.id });
+                } else {
+                  setSelectingCategoryForNewExp(true);
+                }
+              }}
+            >
+              <span style={{ flexShrink: 0, width: 20, display: 'flex', justifyContent: 'center' }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="var(--pine)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              </span>
+              <span className="item-info">
+                <span className="item-name" style={{ color: 'var(--pine)', fontWeight: 600 }}>Crear nueva experiencia</span>
+              </span>
+            </button>
+          )}
           {sortedItems.filter(item => {
             // Text search filter
             if (searchQuery) {
-              const q = searchQuery.toLowerCase();
+              const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+              const q = normalize(searchQuery);
               const matchesText = (
-                item.title.toLowerCase().includes(q) ||
-                (item.label && item.label.toLowerCase().includes(q)) ||
-                (item.detail && item.detail.toLowerCase().includes(q))
+                normalize(item.title).includes(q) ||
+                (item.label && normalize(item.label).includes(q)) ||
+                (item.detail && normalize(item.detail).includes(q))
               );
               if (!matchesText) return false;
             }
-            // Status filter
-            const done = completedModeAscents.some((a) => a.summit_id === item.id);
+            let done = false;
+            if (isExp && item.subItems && item.subItems.length > 0) {
+              const completedSubItems = new Set(
+                completedModeAscents.filter(a => a.summit_id === item.id && a.sub_item_id).map(a => a.sub_item_id)
+              );
+              done = item.subItems.every((s: any) => completedSubItems.has(s.id));
+            } else {
+              done = completedModeAscents.some((a) => a.summit_id === item.id);
+            }
             const wish = modeAscents.some((a) => a.summit_id === item.id && a.is_wishlist);
             if (isExp && listFilter !== "all" && item.detail !== listFilter) return false;
             if (!isExp) {
@@ -2364,7 +2667,15 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
             }
             return true;
           }).map((item, index) => {
-            const done = completedModeAscents.some((a) => a.summit_id === item.id);
+            let done = false;
+            if (isExp && item.subItems && item.subItems.length > 0) {
+              const completedSubItems = new Set(
+                completedModeAscents.filter(a => a.summit_id === item.id && a.sub_item_id).map(a => a.sub_item_id)
+              );
+              done = item.subItems.every((s: any) => completedSubItems.has(s.id));
+            } else {
+              done = completedModeAscents.some((a) => a.summit_id === item.id);
+            }
             const wish = modeAscents.some((a) => a.summit_id === item.id && a.is_wishlist);
 
             // Diff class logic
@@ -2421,7 +2732,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                 </button>
                 {isExp && (
                   <>
-                    <button 
+                    <button
                       className={`edit-action-btn ${isEditingExperiences ? 'is-active' : ''}`}
                       title="Editar experiencia"
                       style={{ position: 'absolute', top: '4px', right: '24px', background: 'var(--pine)', color: 'white', width: '16px', height: '16px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', padding: 0, zIndex: 10 }}
@@ -2432,7 +2743,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                     >
                       <IconEdit style={{ width: 10, height: 10 }} strokeWidth={2.5} />
                     </button>
-                    <button 
+                    <button
                       className={`edit-action-btn ${isEditingExperiences ? 'is-active' : ''}`}
                       title={isCustomExp ? "Eliminar experiencia" : "Ocultar experiencia"}
                       style={{ position: 'absolute', top: '4px', right: '4px', background: '#e74c3c', color: 'white', width: '16px', height: '16px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', padding: 0, zIndex: 10 }}
@@ -2452,28 +2763,6 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
               </div>
             );
           })}
-          {isEditingExperiences && isExp && (
-            <button
-              className="peak-list-item peak-list-item--diff-none"
-              style={{ borderStyle: 'dashed' }}
-              onClick={() => {
-                const cat = listFilter !== "all" ? dynamicCategories.find(c => c.name === listFilter) : undefined;
-                if (cat) {
-                  const isCustomCat = cat.id.startsWith('cat-custom-') || customCategories.some(c => c.id === cat.id);
-                  setEditingCustomExp(isCustomCat ? { id: 'new', name: '', category_id: cat.id } : { id: 'new', name: '', static_category_id: cat.id });
-                } else {
-                  setSelectingCategoryForNewExp(true);
-                }
-              }}
-            >
-              <span style={{ flexShrink: 0, width: 20, display: 'flex', justifyContent: 'center' }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="var(--pine)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-              </span>
-              <span className="item-info">
-                <span className="item-name" style={{ color: 'var(--pine)', fontWeight: 600 }}>Crear nueva experiencia</span>
-              </span>
-            </button>
-          )}
         </div>
       </section>
 
@@ -2513,7 +2802,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
           <button className="icon-button" onClick={closePanel} aria-label="Cerrar">
             <IconClose />
           </button>
-          
+
           {(selected.id.startsWith("exp-") || selected.id.startsWith("cexp-")) ? (
             <>
               <span className="eyebrow" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -2533,28 +2822,108 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                     return (
                       <div style={{ marginTop: 16 }}>
                         <h4 style={{ marginBottom: 8, fontSize: '0.9rem', color: 'var(--foreground)' }}>Desglose:</h4>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                           {exp.subItems.map((item: any) => {
                             const subItemKey = `${exp.id}::${item.id}`;
-                            const asc = experienceRecords.find(r => r.experience_id === exp.id && r.sub_item_id === item.id);
-                            return (
-                              <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'var(--surface)', borderRadius: '6px', border: '1px solid var(--border)' }}>
-                                <span style={{ fontSize: '13px', fontWeight: 500 }}>{item.name}</span>
-                                {asc ? (
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    <IconCheck style={{ color: 'var(--pine)', width: 16, height: 16 }} />
-                                    <button className="button button--quiet button--small" style={{ padding: '0 4px' }} onClick={() => openRecord(selected, asc)}>Ver</button>
-                                  </div>
-                                ) : (
-                                  <button className="button button--quiet button--small" style={{ color: 'var(--pine)' }} onClick={() => {
+                            const records = experienceRecords.filter(r => r.experience_id === exp.id && r.sub_item_id === item.id);
+                            const hasRecords = records.length > 0;
+                            const asc = hasRecords ? records[0] : null;
+                            const subItemRegisteredDates = new Set(records.map(a => a.achieved_on));
+                            const subItemOtherPhotos = selectedPhotos.filter(p => p.summit_id === subItemKey && !subItemRegisteredDates.has(p.taken_on));
+                            
+                            const isOpenable = hasRecords || subItemOtherPhotos.length > 0;
+                            
+                            if (!isOpenable) {
+                              return (
+                                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 12px', background: 'var(--surface)', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 500, fontSize: '14px' }}>
+                                    {item.name}
+                                  </span>
+                                  <button className="button button--purple button--small" style={{ margin: '-6px 0', padding: '4px 12px', minHeight: '28px', height: 'auto', lineHeight: '1.2' }} onClick={(e) => {
+                                    e.preventDefault();
                                     setSelectingLocationForExp(subItemKey);
                                     window.location.hash = "mapa";
                                   }}>Registrar</button>
-                                )}
-                              </div>
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <details key={item.id} className="subitem-details" style={{ display: 'flex', flexDirection: 'column', padding: '12px 12px', background: 'var(--surface)', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                                <summary style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', outline: 'none', fontWeight: 500, fontSize: '14px', listStyle: 'none' }}>
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <svg className="details-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transition: 'transform 0.2s', flexShrink: 0 }}>
+                                      <polyline points="9 18 15 12 9 6"></polyline>
+                                    </svg>
+                                    {item.name}
+                                  </span>
+                                  {!hasRecords ? (
+                                    <button className="button button--purple button--small" style={{ margin: '-6px 0', padding: '4px 12px', minHeight: '28px', height: 'auto', lineHeight: '1.2' }} onClick={(e) => {
+                                      e.preventDefault();
+                                      setSelectingLocationForExp(subItemKey);
+                                      window.location.hash = "mapa";
+                                    }}>Registrar</button>
+                                  ) : (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                      <IconCheck style={{ color: 'var(--pine)', width: 16, height: 16 }} />
+                                    </div>
+                                  )}
+                                </summary>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: 16 }}>
+                                  {records.length > 1 && expToggleSort}
+                                  {hasRecords ? (
+                                    <>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                        {records.map(renderExpRecord)}
+                                      </div>
+                                      {!isReadOnly && (
+                                        <button className="button button--purple button--small" onClick={(e) => {
+                                          e.preventDefault();
+                                          setSelectingLocationForExp(subItemKey);
+                                          window.location.hash = "mapa";
+                                        }} style={{ alignSelf: 'flex-start', padding: '4px 12px', minHeight: '28px', height: 'auto', lineHeight: '1.2', marginTop: '-8px' }}>Registrar otra vez</button>
+                                      )}
+                                    </>
+                                  ) : null}
+
+                                  {subItemOtherPhotos.length > 0 && (
+                                    <div className="photo-section" style={{ marginTop: 8 }}>
+                                      <h5 style={{ margin: '0 0 12px 0', fontSize: '0.85rem', color: 'var(--muted)' }}>Otras fotos <small>{subItemOtherPhotos.length}</small></h5>
+                                      <div className="photo-grid">
+                                        {subItemOtherPhotos.map((photo) => {
+                                          const isSelected = selectedPhotosForEdit.includes(photo.id);
+                                          return (
+                                            <figure key={photo.id} className={isSelected ? 'selected' : ''} onClick={() => handlePhotoClick(photo)}>
+                                              {!isReadOnly && (
+                                                <button type="button" className={`photo-select-circle ${isSelected ? 'active' : ''}`} onClick={(e) => { e.stopPropagation(); togglePhotoSelection(photo.id); }} aria-label="Seleccionar foto">
+                                                  {isSelected && <IconCheck />}
+                                                </button>
+                                              )}
+                                              <img src={photo.public_url} alt="Foto de la experiencia" loading="lazy" />
+                                              <figcaption>{photo.caption ? photo.caption : formatDate(photo.taken_on)}</figcaption>
+                                            </figure>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </details>
                             )
                           })}
                         </div>
+                        {(() => {
+                          const allCompleted = exp.subItems.every((item: any) => experienceRecords.some(r => r.experience_id === exp.id && r.sub_item_id === item.id));
+                          if (!allCompleted) {
+                            return (
+                              <div className="pending-card" style={{ marginTop: 16 }}>
+                                {isReadOnly ? "Aún no ha completado esta experiencia." : "Aún no has completado esta experiencia."}
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
                     )
                   }
@@ -2622,13 +2991,13 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                           {formatDate(ascent.achieved_on)}
                           {ascent.end_date && ` - ${formatDate(ascent.end_date)}`}
                         </b>
-                        
+
                         {!isReadOnly && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <button 
+                            <button
                               title="Editar registro"
-                              className="button button--quiet button--small" 
-                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', flexShrink: 0, padding: 0, margin: 0 }} 
+                              className="button button--quiet button--small"
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', flexShrink: 0, padding: 0, margin: 0 }}
                               onClick={() => openRecord(selected, ascent)}
                             >
                               <IconEdit style={{ width: 14, height: 14 }} strokeWidth={1.5} />
@@ -2749,162 +3118,90 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                 );
               })()}
 
-          <div className="panel-actions">
-            {!isReadOnly && (
-              <button
-                className={`button ${isPeaks ? "button--green" : "button--purple"} button--wide`}
-                onClick={() => openRecord(selected)}
-              >
-                {selectedAscents.length > 0
-                  ? "Registrar otra fecha"
-                  : isPeaks ? "Marcar como completado" : (selected.id.startsWith("exp-") || selected.id.startsWith("cexp-")) ? "Registrar la experiencia" : "Marcar como visitado"}
-              </button>
-            )}
-            {(!selectedAscents.length || hasWishlist) && !isReadOnly && !isExp && (
-              <button
-                className="button button--quiet button--wide"
-                style={{ marginTop: 8 }}
-                onClick={() => saveWishlist()}
-              >
-                {hasWishlist ? "Quitar de mi lista de deseos" : "Añadir a mi lista de deseos"}
-              </button>
-            )}
-          </div>
-          </>
-        )}
-
-        {(selected.id.startsWith("exp-") || selected.id.startsWith("cexp-")) && (
-          <>
-            {selectedExperienceRecords.length > 1 && (
-              <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(92, 155, 125, 0.1)', borderRadius: '20px', padding: '3px', position: 'relative', marginBottom: '16px', cursor: 'pointer', userSelect: 'none', width: 'fit-content' }} onClick={() => setAscentsSortOrder(o => o === "asc" ? "desc" : "asc")}>
-                <div style={{ position: 'absolute', top: 3, bottom: 3, left: ascentsSortOrder === "asc" ? 3 : '50%', right: ascentsSortOrder === "asc" ? '50%' : 3, background: 'var(--pine)', borderRadius: '18px', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }} />
-                <span style={{ position: 'relative', zIndex: 1, padding: '4px 12px', fontSize: '12px', fontWeight: 600, color: ascentsSortOrder === "asc" ? 'white' : 'var(--pine)', transition: 'color 0.2s ease', flex: 1, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Más antiguo</span>
-                <span style={{ position: 'relative', zIndex: 1, padding: '4px 12px', fontSize: '12px', fontWeight: 600, color: ascentsSortOrder === "desc" ? 'white' : 'var(--pine)', transition: 'color 0.2s ease', flex: 1, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Más reciente</span>
+              <div className="panel-actions">
+                {!isReadOnly && (
+                  <button
+                    className={`button ${isPeaks ? "button--green" : "button--purple"} button--wide`}
+                    onClick={() => openRecord(selected)}
+                  >
+                    {selectedAscents.length > 0
+                      ? "Registrar otra fecha"
+                      : isPeaks ? "Marcar como completado" : (selected.id.startsWith("exp-") || selected.id.startsWith("cexp-")) ? "Registrar la experiencia" : "Marcar como visitado"}
+                  </button>
+                )}
+                {(!selectedAscents.length || hasWishlist) && !isReadOnly && !isExp && (
+                  <button
+                    className="button button--quiet button--wide"
+                    style={{ marginTop: 8 }}
+                    onClick={() => saveWishlist()}
+                  >
+                    {hasWishlist ? "Quitar de mi lista de deseos" : "Añadir a mi lista de deseos"}
+                  </button>
+                )}
               </div>
-            )}
+            </>
+          )}
 
-            {selectedExperienceRecords.length > 0 ? (
-              selectedExperienceRecords.map(ascent => {
-                const ascentPhotos = selectedPhotos.filter(p => p.taken_on === ascent.achieved_on);
-                return (
-                  <div key={ascent.id} className="completed-card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-                      <b style={{ marginTop: '6px' }}>
-                        {formatDate(ascent.achieved_on)}
-                      </b>
-                      
-                      {!isReadOnly && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <button 
-                            title="Editar registro"
-                            className="button button--quiet button--small" 
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', flexShrink: 0, padding: 0, margin: 0 }} 
-                            onClick={() => openRecord(selected, ascent)}
-                          >
-                            <IconEdit style={{ width: 14, height: 14 }} strokeWidth={1.5} />
-                          </button>
-                          <label
-                            title="Añadir fotos a esta fecha"
-                            className="button button--quiet button--small"
-                            onClick={(e) => {
-                              if (ascentPhotos.length >= 4) {
-                                e.preventDefault();
-                                setNotice("Máximo 4 fotos por registro. Ya has alcanzado el límite.");
-                                setTimeout(() => setNotice(""), 4000);
-                              }
-                            }}
-                            style={{
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              width: '32px', height: '32px', flexShrink: 0, padding: 0, margin: 0,
-                              cursor: ascentPhotos.length >= 4 ? 'not-allowed' : 'pointer',
-                              opacity: ascentPhotos.length >= 4 ? 0.5 : 1
-                            }}
-                          >
-                            <IconCamera style={{ width: 14, height: 14 }} strokeWidth={1.5} />
-                            <input
-                              type="file"
-                              accept="image/*"
-                              multiple
-                              onChange={(e) => handleAddPhotosToDate(e, ascent as any)}
-                              style={{ display: 'none' }}
-                              disabled={ascentPhotos.length >= 4}
-                            />
-                          </label>
-                        </div>
-                      )}
+          {(selected.id.startsWith("exp-") || selected.id.startsWith("cexp-")) && (
+            <>
+              {(() => {
+                if (selected.subItems && selected.subItems.length > 0) {
+                  return null;
+                }
+
+                if (selectedExperienceRecords.length === 0) {
+                  return (
+                    <div className="pending-card">
+                      {isReadOnly ? "Aún no ha vivido esta experiencia." : "Aún no has vivido esta experiencia."}
                     </div>
-                    {ascent.location_name && (
-                      <div style={{ marginTop: '8px', fontSize: '13px', fontWeight: 500, display: 'flex', alignItems: 'flex-start', gap: 4 }}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, flexShrink: 0, marginTop: 2 }}>
-                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                          <circle cx="12" cy="10" r="3" />
-                        </svg>
-                        {ascent.location_name}
-                      </div>
-                    )}
-                    {ascent.notes && <p style={{ marginTop: '4px' }}>&ldquo;{ascent.notes}&rdquo;</p>}
+                  );
+                }
 
-                    {ascentPhotos.length > 0 && (
-                      <div className="photo-section" style={{ marginTop: 16 }}>
-                        <div className="photo-grid">
-                          {ascentPhotos.map((photo) => {
-                            const publicUrl = photo.public_url || supabase?.storage.from("summit-photos").getPublicUrl(photo.storage_path).data.publicUrl;
-                            if (!publicUrl) return null;
-                            return (
-                              <figure 
-                                key={photo.id}
-                                onClick={() => handlePhotoClick(photo)}
+                return (
+                  <>
+                    {selectedExperienceRecords.length > 1 && expToggleSort}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {selectedExperienceRecords.map(renderExpRecord)}
+                    </div>
+                  </>
+                );
+              })()}
+
+              {/* Otras fotos (experiencias) */}
+              {(() => {
+                const registeredDates = new Set(selectedExperienceRecords.map(a => a.achieved_on));
+                // Only show photos that belong to the parent (not a specific sub-item) and whose date is not registered
+                const otherPhotos = selectedPhotos.filter(p => !registeredDates.has(p.taken_on) && p.summit_id === selected.id);
+                if (otherPhotos.length === 0) return null;
+                return (
+                  <div className="photo-section" style={{ marginTop: 24 }}>
+                    <h3>Otras fotos <small>{otherPhotos.length}</small></h3>
+                    <div className="photo-grid">
+                      {otherPhotos.map((photo) => {
+                        const isSelected = selectedPhotosForEdit.includes(photo.id);
+                        return (
+                          <figure key={photo.id} className={isSelected ? 'selected' : ''} onClick={() => handlePhotoClick(photo)}>
+                            {!isReadOnly && (
+                              <button
+                                type="button"
+                                className={`photo-select-circle ${isSelected ? 'active' : ''}`}
+                                onClick={(e) => { e.stopPropagation(); togglePhotoSelection(photo.id); }}
+                                aria-label="Seleccionar foto"
                               >
-                                <img src={publicUrl} alt="Foto de la experiencia" loading="lazy" />
-                              </figure>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
+                                {isSelected && <IconCheck />}
+                              </button>
+                            )}
+                            <img src={photo.public_url} alt={`Foto en ${selected.title}`} loading="lazy" />
+                            <figcaption>{photo.caption ? photo.caption : formatDate(photo.taken_on)}</figcaption>
+                          </figure>
+                        );
+                      })}
+                    </div>
                   </div>
                 );
-              })
-            ) : (
-              <div className="pending-card">
-                {isReadOnly ? "Aún no ha vivido esta experiencia." : "Aún no has vivido esta experiencia."}
-              </div>
-            )}
-            
-            {/* Otras fotos (experiencias) */}
-            {(() => {
-              const registeredDates = new Set(selectedExperienceRecords.map(a => a.achieved_on));
-              const otherPhotos = selectedPhotos.filter(p => !registeredDates.has(p.taken_on));
-              if (otherPhotos.length === 0) return null;
-              return (
-                <div className="photo-section" style={{ marginTop: 24 }}>
-                  <h3>Otras fotos <small>{otherPhotos.length}</small></h3>
-                  <div className="photo-grid">
-                    {otherPhotos.map((photo) => {
-                      const isSelected = selectedPhotosForEdit.includes(photo.id);
-                      return (
-                        <figure key={photo.id} className={isSelected ? 'selected' : ''} onClick={() => handlePhotoClick(photo)}>
-                          {!isReadOnly && (
-                            <button
-                              type="button"
-                              className={`photo-select-circle ${isSelected ? 'active' : ''}`}
-                              onClick={(e) => { e.stopPropagation(); togglePhotoSelection(photo.id); }}
-                              aria-label="Seleccionar foto"
-                            >
-                              {isSelected && <IconCheck />}
-                            </button>
-                          )}
-                          <img src={photo.public_url} alt={`Foto en ${selected.title}`} loading="lazy" />
-                          <figcaption>{photo.caption ? photo.caption : formatDate(photo.taken_on)}</figcaption>
-                        </figure>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
-          </>
-        )}
+              })()}
+            </>
+          )}
         </aside>
       )}
 
@@ -3108,7 +3405,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                 {Array.from(files).map((file, i) => (
                   <div key={`local-${i}`} style={{ position: 'relative', display: 'inline-block' }}>
                     <img src={URL.createObjectURL(file)} alt="preview local" style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border)' }} />
-                    <button 
+                    <button
                       onClick={() => setFiles(prev => prev.filter((_, idx) => idx !== i))}
                       title="Quitar imagen"
                       style={{ position: 'absolute', top: '2px', right: '2px', background: '#e74c3c', color: 'white', width: '16px', height: '16px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', padding: 0, zIndex: 10 }}
@@ -3122,7 +3419,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                   return p ? (
                     <div key={id} style={{ position: 'relative', display: 'inline-block' }}>
                       <img src={p.public_url} alt="preview galeria" style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border)' }} />
-                      <button 
+                      <button
                         onClick={() => setSelectedPhotosForEdit(prev => prev.filter(x => x !== id))}
                         title="Quitar imagen"
                         style={{ position: 'absolute', top: '2px', right: '2px', background: '#e74c3c', color: 'white', width: '16px', height: '16px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', padding: 0, zIndex: 10 }}
@@ -3140,7 +3437,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
               </p>
             )}
 
-            <label className="field-label">
+            <label className="field-label" style={{ marginBottom: 16 }}>
               Notas
               <textarea
                 placeholder={(selected.id.startsWith("exp-") || selected.id.startsWith("cexp-")) ? "Acompañantes, sensaciones ..." : "Ciudades visitadas, experiencias, lo que quieras recordar..."}
@@ -3151,6 +3448,32 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                 rows={3}
               />
             </label>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: 16 }}>
+              <label className="field-label">
+                Enlace
+                <input
+                  type="url"
+                  placeholder="https://..."
+                  value={link || ""}
+                  onChange={(e) => {
+                    setLink(e.target.value);
+                    if (!e.target.value) setLinkName("");
+                  }}
+                />
+              </label>
+              <label className="field-label" style={{ opacity: !link ? 0.5 : 1 }}>
+                Texto del enlace
+                <input
+                  type="text"
+                  placeholder="Ej: Vídeo de la ruta"
+                  value={linkName || ""}
+                  onChange={(e) => setLinkName(e.target.value)}
+                  disabled={!link}
+                  title={!link ? "Añade un enlace primero" : ""}
+                />
+              </label>
+            </div>
 
             <button
               className={`button ${isPeaks ? "button--green" : "button--purple"} button--wide`}
@@ -3265,19 +3588,47 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
               setLightboxMenuOpen(false);
             }}
           />
-          <span className="lightbox-caption">
-            {lightboxPhoto.caption && (
-              <strong style={{ display: 'block', fontSize: '15px', marginBottom: '2px', color: 'white' }}>{lightboxPhoto.caption}</strong>
-            )}
-            <span style={{ opacity: lightboxPhoto.caption ? 0.7 : 1 }}>
-              {selected?.title}
-              {(() => {
-                if (lightboxPhoto.taken_on.startsWith("1900-01-01")) return "";
-                const relatedAscent = ascents.find(a => a.summit_id === selected?.id && a.achieved_on === lightboxPhoto.taken_on);
-                return ` · ${formatShortDate(lightboxPhoto.taken_on)}${relatedAscent?.end_date ? ` - ${formatShortDate(relatedAscent.end_date)}` : ""}`;
-              })()}
+          <div style={{ position: 'fixed', bottom: '24px', left: 0, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', zIndex: 10002 }}>
+            <span className="lightbox-caption" style={{ position: 'relative', bottom: 'auto', left: 'auto', transform: 'none', width: '90%', textAlign: 'center', zIndex: 10001 }}>
+              {lightboxPhoto.caption && (
+                <strong style={{ display: 'block', fontSize: '15px', marginBottom: '2px', color: 'white' }}>{lightboxPhoto.caption}</strong>
+              )}
+              <span style={{ opacity: lightboxPhoto.caption ? 0.7 : 1 }}>
+                {selected?.title}
+                {(() => {
+                  let dateStr = "";
+                  if (!lightboxPhoto.taken_on.startsWith("1900-01-01")) {
+                    const relatedAscent = ascents.find(a => a.summit_id === selected?.id && a.achieved_on === lightboxPhoto.taken_on);
+                    dateStr = ` · ${formatShortDate(lightboxPhoto.taken_on)}${relatedAscent?.end_date ? ` - ${formatShortDate(relatedAscent.end_date)}` : ""}`;
+                  }
+                  const pageStr = currentPhotoGroup.length > 1 ? ` · ${lightboxIndex + 1} de ${currentPhotoGroup.length}` : "";
+                  return dateStr + pageStr;
+                })()}
+              </span>
             </span>
-          </span>
+
+            {currentPhotoGroup.length > 1 && (
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {currentPhotoGroup.map((photo: any, idx: number) => (
+                  <div 
+                    key={photo.id || idx} 
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      setLightboxPhoto(photo); 
+                    }}
+                    style={{ 
+                      width: idx === lightboxIndex ? '18px' : '8px', 
+                      height: '8px', 
+                      borderRadius: '4px', 
+                      backgroundColor: idx === lightboxIndex ? 'white' : 'rgba(255,255,255,0.4)', 
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }} 
+                  />
+                ))}
+              </div>
+            )}
+          </div>
 
           {lightboxCaptionModalOpen && (
             <div className="lightbox-date-modal" onClick={(e) => e.stopPropagation()}>
@@ -3391,82 +3742,82 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
       {expSelectorOpen && (
         <div className="modal-backdrop" onClick={() => setExpSelectorOpen(false)}>
           <div className="auth-dialog" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 500, padding: 0 }}>
-            <div className="modal-header" style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, paddingRight: 32 }}>¿Qué experiencia quieres registrar?</h3>
+            <div className="modal-header" style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, paddingRight: 32 }}>Elige una categoría</h3>
               <button className="icon-button" onClick={() => setExpSelectorOpen(false)}><IconClose /></button>
             </div>
-            <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: '20px 24px' }}>
+            <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: '0 24px 20px 24px', display: 'flex', flexDirection: 'column', gap: 8 }}>
               {dynamicCategories.map(cat => {
                 const isCustom = cat.id.startsWith('cat-custom-') || customCategories.some(c => c.id === cat.id);
                 const isExpanded = expandedExpCategory === cat.id;
                 return (
-                  <div key={cat.id} style={{ marginBottom: 8, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', transform: 'translateZ(0)' }}>
-                    <div style={{ display: 'flex', width: '100%' }}>
-                      <button
-                        className="button button--quiet"
-                        style={{ flex: 1, justifyContent: 'space-between', padding: '12px 16px', borderRadius: 0, borderBottom: isExpanded ? '1px solid var(--border)' : 'none', background: 'transparent' }}
-                        onClick={() => setExpandedExpCategory(isExpanded ? null : cat.id)}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
-                          {getIconComponent(cat.iconName)}
-                          {cat.name}
-                        </div>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16, transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
-                          <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
-                      </button>
-                    </div>
-                    
+                  <div key={cat.id} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <button
+                      className="button button--outline"
+                      style={{ 
+                        justifyContent: 'flex-start', 
+                        padding: '12px 16px', 
+                        fontWeight: 500,
+                        width: '100%' 
+                      }}
+                      onClick={() => setExpandedExpCategory(isExpanded ? null : cat.id)}
+                    >
+                      <span style={{ marginRight: 12, color: 'var(--pine)', display: 'flex' }}>
+                        {cat.iconName && getIconComponent(cat.iconName, 18)}
+                      </span>
+                      {cat.name}
+                    </button>
+
                     {isExpanded && (
-                      <div style={{ padding: '12px 16px', background: 'var(--surface)' }}>
+                      <div style={{ padding: '4px 0 12px 16px' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                           {cat.experiences.map(exp => {
                             const isCustomExp = exp.id.startsWith('exp-') === false && exp.id.startsWith('cexp-') === false || customExperiences.some(c => c.id === exp.id);
                             return (
                               <div key={exp.id} style={{ marginBottom: '8px' }}>
-                              {!exp.subItems ? (
-                                <div style={{ display: 'flex', gap: 6 }}>
-                                  <button 
-                                    className="button" 
-                                    style={{ flex: 1, justifyContent: 'space-between', alignItems: 'center', textAlign: 'left', padding: '12px 16px', background: 'var(--background)', color: 'var(--foreground)', border: '1px solid var(--border)', borderRadius: '8px', fontWeight: 500, boxShadow: '0 2px 4px rgba(0,0,0,0.02)', transition: 'all 0.2s ease' }}
-                                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--pine)'; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.05)'; }}
-                                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02)'; }}
-                                    onClick={() => {
-                                      setSelectingLocationForExp(`${exp.id}::`);
-                                      setExpSelectorOpen(false);
-                                    }}
-                                  >
-                                    {exp.name}
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="var(--pine)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16, opacity: 0.7 }}>
-                                      <circle cx="12" cy="12" r="10"></circle>
-                                      <polyline points="12 16 16 12 12 8"></polyline>
-                                      <line x1="8" y1="12" x2="16" y2="12"></line>
-                                    </svg>
-                                  </button>
-                                </div>
-                              ) : (
-                                <div style={{ padding: '14px', border: '1px solid var(--border)', borderRadius: '10px', background: 'var(--background)', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                                    <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--foreground)' }}>{exp.name}</div>
+                                {!exp.subItems ? (
+                                  <div style={{ display: 'flex', gap: 6 }}>
+                                    <button
+                                      className="button"
+                                      style={{ flex: 1, justifyContent: 'space-between', alignItems: 'center', textAlign: 'left', padding: '12px 16px', background: 'var(--background)', color: 'var(--foreground)', border: '1px solid var(--border)', borderRadius: '8px', fontWeight: 500, boxShadow: '0 2px 4px rgba(0,0,0,0.02)', transition: 'all 0.2s ease' }}
+                                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--pine)'; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.05)'; }}
+                                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02)'; }}
+                                      onClick={() => {
+                                        setSelectingLocationForExp(`${exp.id}::`);
+                                        setExpSelectorOpen(false);
+                                      }}
+                                    >
+                                      {exp.name}
+                                      <svg viewBox="0 0 24 24" fill="none" stroke="var(--pine)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16, opacity: 0.7 }}>
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <polyline points="12 16 16 12 12 8"></polyline>
+                                        <line x1="8" y1="12" x2="16" y2="12"></line>
+                                      </svg>
+                                    </button>
                                   </div>
-                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8 }}>
-                                    {exp.subItems.map((item: any) => (
-                                      <button
-                                        key={item.id}
-                                        className="button button--outline button--small"
-                                        style={{ justifyContent: 'center', transition: 'all 0.2s' }}
-                                        onClick={() => {
-                                          setSelectingLocationForExp(`${exp.id}::${item.id}`);
-                                          setExpSelectorOpen(false);
-                                        }}
-                                      >
-                                        {item.name}
-                                      </button>
-                                    ))}
+                                ) : (
+                                  <div style={{ padding: '14px', border: '1px solid var(--border)', borderRadius: '10px', background: 'var(--background)', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                      <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--foreground)' }}>{exp.name}</div>
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8 }}>
+                                      {exp.subItems.map((item: any) => (
+                                        <button
+                                          key={item.id}
+                                          className="button button--outline button--small"
+                                          style={{ justifyContent: 'center', transition: 'all 0.2s' }}
+                                          onClick={() => {
+                                            setSelectingLocationForExp(`${exp.id}::${item.id}`);
+                                            setExpSelectorOpen(false);
+                                          }}
+                                        >
+                                          {item.name}
+                                        </button>
+                                      ))}
+                                    </div>
                                   </div>
-                                </div>
-                              )}
-                            </div>
+                                )}
+                              </div>
                             );
                           })}
                         </div>
@@ -3475,6 +3826,58 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                   </div>
                 );
               })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showTrashModal && (
+        <div className="modal-backdrop" onClick={() => setShowTrashModal(false)}>
+          <div className="auth-dialog" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 500, padding: 0 }}>
+            <div className="modal-header" style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0 }}>Papelera</h3>
+              <button className="icon-button" onClick={() => setShowTrashModal(false)}><IconClose /></button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '20px 24px', maxHeight: '60vh', overflowY: 'auto' }}>
+              {hiddenItems.length === 0 ? (
+                <p style={{ color: 'var(--muted)', textAlign: 'center' }}>La papelera está vacía.</p>
+              ) : (
+                hiddenItems.map(item => {
+                  let name = "Desconocido";
+                  let icon = "help-circle";
+                  if (item.item_type === 'category') {
+                    const staticCat = predefinedCategories.find(c => c.id === item.item_id);
+                    const customCat = customCategories.find(c => c.id === item.item_id || c.static_id === item.item_id);
+                    name = customCat ? customCat.name : (staticCat ? staticCat.name : item.item_id);
+                    icon = customCat ? customCat.icon_name : (staticCat ? staticCat.iconName : 'star');
+                  } else {
+                    const customExp = customExperiences.find(e => e.id === item.item_id);
+                    if (customExp) name = customExp.name;
+                    else {
+                      for (const c of predefinedCategories) {
+                        const ex = c.experiences.find(e => e.id === item.item_id);
+                        if (ex) { name = ex.name; break; }
+                      }
+                    }
+                  }
+                  
+                  return (
+                    <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--background)', border: '1px solid var(--border)', borderRadius: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        {item.item_type === 'category' ? getIconComponent(icon) : <span style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--border)', display: 'inline-block' }} />}
+                        <div>
+                          <div style={{ fontWeight: 500 }}>{name}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>{item.item_type === 'category' ? 'Categoría' : 'Experiencia'}</div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="button button--quiet button--small" disabled={saving} onClick={() => handleRestoreHiddenItem(item.id)}>Restaurar</button>
+                        <button className="button button--quiet button--small" disabled={saving} style={{ color: 'var(--danger, #a34f3d)' }} onClick={() => handlePermanentDelete(item)}>Eliminar</button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
@@ -3490,75 +3893,40 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '20px 24px' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Nombre de la Categoría</label>
-                <input 
-                  type="text" 
-                  value={editingCustomCategory.name || ""} 
+                <input
+                  type="text"
+                  value={editingCustomCategory.name || ""}
                   onChange={e => setEditingCustomCategory({ ...editingCustomCategory, name: e.target.value })}
-                  placeholder="Ej. Buceo, Fauna..."
+                  placeholder="Ej. Deporte, Hitos personales..."
                   style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--foreground)' }}
                 />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Icono</label>
-                <div style={{ position: 'relative' }}>
-                  <button
-                    type="button"
-                    onClick={() => setIconDropdownOpen(!iconDropdownOpen)}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--foreground)', cursor: 'pointer' }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, color: 'var(--pine)' }}>
-                        {getIconComponent(editingCustomCategory.icon_name || "star")}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(44px, 1fr))', gap: 10 }}>
+                  {[
+                    'star', 'tent', 'mountain', 'compass', 'paw', 'camera', 'building', 'telescope', 'user', 'heart', 'tree', 'home', 'dumbbell', 'plane', 'rocket', 'waves', 'sun', 'utensils', 'map', 'castle', 'store', 'book'
+                  ].map(iconValue => (
+                    <button
+                      key={iconValue}
+                      type="button"
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: '100%', aspectRatio: '1', borderRadius: 10,
+                        border: (editingCustomCategory.icon_name || "star") === iconValue ? '2px solid var(--pine)' : '1px solid var(--border)',
+                        background: (editingCustomCategory.icon_name || "star") === iconValue ? 'var(--surface)' : 'var(--background)',
+                        color: (editingCustomCategory.icon_name || "star") === iconValue ? 'var(--pine)' : 'var(--foreground)',
+                        cursor: 'pointer', transition: 'all 0.2s ease'
+                      }}
+                      onClick={() => setEditingCustomCategory({ ...editingCustomCategory, icon_name: iconValue })}
+                      onMouseEnter={e => { if ((editingCustomCategory.icon_name || "star") !== iconValue) e.currentTarget.style.borderColor = 'var(--pine)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
+                      onMouseLeave={e => { if ((editingCustomCategory.icon_name || "star") !== iconValue) e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.transform = 'none' }}
+                    >
+                      <span style={{ width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {getIconComponent(iconValue)}
                       </span>
-                      <span>
-                        {
-                          [
-                            { value: 'star', label: 'Estrella (General)' },
-                            { value: 'tent', label: 'Tienda (Naturaleza)' },
-                            { value: 'mountain', label: 'Montaña (Alpinismo)' },
-                            { value: 'compass', label: 'Brújula (Exploración)' },
-                            { value: 'paw', label: 'Huella (Fauna)' },
-                            { value: 'camera', label: 'Cámara (Fotografía)' },
-                            { value: 'building', label: 'Edificio (Cultura)' },
-                          ].find(o => o.value === (editingCustomCategory.icon_name || "star"))?.label
-                        }
-                      </span>
-                    </div>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                  </button>
-                  {iconDropdownOpen && (
-                    <>
-                      <div style={{ position: 'fixed', inset: 0, zIndex: 90 }} onClick={() => setIconDropdownOpen(false)} />
-                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: 'var(--background)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', zIndex: 100, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column' }}>
-                        {[
-                          { value: 'star', label: 'Estrella (General)' },
-                          { value: 'tent', label: 'Tienda (Naturaleza)' },
-                          { value: 'mountain', label: 'Montaña (Alpinismo)' },
-                          { value: 'compass', label: 'Brújula (Exploración)' },
-                          { value: 'paw', label: 'Huella (Fauna)' },
-                          { value: 'camera', label: 'Cámara (Fotografía)' },
-                          { value: 'building', label: 'Edificio (Cultura)' },
-                        ].map(opt => (
-                          <button
-                            key={opt.value}
-                            type="button"
-                            style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 12px', border: 'none', background: opt.value === (editingCustomCategory.icon_name || "star") ? 'var(--surface)' : 'transparent', color: 'var(--foreground)', cursor: 'pointer', textAlign: 'left' }}
-                            onClick={() => {
-                              setEditingCustomCategory({ ...editingCustomCategory, icon_name: opt.value });
-                              setIconDropdownOpen(false);
-                            }}
-                            onMouseEnter={e => { if (opt.value !== (editingCustomCategory.icon_name || "star")) e.currentTarget.style.background = 'var(--surface)' }}
-                            onMouseLeave={e => { if (opt.value !== (editingCustomCategory.icon_name || "star")) e.currentTarget.style.background = 'transparent' }}
-                          >
-                            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, color: 'var(--pine)' }}>
-                              {getIconComponent(opt.value)}
-                            </span>
-                            <span>{opt.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
@@ -3617,9 +3985,9 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '20px 24px' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Nombre</label>
-                <input 
-                  type="text" 
-                  value={editingCustomExp.name || ""} 
+                <input
+                  type="text"
+                  value={editingCustomExp.name || ""}
                   onChange={e => setEditingCustomExp({ ...editingCustomExp, name: e.target.value })}
                   placeholder="Ej. Bucear con tiburones..."
                   style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--foreground)' }}
@@ -3631,11 +3999,11 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                   <button
                     type="button"
                     onClick={() => {
-                      const current = editingCustomExp.sub_items_input !== undefined 
-                        ? editingCustomExp.sub_items_input 
+                      const current = editingCustomExp.sub_items_input !== undefined
+                        ? editingCustomExp.sub_items_input
                         : (editingCustomExp.subItems || editingCustomExp.sub_items ? (editingCustomExp.subItems || editingCustomExp.sub_items).map((s: any) => s.name).join('\n') : "");
                       const hasMiniExperiences = editingCustomExp.has_sub_items !== undefined ? editingCustomExp.has_sub_items : current.length > 0;
-                      
+
                       if (hasMiniExperiences) {
                         setEditingCustomExp({ ...editingCustomExp, has_sub_items: false, sub_items_input: "" });
                       } else {
@@ -3643,22 +4011,22 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                       }
                     }}
                     style={{
-                      width: 44, height: 24, borderRadius: 12, 
+                      width: 44, height: 24, borderRadius: 12,
                       background: (editingCustomExp.has_sub_items !== undefined ? editingCustomExp.has_sub_items : (editingCustomExp.sub_items_input !== undefined ? editingCustomExp.sub_items_input : (editingCustomExp.subItems || editingCustomExp.sub_items ? (editingCustomExp.subItems || editingCustomExp.sub_items).map((s: any) => s.name).join('\n') : "")).length > 0) ? 'var(--pine)' : '#71717a',
                       position: 'relative', border: 'none', cursor: 'pointer', transition: 'background 0.2s'
                     }}
                   >
                     <div style={{
-                      position: 'absolute', top: 2, 
-                      left: (editingCustomExp.has_sub_items !== undefined ? editingCustomExp.has_sub_items : (editingCustomExp.sub_items_input !== undefined ? editingCustomExp.sub_items_input : (editingCustomExp.subItems || editingCustomExp.sub_items ? (editingCustomExp.subItems || editingCustomExp.sub_items).map((s: any) => s.name).join('\n') : "")).length > 0) ? 22 : 2, 
+                      position: 'absolute', top: 2,
+                      left: (editingCustomExp.has_sub_items !== undefined ? editingCustomExp.has_sub_items : (editingCustomExp.sub_items_input !== undefined ? editingCustomExp.sub_items_input : (editingCustomExp.subItems || editingCustomExp.sub_items ? (editingCustomExp.subItems || editingCustomExp.sub_items).map((s: any) => s.name).join('\n') : "")).length > 0) ? 22 : 2,
                       width: 20, height: 20, background: 'white', borderRadius: '50%', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
                     }} />
                   </button>
                 </div>
-                
+
                 {(() => {
-                  const currentSubItemsStr = editingCustomExp.sub_items_input !== undefined 
-                    ? editingCustomExp.sub_items_input 
+                  const currentSubItemsStr = editingCustomExp.sub_items_input !== undefined
+                    ? editingCustomExp.sub_items_input
                     : (editingCustomExp.subItems || editingCustomExp.sub_items ? (editingCustomExp.subItems || editingCustomExp.sub_items).map((s: any) => s.name).join('\n') : "");
                   const hasMiniExperiences = editingCustomExp.has_sub_items !== undefined ? editingCustomExp.has_sub_items : currentSubItemsStr.length > 0;
                   const miniExpList = hasMiniExperiences ? (currentSubItemsStr ? currentSubItemsStr.split('\n') : [""]) : [];
@@ -3669,7 +4037,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
                       {miniExpList.map((item: string, idx: number) => (
                         <div key={idx} style={{ display: 'flex', gap: 8 }}>
-                          <input 
+                          <input
                             type="text"
                             value={item}
                             placeholder={`Mini-experiencia ${idx + 1}`}
@@ -3680,7 +4048,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                             }}
                             style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--foreground)' }}
                           />
-                          <button 
+                          <button
                             type="button"
                             onClick={() => {
                               const newList = [...miniExpList];
@@ -3694,13 +4062,13 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                           </button>
                         </div>
                       ))}
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         onClick={() => {
                           const newList = [...miniExpList, ""];
                           setEditingCustomExp({ ...editingCustomExp, sub_items_input: newList.join('\n'), has_sub_items: true });
                         }}
-                        className="button button--outline button--small" 
+                        className="button button--outline button--small"
                         style={{ alignSelf: 'flex-start', marginTop: 4 }}
                       >
                         + Añadir mini experiencia
@@ -3728,12 +4096,11 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
       {confirmAction && (
         <div className="modal-backdrop" onClick={() => setConfirmAction(null)}>
           <div className="auth-dialog" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 400, padding: 0 }}>
-            <div className="modal-header" style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0 }}>Confirmar acción</h3>
+            <div className="modal-header" style={{ padding: '16px 16px 0', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
               <button className="icon-button" onClick={() => setConfirmAction(null)}><IconClose /></button>
             </div>
-            <div style={{ padding: '20px 24px', fontSize: '15px' }}>
-              <p style={{ margin: 0 }}>{confirmAction.message}</p>
+            <div style={{ padding: '10px 24px 20px', fontSize: '16px', textAlign: 'center' }}>
+              <p style={{ margin: 0, fontWeight: 600 }}>{confirmAction.message}</p>
             </div>
             <div className="modal-footer" style={{ padding: '20px 24px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'center' }}>
               <button className="button button--outline" onClick={() => setConfirmAction(null)}>Cancelar</button>

@@ -11,7 +11,7 @@ import {
 } from "react-leaflet";
 import type { Path } from "leaflet";
 import type { FeatureCollection, Position } from "geojson";
-import { useCallback, useEffect, useState, useMemo, useRef } from "react";
+import { useCallback, useEffect, useState, useMemo, useRef, memo } from "react";
 import * as ReactDOMServer from "react-dom/server";
 import { feature } from "topojson-client";
 import type { Topology } from "topojson-specification";
@@ -150,17 +150,34 @@ function FitWorld() {
 }
 
 function MapClickListener({ onMapClick, selectingLocation }: { onMapClick?: (lat: number, lng: number, placeName?: string) => void, selectingLocation?: boolean }) {
+  const onMapClickRef = useRef(onMapClick);
+  const selectingLocationRef = useRef(selectingLocation);
+
+  useEffect(() => {
+    onMapClickRef.current = onMapClick;
+    selectingLocationRef.current = selectingLocation;
+  }, [onMapClick, selectingLocation]);
+
   const map = useMapEvents({
     click(e) {
-      if (onMapClick && selectingLocation) {
+      if (onMapClickRef.current && selectingLocationRef.current) {
         fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${e.latlng.lat}&lon=${e.latlng.lng}&zoom=10`)
           .then(res => res.json())
           .then(data => {
+            if (data.error) throw new Error("Nominatim error");
             const placeName = data.address?.city || data.address?.town || data.address?.village || data.address?.county || data.address?.state || data.name || undefined;
-            onMapClick(e.latlng.lat, e.latlng.lng, placeName);
+            if (onMapClickRef.current) onMapClickRef.current(e.latlng.lat, e.latlng.lng, placeName);
           })
           .catch(() => {
-            onMapClick(e.latlng.lat, e.latlng.lng);
+            fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${e.latlng.lat}&longitude=${e.latlng.lng}&localityLanguage=es`)
+              .then(res => res.json())
+              .then(data => {
+                const placeName = data.locality || data.city || data.principalSubdivision || data.countryName || undefined;
+                if (onMapClickRef.current) onMapClickRef.current(e.latlng.lat, e.latlng.lng, placeName);
+              })
+              .catch(() => {
+                if (onMapClickRef.current) onMapClickRef.current(e.latlng.lat, e.latlng.lng);
+              });
           });
       }
     }
@@ -229,7 +246,7 @@ function getLargestPolygonBounds(feature: any) {
 
 import { getIconComponent } from "./icons";
 
-export function WorldMap({ completed, wishlist, onInformation, onRegionInformation, onComplete, diffMode, diffOnlyViewer, diffOnlyTarget, diffBoth, regionsMode, completedRegions, activeId, experiencesMode, experienceRecords, selectingLocation, onMapClick, onCancelSelectingLocation, onExperienceClick, onAddExperience }: Props) {
+export const WorldMap = memo(function WorldMap({ completed, wishlist, onInformation, onRegionInformation, onComplete, diffMode, diffOnlyViewer, diffOnlyTarget, diffBoth, regionsMode, completedRegions, activeId, experiencesMode, experienceRecords, selectingLocation, onMapClick, onCancelSelectingLocation, onExperienceClick, onAddExperience }: Props) {
   const [geo, setGeo] = useState<FeatureCollection | null>(_worldGeoCache);
   const [regionsGeo, setRegionsGeo] = useState<FeatureCollection | null>(_regionsGeoCache);
   const [searchedId, setSearchedId] = useState<string | null>(null);
@@ -248,6 +265,7 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
   const onInformationRef = useRef(onInformation);
   const onRegionInformationRef = useRef(onRegionInformation);
   const selectingLocationRef = useRef(selectingLocation);
+  const experiencesModeRef = useRef(experiencesMode);
   const layerRefs = useRef(new Map<string, L.Path>());
   const regionLayerRefs = useRef(new Map<string, L.Path>());
 
@@ -770,4 +788,4 @@ export function WorldMap({ completed, wishlist, onInformation, onRegionInformati
     </MapContainer>
     </>
   );
-}
+});

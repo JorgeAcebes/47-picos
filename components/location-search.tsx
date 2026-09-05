@@ -24,7 +24,7 @@ export function LocationSearch({ value, onChange, onSelect, placeholder = "Busca
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const lastSelectedRef = useRef<string>("");
+  const lastSelectedRef = useRef<string>(value);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
