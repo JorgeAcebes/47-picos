@@ -311,6 +311,16 @@ export const SpainMap = memo(function SpainMap({ completed, wishlist, onInformat
 
 
 
+  // ── Reactively update layer styles without remounting GeoJSON ──
+  useEffect(() => {
+    layerRefs.current.forEach((layer) => {
+      const feature = (layer as any).feature;
+      if (feature) {
+        layer.setStyle(geoStyle(feature));
+      }
+    });
+  }, [geoStyle]);
+
   const searchItems = useMemo<SearchItem[]>(() => {
     return peakEntries.map(peak => {
       let bounds: any = undefined;
@@ -358,12 +368,11 @@ export const SpainMap = memo(function SpainMap({ completed, wishlist, onInformat
     if (scanFrameRef.current) cancelAnimationFrame(scanFrameRef.current);
   }, []);
 
-  // ── Memoized markers to avoid re-rendering all 52 on every parent render ──
   const markers = useMemo(
     () =>
       peakEntries.map((peak) => (
         <Marker
-          key={`${peak.code}-${diffMode ? "d" : "n"}`}
+          key={peak.code}
           position={peak.coordinates}
           icon={
             diffMode
@@ -409,7 +418,7 @@ export const SpainMap = memo(function SpainMap({ completed, wishlist, onInformat
       />
       {geo && (
         <GeoJSON
-          key={diffMode ? "diff" : "normal"}
+          key="spain-provinces"
           data={geo}
           style={geoStyle}
           onEachFeature={onEachFeature}

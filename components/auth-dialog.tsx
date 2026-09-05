@@ -30,8 +30,8 @@ function IconEyeOff() {
   );
 }
 
-export function AuthDialog({ onClose }: { onClose: () => void }) {
-  const [isRegister, setIsRegister] = useState(true);
+export function AuthDialog({ onClose, initialTab = "register" }: { onClose: () => void; initialTab?: "login" | "register" }) {
+  const [isRegister, setIsRegister] = useState(initialTab === "register");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);

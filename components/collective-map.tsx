@@ -379,6 +379,16 @@ export function CollectiveMap({ onClose }: Props) {
     [getStyle],
   );
 
+  // ── Reactively update layer styles without remounting GeoJSON ──
+  useEffect(() => {
+    layerRefs.current.forEach((layer) => {
+      const feature = (layer as any).feature;
+      if (feature) {
+        layer.setStyle(geoStyle(feature));
+      }
+    });
+  }, [geoStyle]);
+
   const onEachFeature = useCallback(
     (f: any, layer: L.Layer) => {
       const country = resolveCountryFromFeature(f as any);
@@ -564,7 +574,7 @@ export function CollectiveMap({ onClose }: Props) {
             />
             {worldGeo && (
               <GeoJSON
-                key={`collective-geo-countries-${scope}`}
+                key="collective-countries"
                 data={worldGeo}
                 style={geoStyle}
                 onEachFeature={onEachFeature}

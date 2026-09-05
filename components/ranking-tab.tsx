@@ -7,6 +7,7 @@ import Link from "next/link";
 import { countries } from "@/data/countries";
 import dynamic from "next/dynamic";
 import { AuthDialog } from "@/components/auth-dialog";
+import { IconLogo } from "@/components/icons";
 import "./ranking.css";
 
 const CollectiveMap = dynamic(
@@ -44,7 +45,7 @@ export function RankingTab({
   const [totalUsersCount, setTotalUsersCount] = useState<number>(0);
   const [myProfile, setMyProfile] = useState<{username: string, avatar_url: string | null} | null>(null);
   const [showCollectiveMap, setShowCollectiveMap] = useState(false);
-  const [authOpen, setAuthOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState<"login" | "register" | false>(false);
 
   useEffect(() => {
     if (!isActive) return;
@@ -160,7 +161,10 @@ export function RankingTab({
       {/* ── Standard Topbar ────────────────── */}
       <header className="topbar">
         <a className="brand" href={mapLink} onClick={(e) => { if (onNavigate) { e.preventDefault(); let currentMap = localStorage.getItem("last_map_path") || "/"; if (currentMap !== "/" && currentMap !== "/picos") currentMap = "/"; onNavigate(currentMap); }}}>
-          <img src="/icon.svg" alt="Logo" width={32} height={32} style={{ filter: "brightness(0)" }} />
+          <IconLogo className="brand-icon" />
+          <span className="brand-text" style={{ marginLeft: 8, fontWeight: 700 }}>
+            {mode === "peaks" ? "47" : "196"} <span style={{ fontWeight: 400 }}>{mode === "peaks" ? "PICOS" : "PAÍSES"}</span>
+          </span>
         </a>
         <nav>
           <a href={mapLink} onClick={(e) => { if (onNavigate) { e.preventDefault(); let currentMap = localStorage.getItem("last_map_path") || "/"; if (currentMap !== "/" && currentMap !== "/picos") currentMap = "/"; onNavigate(currentMap); }}} onMouseEnter={() => { import('./summit-tracker'); }}>Mapa</a>
@@ -178,7 +182,7 @@ export function RankingTab({
               <span>{myProfile?.username || session.user.email?.split("@")[0]}</span>
             </Link>
           ) : (
-            <button className="button button--outline" onClick={() => setAuthOpen(true)}>
+            <button className="button button--outline" onClick={() => setAuthOpen("login")}>
               Entrar
             </button>
           )}
@@ -319,7 +323,7 @@ export function RankingTab({
       {showCollectiveMap && (
         <CollectiveMap onClose={() => setShowCollectiveMap(false)} />
       )}
-      {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} />}
+      {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} initialTab={authOpen === "login" ? "login" : "register"} />}
     </div>
   );
 }

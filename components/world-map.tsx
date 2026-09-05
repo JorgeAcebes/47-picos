@@ -466,6 +466,7 @@ export const WorldMap = memo(function WorldMap({ completed, wishlist, onInformat
     activeIdRef.current = activeId || null;
   }, [activeId, getDiffGeoStyleRef]);
 
+
   // ── Memoized style functions ──
   const geoStyle = useCallback(
     (f: any) => {
@@ -514,6 +515,25 @@ export const WorldMap = memo(function WorldMap({ completed, wishlist, onInformat
     },
     [completedRegions, diffMode, getDiffGeoStyleRef],
   );
+
+  // ── Reactively update layer styles without remounting GeoJSON ──
+  useEffect(() => {
+    layerRefs.current.forEach((layer) => {
+      const feature = (layer as any).feature;
+      if (feature) {
+        layer.setStyle(geoStyle(feature));
+      }
+    });
+  }, [geoStyle]);
+
+  useEffect(() => {
+    regionLayerRefs.current.forEach((layer) => {
+      const feature = (layer as any).feature;
+      if (feature) {
+        layer.setStyle(regionStyle(feature));
+      }
+    });
+  }, [regionStyle]);
 
   // ── Stable onEachFeature (uses refs) ──
   const onEachFeature = useCallback(
@@ -614,7 +634,7 @@ export const WorldMap = memo(function WorldMap({ completed, wishlist, onInformat
       if (showCountryMarkers) {
         cMarkers = countriesWithCoords.map((c) => (
         <Marker
-          key={`${c.id}-${diffMode ? "d" : "n"}`}
+          key={c.id}
           position={c.coordinates!}
           icon={
             diffMode
@@ -777,7 +797,7 @@ export const WorldMap = memo(function WorldMap({ completed, wishlist, onInformat
       )}
       {geo && (
         <GeoJSON
-          key={`countries-${regionsMode ? "overlay" : diffMode ? "diff" : "normal"}`}
+          key={`countries-${regionsMode ? "overlay" : "normal"}`}
           data={geo}
           style={geoStyle}
           onEachFeature={onEachFeature}

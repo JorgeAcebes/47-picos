@@ -134,15 +134,15 @@ export const predefinedCategories: ExperienceCategory[] = [
     experiences: [
       { id: "exp-parachute", name: "Saltar en paracaídas" },
       { id: "exp-helicopter", name: "Volar en helicóptero" },
-      { id: "exp-hot-air-balloon", name: "Volar en globo aerostático" }
+      { id: "exp-hot-air-balloon", name: "Volar en globo aerostático" },
+      { id: "exp-orbital", name: "Presenciar un lanzamiento orbital" }
     ]
   },
   {
     id: "cat-science",
-    name: "Ciencia, técnica e hitos humanos",
-    iconName: "rocket",
+    name: "Monumentos e hitos humanos",
+    iconName: "landmark",
     experiences: [
-      { id: "exp-orbital", name: "Presenciar un lanzamiento orbital" },
       {
         id: "exp-7-wonders",
         name: "Explorar las 7 maravillas del mundo",

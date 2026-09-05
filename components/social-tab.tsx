@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import type { Session } from "@supabase/supabase-js";
 import Link from "next/link";
 import { AuthDialog } from "./auth-dialog";
+import { IconLogo } from "./icons";
 import { ProfileSettings } from "./profile-settings";
 import { ConfirmModal } from "./confirm-modal";
 import { FeedTab } from "./feed-tab";
@@ -23,7 +24,7 @@ type ConnectionStatus = 'pending' | 'accepted' | null;
 
 export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: string) => void, isActive?: boolean }) {
   const [session, setSession] = useState<Session | null>(null);
-  const [authOpen, setAuthOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState<"login" | "register" | false>(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [myProfile, setMyProfile] = useState<Profile | null>(null);
   const [mapLink, setMapLink] = useState("/");
@@ -361,7 +362,10 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
     <main>
       <header className="topbar">
         <a className="brand" href={mapLink} onClick={(e) => { if (onNavigate) { e.preventDefault(); let currentMap = localStorage.getItem("last_map_path") || "/"; if (currentMap !== "/" && currentMap !== "/picos") currentMap = "/"; onNavigate(currentMap); }}}>
-          <img src="/icon.svg" alt="Logo" width={32} height={32} style={{ filter: "brightness(0)" }} />
+          <IconLogo className="brand-icon" />
+          <span className="brand-text" style={{ marginLeft: 8, fontWeight: 700 }}>
+            {mapLink === "/picos" ? "47" : "196"} <span style={{ fontWeight: 400 }}>{mapLink === "/picos" ? "PICOS" : "PAÍSES"}</span>
+          </span>
         </a>
         <nav>
           <a href={mapLink} onClick={(e) => { if (onNavigate) { e.preventDefault(); let currentMap = localStorage.getItem("last_map_path") || "/"; if (currentMap !== "/" && currentMap !== "/picos") currentMap = "/"; onNavigate(currentMap); }}} onMouseEnter={() => { import('./summit-tracker'); }}>Mapa</a>
@@ -399,7 +403,7 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
               <span>{myProfile?.username || session.user.email?.split("@")[0]}</span>
             </button>
           ) : (
-            <button className="button button--outline" onClick={() => setAuthOpen(true)}>
+            <button className="button button--outline" onClick={() => setAuthOpen("login")}>
               Entrar
             </button>
           )}
@@ -459,7 +463,7 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
             <div style={{ background: 'white', borderRadius: '12px', padding: '24px', border: '1px solid var(--line)', textAlign: 'center' }}>
               <h3 style={{ margin: '0 0 8px' }}>Únete a la comunidad</h3>
               <p style={{ margin: '0 0 16px', fontSize: '14px', color: 'var(--muted)' }}>Conecta con otros usuarios y descubre sus experiencias.</p>
-              <button className="button button--green button--wide" onClick={() => setAuthOpen(true)}>Iniciar sesión</button>
+              <button className="button button--green button--wide" onClick={() => setAuthOpen("login")}>Iniciar sesión</button>
             </div>
           )}
 
@@ -538,7 +542,9 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
           </div>
 
           {activeTab === 'feed' && (
-            <FeedTab session={session} isActive={isActive} onAuthRequired={() => setAuthOpen(true)} />
+            <div style={{ maxWidth: '700px', margin: '0 auto', width: '100%' }}>
+              <FeedTab session={session} isActive={isActive} onAuthRequired={() => setAuthOpen("login")} />
+            </div>
           )}
 
         {activeTab === 'discover' && (
@@ -657,7 +663,7 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
         </div>
       </section>
       
-      {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} />}
+      {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} initialTab={authOpen === "login" ? "login" : "register"} />}
       {profileOpen && session && <ProfileSettings session={session} onClose={() => setProfileOpen(false)} />}
       <ConfirmModal
         isOpen={!!confirmConfig?.isOpen}

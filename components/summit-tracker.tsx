@@ -316,7 +316,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
   const [ascents, setAscents] = useState<Ascent[]>([]);
   const [photos, setPhotos] = useState<SummitPhoto[]>([]);
   const [selected, setSelected] = useState<SelectedItem | null>(null);
-  const [authOpen, setAuthOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState<"login" | "register" | false>(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [recordOpen, setRecordOpen] = useState(false);
   const [climbDate, setClimbDate] = useState<Date | null>(new Date());
@@ -618,10 +618,10 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
       ? "El mapa para registrar todas las experiencias de tu vida."
       : "El mapa para registrar cada país del mundo que has visitado.";
   const modeChallengeTitle = isPeaks
-    ? <>Un país por descubrir,<br />una cima cada vez.</>
+    ? <>Un país por descubrir, <br />una cima cada vez.</>
     : isExp
-      ? <>Un mundo por explorar,<br />una experiencia cada vez.</>
-      : <>Un mundo por explorar,<br />un país cada vez.</>;
+      ? <>Un mundo por explorar, <br />una experiencia cada vez.</>
+      : <>Un mundo por explorar, <br />un país cada vez.</>;
 
   const modeListEyebrow = isPeaks ? "52 Territorios - 47 Picos" : isExp ? `${totalCount} Experiencias` : "196 Países del mundo";
   const modeListTitle = isPeaks ? "Todas las cumbres" : isExp ? (isReadOnly ? "Todas sus experiencias" : "Todas tus experiencias") : "Todos los países";
@@ -1216,7 +1216,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
     (item?: SelectedItem | null, ascentToEdit?: Ascent | any) => {
       if (!session) {
         window.location.hash = "panel";
-        setAuthOpen(true);
+        setAuthOpen("login");
         return;
       }
       window.location.hash = item ? `panel=${item.id}` : "panel";
@@ -1318,7 +1318,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
   async function saveWishlist() {
     if (!supabase || !session || !selected) {
       window.location.hash = "panel";
-      setAuthOpen(true);
+      setAuthOpen("login");
       return;
     }
     setNotice("");
@@ -2201,7 +2201,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
               className="button button--outline"
               onClick={() => {
                 window.location.hash = "panel";
-                setAuthOpen(true);
+                setAuthOpen("login");
               }}
             >
               Entrar
@@ -2232,10 +2232,11 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
             </a>
             {!session && !targetProfile && (
               <button
-                className="button button--quiet"
+                className="button button--white"
+                style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.5)', color: 'var(--pine)' }}
                 onClick={() => {
                   window.location.hash = "panel";
-                  setAuthOpen(true);
+                  setAuthOpen("register");
                 }}
               >
                 Crear mi registro
@@ -2247,7 +2248,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
           <span className="mountain-art">{isPeaks ? "△" : "◉"}</span>
           <strong>
             {achievedCount}
-            <small>/{totalCount}</small>
+            <small> / {totalCount}</small>
           </strong>
           <span>{modeUnit}</span>
           <div className="progress">
@@ -2260,7 +2261,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
         <div className="hero-stat-mobile">
           <div className="hero-stat-mobile__numbers">
             <strong>{achievedCount}</strong>
-            <span className="hero-stat-mobile__sep">/</span>
+            <span className="hero-stat-mobile__sep"> / </span>
             <span className="hero-stat-mobile__total">{totalCount}</span>
           </div>
           <div className="hero-stat-mobile__right">
@@ -3497,7 +3498,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
       )}
 
       {/* ── Auth dialog ─────────────────── */}
-      {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} />}
+      {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} initialTab={authOpen === "login" ? "login" : "register"} />}
 
       {/* ── Toast ───────────────────────── */}
       {notice && (
@@ -3721,7 +3722,7 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
       )}
 
       {/* ── Modals ──────────────────────── */}
-      {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} />}
+      {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} initialTab={authOpen === "login" ? "login" : "register"} />}
       {profileOpen && session && <ProfileSettings session={session} onProfileUpdate={(p) => {
         setMyProfile(prev => ({ ...prev, ...p }));
         if (p.enable_regions === false) setRegionsMode(false);
@@ -3905,7 +3906,11 @@ export function SummitTracker({ mode: initialModeProp, targetProfile, onSwitchMo
                 <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Icono</label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(44px, 1fr))', gap: 10 }}>
                   {[
-                    'star', 'tent', 'mountain', 'compass', 'paw', 'camera', 'building', 'telescope', 'user', 'heart', 'tree', 'home', 'dumbbell', 'plane', 'rocket', 'waves', 'sun', 'utensils', 'map', 'castle', 'store', 'book'
+                    'mountain', 'tree', 'waves', 'sun', 'paw', 
+                    'plane', 'rocket', 'compass', 'map', 'tent', 'telescope', 
+                    'home', 'building', 'landmark', 'store', 
+                    'camera', 'dumbbell', 'utensils', 'book', 'trophy', 
+                    'user', 'heart', 'circle-dot', 'star'
                   ].map(iconValue => (
                     <button
                       key={iconValue}

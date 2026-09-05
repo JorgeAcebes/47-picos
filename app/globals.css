@@ -612,7 +612,7 @@ nav a:hover::after {
 .account-avatar {
   width: 29px;
   height: 29px;
-  background: var(--pine);
+  background: #6B7280;
   color: white;
   border-radius: 50%;
   display: grid;
@@ -643,7 +643,7 @@ nav a:hover::after {
   font-family: "DM Mono", monospace;
   letter-spacing: 0.13em;
   font-size: 10px;
-  color: #54756a;
+  color: #374151;
   font-weight: 500;
 }
 
@@ -1256,7 +1256,7 @@ nav a:hover::after {
   padding: 24px clamp(22px, 8vw, 126px);
   display: flex;
   flex-direction: column;
-  color: var(--muted);
+  color: #4b5563;
   font-size: 12px;
   background: var(--paper);
 }
@@ -1296,7 +1296,7 @@ nav a:hover::after {
 .footer-disclaimer {
   font-size: 11px;
   line-height: 1.6;
-  color: #7b9187;
+  color: #475569;
 }
 
 .site-footer a {
@@ -2095,6 +2095,10 @@ textarea:focus {
 .peak-list-item .item-name {
   font-weight: 600;
   color: var(--ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .peak-list-item .item-info {
@@ -2144,11 +2148,17 @@ textarea:focus {
 /* ── Filter pills ──────────────────────── */
 .list-filters {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
   padding-top: 6px;
   padding-right: 6px;
   margin-bottom: 20px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.list-filters::-webkit-scrollbar {
+  display: none;
 }
 
 .edit-action-btn {

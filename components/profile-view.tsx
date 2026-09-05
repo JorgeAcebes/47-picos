@@ -6,6 +6,7 @@ import { SummitTracker } from "./summit-tracker";
 import type { Session } from "@supabase/supabase-js";
 import Link from "next/link";
 import { AuthDialog } from "./auth-dialog";
+import { IconLogo } from "./icons";
 import { useRouter } from "next/navigation";
 
 type Profile = {
@@ -21,7 +22,7 @@ export function ProfileView({ username, initialMode = "countries" }: { username:
   const [loading, setLoading] = useState(true);
   const [access, setAccess] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
-  const [authOpen, setAuthOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState<"login" | "register" | false>(false);
   const [error, setError] = useState("");
   const [mapLink, setMapLink] = useState("/");
   const [mode, setMode] = useState<"peaks" | "countries">(initialMode);
@@ -91,7 +92,7 @@ export function ProfileView({ username, initialMode = "countries" }: { username:
 
   async function connect() {
     if (!session || !supabase || !profile) {
-      setAuthOpen(true);
+      setAuthOpen("login");
       return;
     }
     const newStatus = profile.is_public ? 'accepted' : 'pending';
@@ -123,7 +124,7 @@ export function ProfileView({ username, initialMode = "countries" }: { username:
       <main>
         <header className="topbar">
           <Link className="brand" href={mapLink}>
-            <img src="/icon.svg" alt="Logo" width={32} height={32} style={{ filter: "brightness(0)" }} />
+            <IconLogo className="brand-icon" />
           </Link>
           <nav>
             <Link href={mapLink}>Mapa</Link>
@@ -155,7 +156,7 @@ export function ProfileView({ username, initialMode = "countries" }: { username:
           </div>
         </section>
 
-        {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} />}
+        {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} initialTab={authOpen === "login" ? "login" : "register"} />}
       </main>
     );
   }
