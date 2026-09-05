@@ -1,5 +1,5 @@
-import { AppShell } from "@/components/app-shell";
+import { SummitTracker } from "@/components/summit-tracker";
 
 export default function PicosPage() {
-  return <AppShell initialTab="map" initialMapMode="peaks" />;
+  return <SummitTracker mode="peaks" />;
 }

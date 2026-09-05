@@ -1,5 +1,5 @@
-import { AppShell } from "@/components/app-shell";
+import { RankingTab } from "@/components/ranking-tab";
 
 export default function RankingPage() {
-  return <AppShell initialTab="ranking" />;
+  return <RankingTab />;
 }

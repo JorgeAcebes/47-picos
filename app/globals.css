@@ -4,7 +4,7 @@
    Tipografías: Playfair Display · DM Sans · DM Mono
    ─────────────────────────────────────────── */
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap');
+
 @import 'leaflet/dist/leaflet.css';
 
 /* ── Tokens ─────────────────────────────── */
@@ -1040,48 +1040,63 @@ nav a:hover::after {
   transform: scale(1);
 }
 
-/* Retrasar aparición de pines de países en general, pero adelantar experiences */
-.mode-countries .map[data-zoom="3"] .summit-pin,
-.mode-countries .map[data-zoom="4"] .summit-pin,
-.mode-countries .map[data-zoom="5"] .summit-pin,
-.mode-experiences .map[data-zoom="3"] .summit-pin:not(.summit-pin--experience),
-.mode-experiences .map[data-zoom="4"] .summit-pin:not(.summit-pin--experience),
-.mode-experiences .map[data-zoom="5"] .summit-pin:not(.summit-pin--experience) {
+/* Retrasar aparición de pines de países genéricos (NO experiencias) */
+.mode-countries .map[data-zoom="1"] .summit-pin:not(.summit-pin--experience),
+.mode-countries .map[data-zoom="2"] .summit-pin:not(.summit-pin--experience),
+.mode-countries .map[data-zoom="3"] .summit-pin:not(.summit-pin--experience),
+.mode-countries .map[data-zoom="4"] .summit-pin:not(.summit-pin--experience),
+.mode-countries .map[data-zoom="5"] .summit-pin:not(.summit-pin--experience),
+.map[data-zoom="1"] .summit-pin:not(.summit-pin--experience),
+.map[data-zoom="2"] .summit-pin:not(.summit-pin--experience),
+.map[data-zoom="3"] .summit-pin:not(.summit-pin--experience),
+.map[data-zoom="4"] .summit-pin:not(.summit-pin--experience),
+.map[data-zoom="5"] .summit-pin:not(.summit-pin--experience) {
   opacity: 0;
   pointer-events: none;
   transform: scale(0.3);
 }
 
-.mode-countries .map[data-zoom="6"] .summit-pin,
-.mode-experiences .map[data-zoom="6"] .summit-pin:not(.summit-pin--experience) {
+.mode-countries .map[data-zoom="6"] .summit-pin:not(.summit-pin--experience),
+.map[data-zoom="6"] .summit-pin:not(.summit-pin--experience) {
   opacity: 0.4;
   pointer-events: auto;
   transform: scale(0.65);
 }
 
-.mode-countries .map[data-zoom="7"] .summit-pin,
-.mode-experiences .map[data-zoom="7"] .summit-pin:not(.summit-pin--experience) {
+.mode-countries .map[data-zoom="7"] .summit-pin:not(.summit-pin--experience),
+.map[data-zoom="7"] .summit-pin:not(.summit-pin--experience) {
   opacity: 1;
   pointer-events: auto;
   transform: scale(1);
 }
 
-/* Experiences specific zooms: they appear earlier */
+/* Experiences pins: hidden in countries mode */
+.mode-countries .summit-pin--experience {
+  display: none !important;
+}
+
+/* Experiences specific zooms: always visible from zoom 1 upwards in experiences mode */
+.mode-experiences .summit-pin--experience,
 .mode-experiences .map[data-zoom="1"] .summit-pin--experience,
 .mode-experiences .map[data-zoom="2"] .summit-pin--experience,
 .mode-experiences .map[data-zoom="3"] .summit-pin--experience,
 .mode-experiences .map[data-zoom="4"] .summit-pin--experience {
-  opacity: 0.8;
-  pointer-events: auto;
-  transform: scale(0.85);
+  opacity: 0.85 !important;
+  pointer-events: auto !important;
+  transform: scale(0.9) !important;
 }
 
 .mode-experiences .map[data-zoom="5"] .summit-pin--experience,
 .mode-experiences .map[data-zoom="6"] .summit-pin--experience,
-.mode-experiences .map[data-zoom="7"] .summit-pin--experience {
-  opacity: 1;
-  pointer-events: auto;
-  transform: scale(1.1);
+.mode-experiences .map[data-zoom="7"] .summit-pin--experience,
+.mode-experiences .map[data-zoom="8"] .summit-pin--experience,
+.mode-experiences .map[data-zoom="9"] .summit-pin--experience,
+.mode-experiences .map[data-zoom="10"] .summit-pin--experience,
+.mode-experiences .map[data-zoom="11"] .summit-pin--experience,
+.mode-experiences .map[data-zoom="12"] .summit-pin--experience {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: scale(1.1) !important;
 }
 
 .map .summit-pin:hover {

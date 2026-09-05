@@ -21,13 +21,14 @@ import { MapSearchControl, type SearchItem } from "./map-search";
 import { SweepOverlay } from "./sweep-overlay";
 
 // Override Leaflet's default canvas padding to preload vector shapes far outside the viewport
-L.Canvas.prototype.options.padding = 1.5;
+L.Canvas.prototype.options.padding = 0.5;
 
 const WORLD_TOPO_URL =
   "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json";
 const WORLD_REGIONS_TOPO_URL = "/world-regions.topo.json";
 
 // ── Module-level GeoJSON cache ────────────
+const expIconCache = new Map<string, L.DivIcon>();
 let _worldGeoCache: FeatureCollection | null = null;
 let _worldGeoPromise: Promise<FeatureCollection> | null = null;
 let _regionsGeoCache: FeatureCollection | null = null;
@@ -196,12 +197,16 @@ function MapClickListener({ onMapClick, selectingLocation }: { onMapClick?: (lat
 }
 function MapZoomListener() {
   const map = useMapEvents({
+    zoom: () => {
+      const container = map.getContainer();
+      container.setAttribute("data-zoom", Math.round(map.getZoom()).toString());
+    },
     zoomend: () => {
       const zoom = map.getZoom();
       const center = map.getCenter();
       sessionStorage.setItem("mapState_world", JSON.stringify({ zoom, center }));
       const container = map.getContainer();
-      container.setAttribute("data-zoom", zoom.toString());
+      container.setAttribute("data-zoom", Math.round(zoom).toString());
     },
     moveend: () => {
       const zoom = map.getZoom();
@@ -211,7 +216,7 @@ function MapZoomListener() {
   });
   useEffect(() => {
     const container = map.getContainer();
-    container.setAttribute("data-zoom", map.getZoom().toString());
+    container.setAttribute("data-zoom", Math.round(map.getZoom()).toString());
   }, [map]);
   return null;
 }
@@ -653,20 +658,23 @@ export const WorldMap = memo(function WorldMap({ completed, wishlist, onInformat
 
       if (experienceRecords) {
         const expMarkers = experienceRecords.map((r, i) => {
-          const iconHtml = ReactDOMServer.renderToString(
-            <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-              <span className="summit-pin summit-pin--experience summit-pin--done" style={{ display: 'inline-flex', justifyContent: 'center', alignItems: 'center', pointerEvents: 'none' }}>
-                {getIconComponent(r.icon_name)}
-              </span>
-            </div>
-          );
-          
-          const expIcon = L.divIcon({
-            className: "experience-hitbox",
-            html: iconHtml,
-            iconSize: [36, 36],
-            iconAnchor: [18, 18],
-          });
+          let expIcon = expIconCache.get(r.icon_name);
+          if (!expIcon) {
+            const iconHtml = ReactDOMServer.renderToString(
+              <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <span className="summit-pin summit-pin--experience summit-pin--done" style={{ display: 'inline-flex', justifyContent: 'center', alignItems: 'center', pointerEvents: 'none' }}>
+                  {getIconComponent(r.icon_name)}
+                </span>
+              </div>
+            );
+            expIcon = L.divIcon({
+              className: "experience-hitbox",
+              html: iconHtml,
+              iconSize: [36, 36],
+              iconAnchor: [18, 18],
+            });
+            expIconCache.set(r.icon_name, expIcon);
+          }
           
           return (
             <Marker
@@ -707,41 +715,7 @@ export const WorldMap = memo(function WorldMap({ completed, wishlist, onInformat
       <MapClickListener onMapClick={onMapClick} selectingLocation={selectingLocation} />
       <SweepOverlay searchedId={searchedId} layerRefs={layerRefs} regionLayerRefs={regionLayerRefs} />
 
-      {experiencesMode && onAddExperience && (
-        <div
-          className="leaflet-control"
-          style={{
-            position: 'absolute',
-            top: 56,
-            right: 10,
-            zIndex: 1000,
-            background: 'white',
-            borderRadius: '50%',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.15)',
-            width: 36,
-            height: 36,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            pointerEvents: 'auto',
-            cursor: 'pointer'
-          }}
-          title="Añadir experiencia en el mapa"
-          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
-          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff'}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onAddExperience();
-          }}
-        >
-          <svg style={{ width: 18, height: 18, color: '#666' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" />
-            <circle cx="12" cy="12" r="6" />
-            <circle cx="12" cy="12" r="2" />
-          </svg>
-        </div>
-      )}
+
 
 
       {selectingLocation && (
@@ -783,9 +757,9 @@ export const WorldMap = memo(function WorldMap({ completed, wishlist, onInformat
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        keepBuffer={40}
-        updateWhenIdle={false}
-        updateWhenZooming={true}
+        keepBuffer={4}
+        updateWhenIdle={true}
+        updateWhenZooming={false}
       />
       {regionsMode && regionsGeo && (
         <GeoJSON

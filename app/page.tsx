@@ -1,5 +1,5 @@
-import { AppShell } from "@/components/app-shell";
+import { SummitTracker } from "@/components/summit-tracker";
 
 export default function Home() {
-  return <AppShell initialTab="map" initialMapMode="countries" />;
+  return <SummitTracker mode="countries" />;
 }

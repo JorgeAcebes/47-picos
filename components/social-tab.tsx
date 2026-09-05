@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import type { Session } from "@supabase/supabase-js";
 import Link from "next/link";
+import type { Session } from "@supabase/supabase-js";
 import { AuthDialog } from "./auth-dialog";
 import { IconLogo } from "./icons";
 import { ProfileSettings } from "./profile-settings";
@@ -361,15 +361,12 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
   return (
     <main>
       <header className="topbar">
-        <a className="brand" href={mapLink} onClick={(e) => { if (onNavigate) { e.preventDefault(); let currentMap = localStorage.getItem("last_map_path") || "/"; if (currentMap !== "/" && currentMap !== "/picos") currentMap = "/"; onNavigate(currentMap); }}}>
-          <IconLogo className="brand-icon" />
-          <span className="brand-text" style={{ marginLeft: 8, fontWeight: 700 }}>
-            {mapLink === "/picos" ? "47" : "196"} <span style={{ fontWeight: 400 }}>{mapLink === "/picos" ? "PICOS" : "PAÍSES"}</span>
-          </span>
-        </a>
+        <Link className="brand" href={mapLink}>
+          <IconLogo className="brand-icon" style={{ filter: 'brightness(0)' }} />
+        </Link>
         <nav>
-          <a href={mapLink} onClick={(e) => { if (onNavigate) { e.preventDefault(); let currentMap = localStorage.getItem("last_map_path") || "/"; if (currentMap !== "/" && currentMap !== "/picos") currentMap = "/"; onNavigate(currentMap); }}} onMouseEnter={() => { import('./summit-tracker'); }}>Mapa</a>
-          <a href="/social" style={{ fontWeight: 'bold', position: 'relative' }} onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("/social"); }}}>
+          <Link href={mapLink}>Mapa</Link>
+          <Link href="/social" style={{ fontWeight: 'bold', position: 'relative' }}>
             Social
             {hasPendingRequests ? (
               <span 
@@ -389,8 +386,8 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
                 }} 
               />
             ) : null}
-          </a>
-          <a href="/ranking" onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("/ranking"); } }} onMouseEnter={() => { import('./ranking-tab'); }}>Ranking</a>
+          </Link>
+          <Link href="/ranking">Ranking</Link>
           {session ? (
             <button className="account-button" onClick={() => setProfileOpen(true)}>
               {myProfile?.avatar_url ? (

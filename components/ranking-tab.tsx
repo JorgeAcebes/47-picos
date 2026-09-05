@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import type { Session } from "@supabase/supabase-js";
-import Link from "next/link";
 import { countries } from "@/data/countries";
 import dynamic from "next/dynamic";
 import { AuthDialog } from "@/components/auth-dialog";
@@ -160,16 +160,13 @@ export function RankingTab({
     <div className={`ranking-theme ${mode === "countries" ? "mode-countries" : ""}`} style={{ backgroundColor: "var(--bg-color)" }}>
       {/* ── Standard Topbar ────────────────── */}
       <header className="topbar">
-        <a className="brand" href={mapLink} onClick={(e) => { if (onNavigate) { e.preventDefault(); let currentMap = localStorage.getItem("last_map_path") || "/"; if (currentMap !== "/" && currentMap !== "/picos") currentMap = "/"; onNavigate(currentMap); }}}>
-          <IconLogo className="brand-icon" />
-          <span className="brand-text" style={{ marginLeft: 8, fontWeight: 700 }}>
-            {mode === "peaks" ? "47" : "196"} <span style={{ fontWeight: 400 }}>{mode === "peaks" ? "PICOS" : "PAÍSES"}</span>
-          </span>
-        </a>
+        <Link className="brand" href={mapLink}>
+          <IconLogo className="brand-icon" style={{ filter: 'brightness(0)' }} />
+        </Link>
         <nav>
-          <a href={mapLink} onClick={(e) => { if (onNavigate) { e.preventDefault(); let currentMap = localStorage.getItem("last_map_path") || "/"; if (currentMap !== "/" && currentMap !== "/picos") currentMap = "/"; onNavigate(currentMap); }}} onMouseEnter={() => { import('./summit-tracker'); }}>Mapa</a>
-          <a href="/social" onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("/social"); }}} onMouseEnter={() => { import('./social-tab'); }}>Social</a>
-          <a href="/ranking" style={{ fontWeight: 'bold', color: 'var(--purple)' }} onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate("/ranking"); }}}>Ranking</a>
+          <Link href={mapLink}>Mapa</Link>
+          <Link href="/social">Social</Link>
+          <Link href="/ranking" style={{ fontWeight: 'bold', color: 'var(--purple)' }}>Ranking</Link>
           {session ? (
             <Link href={myProfile?.username ? `/perfil/${myProfile.username}` : "/"} className="account-button">
               {myProfile?.avatar_url ? (

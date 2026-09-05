@@ -16,7 +16,7 @@ import { MapSearchControl, type SearchItem } from "./map-search";
 import { SweepOverlay } from "./sweep-overlay";
 
 // Override Leaflet's default canvas padding to preload vector shapes far outside the viewport
-L.Canvas.prototype.options.padding = 1.5;
+L.Canvas.prototype.options.padding = 0.5;
 
 const PROVINCES_URL =
   "https://gist.githubusercontent.com/josemamira/3af52a4698d42b3f676fbc23f807a605/raw/cc5e247b63b05520c167639ed51d61acd560b1c1/provincias_spain.geojson";
@@ -79,12 +79,16 @@ function FitSpain() {
 
 function MapZoomListener() {
   const map = useMapEvents({
+    zoom: () => {
+      const container = map.getContainer();
+      container.setAttribute("data-zoom", Math.round(map.getZoom()).toString());
+    },
     zoomend: () => {
       const zoom = map.getZoom();
       const center = map.getCenter();
       sessionStorage.setItem("mapState_spain", JSON.stringify({ zoom, center }));
       const container = map.getContainer();
-      container.setAttribute("data-zoom", zoom.toString());
+      container.setAttribute("data-zoom", Math.round(zoom).toString());
     },
     moveend: () => {
       const zoom = map.getZoom();
@@ -94,7 +98,7 @@ function MapZoomListener() {
   });
   useEffect(() => {
     const container = map.getContainer();
-    container.setAttribute("data-zoom", map.getZoom().toString());
+    container.setAttribute("data-zoom", Math.round(map.getZoom()).toString());
   }, [map]);
   return null;
 }
@@ -412,9 +416,9 @@ export const SpainMap = memo(function SpainMap({ completed, wishlist, onInformat
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        keepBuffer={40}
-        updateWhenIdle={false}
-        updateWhenZooming={true}
+        keepBuffer={4}
+        updateWhenIdle={true}
+        updateWhenZooming={false}
       />
       {geo && (
         <GeoJSON

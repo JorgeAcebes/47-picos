@@ -25,12 +25,13 @@ import { MapSearchControl, type SearchItem } from "./map-search";
 import { SweepOverlay } from "./sweep-overlay";
 
 // Override Leaflet's default canvas padding to preload vector shapes far outside the viewport
-L.Canvas.prototype.options.padding = 1.5;
+L.Canvas.prototype.options.padding = 0.5;
 
 const WORLD_TOPO_URL =
   "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json";
 
 // ── Module-level GeoJSON cache ────────────
+const expIconCache = new Map<string, L.DivIcon>();
 let _worldGeoCache: FeatureCollection | null = null;
 let _worldGeoPromise: Promise<FeatureCollection> | null = null;
 
@@ -112,16 +113,20 @@ function FitWorld() {
 
 function MapZoomListener() {
   const map = useMapEvents({
+    zoom: () => {
+      const container = map.getContainer();
+      container.setAttribute("data-zoom", Math.round(map.getZoom()).toString());
+    },
     zoomend: () => {
       const zoom = map.getZoom();
       const container = map.getContainer();
-      if (zoom !== undefined) container.setAttribute("data-zoom", zoom.toString());
+      if (zoom !== undefined) container.setAttribute("data-zoom", Math.round(zoom).toString());
     },
   });
   useEffect(() => {
     const container = map.getContainer();
     const zoom = map.getZoom();
-    if (zoom !== undefined) container.setAttribute("data-zoom", zoom.toString());
+    if (zoom !== undefined) container.setAttribute("data-zoom", Math.round(zoom).toString());
   }, [map]);
   return null;
 }
@@ -568,9 +573,9 @@ export function CollectiveMap({ onClose }: Props) {
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              keepBuffer={40}
-              updateWhenIdle={false}
-              updateWhenZooming={true}
+              keepBuffer={4}
+              updateWhenIdle={true}
+              updateWhenZooming={false}
             />
             {worldGeo && (
               <GeoJSON
@@ -589,20 +594,24 @@ export function CollectiveMap({ onClose }: Props) {
                // Find experience name
                const expName = cat?.experiences.find(e => e.id === marker.experience_id)?.name || marker.location_name || 'Experiencia';
 
-               const iconHtml = ReactDOMServer.renderToString(
-                 <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                   <span className="summit-pin summit-pin--experience summit-pin--done" style={{ display: 'inline-flex', justifyContent: 'center', alignItems: 'center', pointerEvents: 'none' }}>
-                     {getIconComponent(iconName)}
-                   </span>
-                 </div>
-               );
-               
-               const customIcon = L.divIcon({
-                 html: iconHtml,
-                 className: 'experience-hitbox',
-                 iconSize: [36, 36],
-                 iconAnchor: [18, 18],
-               });
+               let customIcon = expIconCache.get(iconName);
+               if (!customIcon) {
+                 const iconHtml = ReactDOMServer.renderToString(
+                   <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                     <span className="summit-pin summit-pin--experience summit-pin--done" style={{ display: 'inline-flex', justifyContent: 'center', alignItems: 'center', pointerEvents: 'none' }}>
+                       {getIconComponent(iconName)}
+                     </span>
+                   </div>
+                 );
+                 
+                 customIcon = L.divIcon({
+                   html: iconHtml,
+                   className: 'experience-hitbox',
+                   iconSize: [36, 36],
+                   iconAnchor: [18, 18],
+                 });
+                 expIconCache.set(iconName, customIcon);
+               }
 
                return (
                  <Marker 
