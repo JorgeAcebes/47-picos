@@ -618,6 +618,7 @@ export function CollectiveMap({ onClose }: Props) {
                    key={marker.id} 
                    position={[marker.lat, marker.lng]} 
                    icon={customIcon}
+                   zIndexOffset={1000}
                    eventHandlers={{
                      click: () => {
                        setSelectedSummit({ 
