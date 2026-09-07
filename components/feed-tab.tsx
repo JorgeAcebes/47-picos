@@ -254,7 +254,13 @@ function FeedItemCard({ item, session, onAuthRequired }: { item: any, session: S
 
   let displayTitle = finalLocationName;
   if (item.achieved_on && !isUnknownDate(item.achieved_on)) {
-    displayTitle = `${finalLocationName}: ${format(new Date(item.achieved_on), "d MMM yyyy", { locale: es })}`;
+    const startStr = format(new Date(item.achieved_on), "d MMM yyyy", { locale: es });
+    if (item.end_date && !isUnknownDate(item.end_date)) {
+      const endStr = format(new Date(item.end_date), "d MMM yyyy", { locale: es });
+      displayTitle = `${finalLocationName}: ${startStr} - ${endStr}`;
+    } else {
+      displayTitle = `${finalLocationName}: ${startStr}`;
+    }
   }
 
 
@@ -300,6 +306,7 @@ function FeedItemCard({ item, session, onAuthRequired }: { item: any, session: S
               onClick={() => setLightboxIndex(0)} 
               alt="Activity media" 
               className="feed-card-media" 
+              loading="lazy"
               style={{ width: '100%', height: '300px', objectFit: 'cover', cursor: 'pointer', borderRadius: '12px' }} 
             />
           ) : photos.length === 3 ? (
@@ -309,6 +316,7 @@ function FeedItemCard({ item, session, onAuthRequired }: { item: any, session: S
                   src={photos[0].public_url} 
                   onClick={() => setLightboxIndex(0)} 
                   alt="" 
+                  loading="lazy"
                   style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} 
                 />
               </div>
@@ -317,6 +325,7 @@ function FeedItemCard({ item, session, onAuthRequired }: { item: any, session: S
                   src={photos[1].public_url} 
                   onClick={() => setLightboxIndex(1)} 
                   alt="" 
+                  loading="lazy"
                   style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} 
                 />
               </div>
@@ -325,6 +334,7 @@ function FeedItemCard({ item, session, onAuthRequired }: { item: any, session: S
                   src={photos[2].public_url} 
                   onClick={() => setLightboxIndex(2)} 
                   alt="" 
+                  loading="lazy"
                   style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} 
                 />
               </div>
@@ -340,6 +350,7 @@ function FeedItemCard({ item, session, onAuthRequired }: { item: any, session: S
                       src={photo.public_url} 
                       onClick={() => setLightboxIndex(index)} 
                       alt="" 
+                      loading="lazy"
                       style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} 
                     />
                     {isLast && hasMore && (
@@ -540,7 +551,7 @@ export function FeedTab({ session, isActive = true, onAuthRequired }: { session:
       // Fetch ascents
       const { data: ascData, error: ascErr } = await supabase
         .from("ascents")
-        .select("id, user_id, summit_id, created_at, achieved_on, notes, profiles!ascents_user_id_profiles_fkey(username, avatar_url, is_public)")
+        .select("id, user_id, summit_id, created_at, achieved_on, end_date, notes, profiles!ascents_user_id_profiles_fkey(username, avatar_url, is_public)")
         .eq('is_wishlist', false)
         .order("created_at", { ascending: false })
         .limit(limit);
@@ -585,26 +596,44 @@ export function FeedTab({ session, isActive = true, onAuthRequired }: { session:
        .slice(0, limit);
 
       // Fetch photos for these users and summits
-      const userIds = [...new Set(combined.map(item => item.user_id))];
-      const summitIds = [...new Set(combined.map(item => item.summit_id || item.experience_id))];
+      // Build a set of unique (user_id, summit_id) pairs to fetch photos for
+      const pairSet = new Set<string>();
+      combined.forEach(item => {
+        const id = item.summit_id || item.experience_id;
+        if (item.user_id && id) pairSet.add(`${item.user_id}|${id}`);
+      });
+      const pairs = [...pairSet].map(p => { const [u, s] = p.split('|'); return { user_id: u, summit_id: s }; });
       
       let photosMap = new Map();
-      if (userIds.length > 0 && summitIds.length > 0) {
-        const { data: photosData, error: photosError } = await supabase
-          .from('summit_photos')
-          .select('id, user_id, summit_id, public_url, taken_on, caption')
-          .in('user_id', userIds)
-          .in('summit_id', summitIds);
-          
-        console.log("Photos Data:", photosData, "Photos Error:", photosError);
-          
-        if (photosData) {
-          photosData.forEach(p => {
-             const key = `${p.user_id}_${p.summit_id}_${p.taken_on || ''}`;
-             if (!photosMap.has(key)) photosMap.set(key, []);
-             photosMap.get(key).push(p);
-          });
+      if (pairs.length > 0) {
+        // Batch in chunks of 30 pairs to avoid massive queries
+        const BATCH_SIZE = 30;
+        const allPhotos: any[] = [];
+        for (let i = 0; i < pairs.length; i += BATCH_SIZE) {
+          const batch = pairs.slice(i, i + BATCH_SIZE);
+          const batchUserIds = [...new Set(batch.map(p => p.user_id))];
+          const batchSummitIds = [...new Set(batch.map(p => p.summit_id))];
+          const { data: photosData } = await supabase
+            .from('summit_photos')
+            .select('id, user_id, summit_id, public_url, taken_on, caption')
+            .in('user_id', batchUserIds)
+            .in('summit_id', batchSummitIds);
+          if (photosData) allPhotos.push(...photosData);
         }
+          
+        // Deduplicate photos by id (batches may return overlapping results)
+        const seenIds = new Set<string>();
+        const uniquePhotos = allPhotos.filter(p => {
+          if (seenIds.has(p.id)) return false;
+          seenIds.add(p.id);
+          return true;
+        });
+
+        uniquePhotos.forEach(p => {
+           const key = `${p.user_id}_${p.summit_id}_${p.taken_on || ''}`;
+           if (!photosMap.has(key)) photosMap.set(key, []);
+           photosMap.get(key).push(p);
+        });
       }
 
       // Attach photos to combined items
@@ -615,8 +644,7 @@ export function FeedTab({ session, isActive = true, onAuthRequired }: { session:
          item.photos = photosMap.get(key) || [];
       });
       
-      console.log("Photos Map:", photosMap);
-      console.log("Items with photos:", combined.filter(c => c.photos && c.photos.length > 0));
+
 
       globalCachedFeedItems = combined;
       globalLastSessionId = session?.user?.id;
