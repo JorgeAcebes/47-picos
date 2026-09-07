@@ -715,8 +715,41 @@ export const WorldMap = memo(function WorldMap({ completed, wishlist, onInformat
       <MapClickListener onMapClick={onMapClick} selectingLocation={selectingLocation} />
       <SweepOverlay searchedId={searchedId} layerRefs={layerRefs} regionLayerRefs={regionLayerRefs} />
 
-
-
+      {experiencesMode && onAddExperience && (
+        <div
+          className="leaflet-control"
+          style={{
+            position: 'absolute',
+            top: 56,
+            right: 10,
+            zIndex: 1000,
+            background: 'white',
+            borderRadius: '50%',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.15)',
+            width: 36,
+            height: 36,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'auto',
+            cursor: 'pointer'
+          }}
+          title="Añadir experiencia en el mapa"
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff'}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onAddExperience();
+          }}
+        >
+          <svg style={{ width: 18, height: 18, color: '#666' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <circle cx="12" cy="12" r="6" />
+            <circle cx="12" cy="12" r="2" />
+          </svg>
+        </div>
+      )}
 
       {selectingLocation && (
         <div className="leaflet-control-container">
