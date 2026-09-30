@@ -153,10 +153,11 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
     async function fetchProgress() {
       if (!session) return;
       const { data: ascData } = await supabase!.from('ascents').select('summit_id').eq('user_id', session.user.id).eq('is_wishlist', false);
-      const { count: expCount } = await supabase!.from('experience_records').select('*', { count: 'exact', head: true }).eq('user_id', session.user.id).eq('is_wishlist', false);
+      const { data: expData } = await supabase!.from('experience_records').select('experience_id, sub_item_id').eq('user_id', session.user.id).eq('is_wishlist', false);
       
       let pCount = 0;
       let cCount = 0;
+      let expCompletedCount = 0;
       
       if (ascData) {
         const countryIds = new Set(countries.map(c => c.id));
@@ -170,14 +171,30 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
         }
       }
       
+      if (expData) {
+        for (const cat of predefinedCategories) {
+          for (const exp of cat.experiences) {
+            if (exp.subItems && exp.subItems.length > 0) {
+              const allCompleted = exp.subItems.every((item: any) => 
+                expData.some(r => r.experience_id === exp.id && r.sub_item_id === item.id)
+              );
+              if (allCompleted) expCompletedCount++;
+            } else {
+              const completed = expData.some(r => r.experience_id === exp.id);
+              if (completed) expCompletedCount++;
+            }
+          }
+        }
+      }
+      
       setProgressCounts({
         countries: cCount,
         peaks: pCount,
-        experiences: expCount || 0
+        experiences: expCompletedCount
       });
       setTotalCounts({
         countries: countries.length,
-        peaks: peaks.length,
+        peaks: 47,
         experiences: predefinedCategories.reduce((acc, cat) => acc + cat.experiences.length, 0)
       });
     }
