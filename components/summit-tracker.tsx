@@ -2333,8 +2333,8 @@ export function SummitTracker({
     setConfirmAction({
       message:
         item.item_type === "category"
-          ? "¿Seguro que quieres eliminar definitivamente esta categoría y todas sus experiencias? Esta acción no se puede deshacer."
-          : "¿Seguro que quieres eliminar definitivamente esta experiencia? Esta acción no se puede deshacer.",
+          ? "¿Seguro que quieres borrar TODOS tus registros y fotos de esta categoría? Esta acción no se puede deshacer."
+          : "¿Seguro que quieres borrar TODOS tus registros y fotos de esta experiencia? Esta acción no se puede deshacer.",
       onConfirm: async () => {
         if (!supabase || !session) return;
         setSaving(true);
@@ -3765,9 +3765,7 @@ export function SummitTracker({
         </div>
 
 
-
         <div className="peak-list-grid">
-
           {sortedItems
             .filter((item) => {
               // Text search filter
@@ -4045,7 +4043,6 @@ export function SummitTracker({
               </span>
             </button>
           )}
-
         </div>
       </section>
 
@@ -6301,9 +6298,9 @@ export function SummitTracker({
                 </p>
               ) : (
                 hiddenItems.map((item) => {
+                  let isStatic = false;
                   let name = "Desconocido";
                   let icon = "help-circle";
-                  let isCustom = false;
                   if (item.item_type === "category") {
                     const staticCat = predefinedCategories.find(
                       (c) => c.id === item.item_id,
@@ -6312,7 +6309,7 @@ export function SummitTracker({
                       (c) =>
                         c.id === item.item_id || c.static_id === item.item_id,
                     );
-                    isCustom = !!customCat;
+                    if (staticCat) isStatic = true;
                     name = customCat
                       ? customCat.name
                       : staticCat
@@ -6329,7 +6326,6 @@ export function SummitTracker({
                     );
                     if (customExp) {
                       name = customExp.name;
-                      isCustom = true;
                     } else {
                       for (const c of predefinedCategories) {
                         const ex = c.experiences.find(
@@ -6337,6 +6333,7 @@ export function SummitTracker({
                         );
                         if (ex) {
                           name = ex.name;
+                          isStatic = true;
                           break;
                         }
                       }
@@ -6412,7 +6409,7 @@ export function SummitTracker({
                         >
                           <RotateCcw size={16} />
                         </button>
-                        {isCustom && (
+                        {!isStatic && (
                           <button
                             className="button button--quiet button--small"
                             disabled={saving}
