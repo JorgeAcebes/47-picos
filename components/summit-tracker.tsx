@@ -7112,7 +7112,7 @@ export function SummitTracker({
                     setEditingCustomExp(null);
                   }}
                 >
-                  Ocultar / Eliminar
+                  Eliminar
                 </button>
               ) : (
                 <div></div>
@@ -7164,7 +7164,7 @@ export function SummitTracker({
             </div>
             <div
               style={{
-                padding: "10px 24px 20px",
+                padding: "40px 24px 20px",
                 fontSize: "16px",
                 textAlign: "center",
               }}
