@@ -4221,23 +4221,25 @@ export function SummitTracker({
                                   >
                                     {item.name}
                                   </span>
-                                  <button
-                                    className="button button--purple button--small"
-                                    style={{
-                                      margin: "-6px 0",
-                                      padding: "4px 12px",
-                                      minHeight: "28px",
-                                      height: "auto",
-                                      lineHeight: "1.2",
-                                    }}
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      setSelectingLocationForExp(subItemKey);
-                                      window.location.hash = "mapa";
-                                    }}
-                                  >
-                                    Registrar
-                                  </button>
+                                  {!isReadOnly && (
+                                    <button
+                                      className="button button--purple button--small"
+                                      style={{
+                                        margin: "-6px 0",
+                                        padding: "4px 12px",
+                                        minHeight: "28px",
+                                        height: "auto",
+                                        lineHeight: "1.2",
+                                      }}
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        setSelectingLocationForExp(subItemKey);
+                                        window.location.hash = "mapa";
+                                      }}
+                                    >
+                                      Registrar
+                                    </button>
+                                  )}
                                 </div>
                               );
                             }
@@ -4294,23 +4296,25 @@ export function SummitTracker({
                                     {item.name}
                                   </span>
                                   {!hasRecords ? (
-                                    <button
-                                      className="button button--purple button--small"
-                                      style={{
-                                        margin: "-6px 0",
-                                        padding: "4px 12px",
-                                        minHeight: "28px",
-                                        height: "auto",
-                                        lineHeight: "1.2",
-                                      }}
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        setSelectingLocationForExp(subItemKey);
-                                        window.location.hash = "mapa";
-                                      }}
-                                    >
-                                      Registrar
-                                    </button>
+                                    !isReadOnly ? (
+                                      <button
+                                        className="button button--purple button--small"
+                                        style={{
+                                          margin: "-6px 0",
+                                          padding: "4px 12px",
+                                          minHeight: "28px",
+                                          height: "auto",
+                                          lineHeight: "1.2",
+                                        }}
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          setSelectingLocationForExp(subItemKey);
+                                          window.location.hash = "mapa";
+                                        }}
+                                      >
+                                        Registrar
+                                      </button>
+                                    ) : null
                                   ) : (
                                     <div
                                       style={{
@@ -4470,18 +4474,24 @@ export function SummitTracker({
                     );
                   }
                   return (
-                    <div className="button-group">
-                      <button
-                        className="button button--purple"
-                        onClick={() => {
-                          setSelectingLocationForExp(`${selected.id}::`);
-                          window.location.hash = "mapa";
-                        }}
-                        style={{ width: "100%", marginBottom: 8 }}
-                      >
-                        Registrar experiencia
-                      </button>
-                    </div>
+                    !isReadOnly ? (
+                      <div className="button-group">
+                        <button
+                          className="button button--purple"
+                          onClick={() => {
+                            setSelectingLocationForExp(`${selected.id}::`);
+                            window.location.hash = "mapa";
+                          }}
+                          style={{ width: "100%", marginBottom: 8 }}
+                        >
+                          Registrar experiencia
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="pending-card" style={{ marginTop: 16 }}>
+                        Aún no ha completado esta experiencia.
+                      </div>
+                    )
                   );
                 })()}
               </div>
