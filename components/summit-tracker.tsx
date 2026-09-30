@@ -2040,7 +2040,7 @@ export function SummitTracker({
       message = "Nuevo registro añadido.";
     } else {
       if (isPeaks) {
-        message = "Registro guardado. ¡Una provincia menos en el mapa!";
+        message = "Registro guardado. ¡Un pico más en tu lista!";
       } else if (isExperience) {
         message = "Registro guardado. ¡Una experiencia más en tu lista!";
       } else {
