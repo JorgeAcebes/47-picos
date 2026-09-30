@@ -3764,48 +3764,7 @@ export function SummitTracker({
           )}
         </div>
 
-        {isEditingExperiences && isExp && (
-          <div
-            style={{
-              display: "flex",
-              padding: "0 clamp(22px, 6vw, 92px)",
-              marginBottom: 16,
-            }}
-          >
-            <button
-              className="button button--outline"
-              style={{
-                width: "100%",
-                borderStyle: "dashed",
-                color: "var(--pine)",
-                borderColor: "var(--pine)",
-              }}
-              onClick={() => {
-                const cat =
-                  listFilter !== "all"
-                    ? dynamicCategories.find((c) => c.name === listFilter)
-                    : undefined;
-                if (cat) {
-                  const isPseudoCat = cat.id.startsWith("cat-custom-");
-                  const isCustomCat = customCategories.some((c) => c.id === cat.id);
-                  setEditingCustomExp(
-                    isPseudoCat
-                      ? { id: "new", name: "", category_id: null, static_category_id: null }
-                      : isCustomCat
-                        ? { id: "new", name: "", category_id: cat.id }
-                        : { id: "new", name: "", static_category_id: cat.id },
-                  );
-                } else {
-                  setSelectingCategoryForNewExp(true);
-                }
-              }}
-            >
-              {listFilter !== "all"
-                ? `+ Añadir experiencia a ${listFilter}`
-                : "+ Crear nueva experiencia"}
-            </button>
-          </div>
-        )}
+
 
         <div className="peak-list-grid">
 
@@ -4031,6 +3990,61 @@ export function SummitTracker({
                 </div>
               );
             })}
+          {isExp && !isReadOnly && (
+            <button
+              className="peak-list-item peak-list-item--diff-none"
+              style={{ borderStyle: "dashed", opacity: 0.7 }}
+              onClick={() => {
+                const cat =
+                  listFilter !== "all"
+                    ? dynamicCategories.find((c) => c.name === listFilter)
+                    : undefined;
+                if (cat) {
+                  const isPseudoCat = cat.id.startsWith("cat-custom-");
+                  const isCustomCat = customCategories.some((c) => c.id === cat.id);
+                  setEditingCustomExp(
+                    isPseudoCat
+                      ? { id: "new", name: "", category_id: null, static_category_id: null }
+                      : isCustomCat
+                        ? { id: "new", name: "", category_id: cat.id }
+                        : { id: "new", name: "", static_category_id: cat.id },
+                  );
+                } else {
+                  setSelectingCategoryForNewExp(true);
+                }
+              }}
+            >
+              <span
+                style={{
+                  flexShrink: 0,
+                  width: 20,
+                  display: "flex",
+                  justifyContent: "center",
+                }}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="var(--pine)"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ width: 14, height: 14 }}
+                >
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+              </span>
+              <span className="item-info">
+                <span
+                  className="item-name"
+                  style={{ color: "var(--pine)", fontWeight: 600 }}
+                >
+                  Añadir experiencia
+                </span>
+              </span>
+            </button>
+          )}
 
         </div>
       </section>
