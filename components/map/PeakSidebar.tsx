@@ -28,6 +28,14 @@ const IconCamera = (props: any) => (
   </svg>
 );
 
+const IconShare = (props: any) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+    <polyline points="16 6 12 2 8 6"></polyline>
+    <line x1="12" y1="2" x2="12" y2="15"></line>
+  </svg>
+);
+
 interface PeakSidebarProps {
   selected: any;
   closePanel: () => void;
@@ -44,6 +52,7 @@ interface PeakSidebarProps {
   selectedAscents: any[];
   formatDate: (date: string) => string;
   handleAddPhotosToDate: (e: React.ChangeEvent<HTMLInputElement>, ascent: any) => void;
+  handleShareRecord: (item: any, ascent: any, photos: any[]) => void;
   togglePhotoSelection: (photoId: string) => void;
   selectedPhotosForEdit: string[];
   handlePhotoClick: (photo: any) => void;
@@ -69,6 +78,7 @@ export function PeakSidebar({
   selectedAscents,
   formatDate,
   handleAddPhotosToDate,
+  handleShareRecord,
   togglePhotoSelection,
   selectedPhotosForEdit,
   handlePhotoClick,
@@ -256,6 +266,14 @@ export function PeakSidebar({
                     </div>
                     {!isReadOnly && (
                       <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          className="icon-button"
+                          onClick={() => handleShareRecord(selected, ascent, ascentPhotos)}
+                          aria-label="Compartir"
+                          style={{ width: 28, height: 28 }}
+                        >
+                          <IconShare style={{ width: 14, height: 14 }} strokeWidth={1.5} />
+                        </button>
                         <button
                           className="icon-button"
                           onClick={() => openRecord(ascent)}

@@ -431,6 +431,24 @@ function IconEdit(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+function IconShare(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+      <polyline points="16 6 12 2 8 6"></polyline>
+      <line x1="12" y1="2" x2="12" y2="15"></line>
+    </svg>
+  );
+}
+
 function IconGithub() {
   return (
     <svg
@@ -1646,6 +1664,86 @@ export function SummitTracker({
     }
   }
 
+  async function handleShareRecord(
+    item: SelectedItem,
+    ascent: Ascent | any,
+    ascentPhotos: SummitPhoto[],
+  ) {
+    if (!myProfile?.username) {
+      setNotice("Necesitas un nombre de usuario para compartir.");
+      setTimeout(() => setNotice(""), 4000);
+      return;
+    }
+
+    const baseUrl = window.location.origin;
+    const challenge = isPeaks ? "peaks" : "countries";
+    const profileUrl = `${baseUrl}/perfil/${myProfile.username}?challenge=${challenge}`;
+
+    // Build share text based on item type
+    const dateStr = formatDate(ascent.achieved_on);
+    const endDateStr = ascent.end_date ? ` - ${formatDate(ascent.end_date)}` : "";
+    const dateRange = `${dateStr}${endDateStr}`;
+
+    let shareText = "";
+    const itemType = (item as any).itemType;
+    if (itemType === "peak") {
+      shareText = `Mi ascensión a ${item.title} el ${dateRange}`;
+    } else if (itemType === "experience") {
+      shareText = `Mi experiencia en ${item.title} el ${dateRange}`;
+    } else {
+      // country or region
+      shareText = `Mi visita a ${item.title} el ${dateRange}`;
+    }
+
+    if (ascent.notes) {
+      shareText += `\n"${ascent.notes}"`;
+    }
+
+    shareText += `\n\n${profileUrl}`;
+
+    // Download photos as File objects for sharing
+    const photoFiles: File[] = [];
+    if (ascentPhotos.length > 0) {
+      for (const photo of ascentPhotos) {
+        try {
+          const response = await fetch(photo.public_url);
+          const blob = await response.blob();
+          const extension = blob.type.split("/")[1] || "jpg";
+          const fileName = `${item.title.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]/g, "")}_${photo.taken_on}.${extension}`;
+          photoFiles.push(new File([blob], fileName, { type: blob.type }));
+        } catch {
+          // Skip photos that fail to download
+        }
+      }
+    }
+
+    // Use Web Share API
+    if (navigator.share) {
+      try {
+        const shareData: ShareData = {
+          text: shareText,
+        };
+        if (photoFiles.length > 0 && navigator.canShare?.({ files: photoFiles })) {
+          shareData.files = photoFiles;
+        }
+        await navigator.share(shareData);
+      } catch (err: any) {
+        // User cancelled sharing - no error needed
+        if (err?.name !== "AbortError") {
+          // Fallback: copy to clipboard
+          await navigator.clipboard?.writeText(shareText);
+          setNotice("Enlace copiado al portapapeles");
+          setTimeout(() => setNotice(""), 3000);
+        }
+      }
+    } else {
+      // Fallback for browsers without Web Share API
+      await navigator.clipboard?.writeText(shareText);
+      setNotice("Enlace copiado al portapapeles");
+      setTimeout(() => setNotice(""), 3000);
+    }
+  }
+
   function handleExperienceClick(record: ExperienceRecord) {
     let category = dynamicCategories.find((c) =>
       c.experiences.some((e) => e.id === record.experience_id),
@@ -2820,6 +2918,25 @@ export function SummitTracker({
 
           {!isReadOnly && (
             <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+              <button
+                title="Compartir registro"
+                className="button button--quiet button--small"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "32px",
+                  height: "32px",
+                  flexShrink: 0,
+                  padding: 0,
+                  margin: 0,
+                }}
+                onClick={() =>
+                  handleShareRecord(selected, ascent, ascentPhotos)
+                }
+              >
+                <IconShare style={{ width: 14, height: 14 }} strokeWidth={1.5} />
+              </button>
               <button
                 title="Editar registro"
                 className="button button--quiet button--small"
@@ -4650,6 +4767,28 @@ export function SummitTracker({
                               gap: "4px",
                             }}
                           >
+                            <button
+                              title="Compartir registro"
+                              className="button button--quiet button--small"
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                width: "32px",
+                                height: "32px",
+                                flexShrink: 0,
+                                padding: 0,
+                                margin: 0,
+                              }}
+                              onClick={() =>
+                                handleShareRecord(selected, ascent, ascentPhotos)
+                              }
+                            >
+                              <IconShare
+                                style={{ width: 14, height: 14 }}
+                                strokeWidth={1.5}
+                              />
+                            </button>
                             <button
                               title="Editar registro"
                               className="button button--quiet button--small"
