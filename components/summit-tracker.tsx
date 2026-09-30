@@ -1680,8 +1680,6 @@ export function SummitTracker({
       } else {
         setSelected(item);
         if (ascentToEdit) {
-          const isExp =
-            isExp;
           if (isExp) {
             const recId =
               (ascentToEdit as any).record_id || (ascentToEdit as any).id;
