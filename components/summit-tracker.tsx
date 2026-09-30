@@ -4487,11 +4487,7 @@ export function SummitTracker({
                           Registrar experiencia
                         </button>
                       </div>
-                    ) : (
-                      <div className="pending-card" style={{ marginTop: 16 }}>
-                        Aún no ha completado esta experiencia.
-                      </div>
-                    )
+                    ) : null
                   );
                 })()}
               </div>
