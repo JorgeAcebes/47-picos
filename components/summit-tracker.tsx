@@ -3756,7 +3756,7 @@ export function SummitTracker({
               >
                 Pendientes{" "}
                 <span className="pill-count">
-                  {totalCount - achievedCount - wishlistCount}
+                  {totalCount - achievedCount}
                 </span>
               </button>
               <button
@@ -3809,7 +3809,7 @@ export function SummitTracker({
                 return false;
               if (!isExp) {
                 if (listFilter === "done") return done;
-                if (listFilter === "pending") return !done && !wish;
+                if (listFilter === "pending") return !done;
                 if (listFilter === "wishlist") return wish;
               }
               return true;
