@@ -3499,7 +3499,7 @@ export function SummitTracker({
                 onMapClick={handleMapClickForExp}
                 onCancelSelectingLocation={handleCancelSelectingLocationForExp}
                 onExperienceClick={handleExperienceClick}
-                onAddExperience={() => setExpSelectorOpen(true)}
+                onAddExperience={!isReadOnly ? () => setExpSelectorOpen(true) : undefined}
               />
             </>
           )}
