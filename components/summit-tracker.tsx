@@ -33,6 +33,7 @@ import {
   MapPin,
   Briefcase,
   Video,
+  RotateCcw,
 } from "lucide-react";
 import { usePendingRequests } from "./use-pending-requests";
 
@@ -2331,7 +2332,9 @@ export function SummitTracker({
   async function handlePermanentDelete(item: HiddenItem) {
     setConfirmAction({
       message:
-        "ATENCIÓN: Esto eliminará definitivamente este elemento y TODAS las experiencias registradas asociadas a él de la base de datos. Esta acción no se puede deshacer. ¿Continuar?",
+        item.item_type === "category"
+          ? "ATENCIÓN: Esto eliminará definitivamente TODOS TUS REGISTROS y fotos de esta categoría. (Si es un elemento oficial, volverá a aparecer en tu lista pero vacío). Esta acción no se puede deshacer. ¿Continuar?"
+          : "ATENCIÓN: Esto eliminará definitivamente TODOS TUS REGISTROS y fotos de esta experiencia. (Si es un elemento oficial, volverá a aparecer en tu lista pero vacío). Esta acción no se puede deshacer. ¿Continuar?",
       onConfirm: async () => {
         if (!supabase || !session) return;
         setSaving(true);
@@ -6429,9 +6432,9 @@ export function SummitTracker({
                       key={item.id}
                       style={{
                         display: "flex",
-                        flexDirection: "column",
-                        gap: 16,
-                        padding: "16px",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "12px 16px",
                         background: "var(--background)",
                         border: "1px solid var(--border)",
                         borderRadius: 8,
@@ -6440,19 +6443,20 @@ export function SummitTracker({
                       <div
                         style={{
                           display: "flex",
-                          alignItems: "flex-start",
+                          alignItems: "center",
                           gap: 12,
+                          flex: 1,
+                          minWidth: 0,
                         }}
                       >
                         {item.item_type === "category" ? (
-                          <div style={{ flexShrink: 0, marginTop: 2 }}>{getIconComponent(icon)}</div>
+                          <div style={{ flexShrink: 0 }}>{getIconComponent(icon)}</div>
                         ) : (
                           <span
                             style={{
                               flexShrink: 0,
                               width: 18,
                               height: 18,
-                              marginTop: 2,
                               borderRadius: "50%",
                               background: "var(--border)",
                               display: "inline-block",
@@ -6460,12 +6464,20 @@ export function SummitTracker({
                           />
                         )}
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 600, lineHeight: 1.3 }}>{name}</div>
                           <div
                             style={{
-                              fontSize: "0.85rem",
+                              fontWeight: 500,
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
+                            {name}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "0.8rem",
                               color: "var(--muted)",
-                              marginTop: 4,
                             }}
                           >
                             {item.item_type === "category"
@@ -6474,21 +6486,24 @@ export function SummitTracker({
                           </div>
                         </div>
                       </div>
-                      <div style={{ display: "flex", gap: 8, alignSelf: "flex-end" }}>
+                      <div style={{ display: "flex", gap: 6, marginLeft: 12 }}>
                         <button
                           className="button button--quiet button--small"
                           disabled={saving}
                           onClick={() => handleRestoreHiddenItem(item.id)}
+                          style={{ padding: "6px", minWidth: "auto", height: "auto" }}
+                          title="Restaurar"
                         >
-                          Restaurar
+                          <RotateCcw size={16} />
                         </button>
                         <button
                           className="button button--quiet button--small"
                           disabled={saving}
-                          style={{ color: "var(--danger, #a34f3d)" }}
+                          style={{ color: "var(--danger, #a34f3d)", padding: "6px", minWidth: "auto", height: "auto" }}
                           onClick={() => handlePermanentDelete(item)}
+                          title="Eliminar permanentemente"
                         >
-                          Eliminar
+                          <IconTrash style={{ width: 16, height: 16 }} />
                         </button>
                       </div>
                     </div>
