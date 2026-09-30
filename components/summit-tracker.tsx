@@ -1846,29 +1846,36 @@ export function SummitTracker({
       ? "1900-01-01"
       : (climbDate?.toISOString().slice(0, 10) ??
         new Date().toISOString().slice(0, 10));
+
+    const expectedSummitId = selected.sub_item_id
+      ? `${selected.id}::${selected.sub_item_id}`
+      : selected.id;
+
     // If they changed the date of an existing ascent, we should delete the old one first,
     // otherwise upsert creates a new entry instead of updating the old date.
     if (originalAchievedOn && originalAchievedOn !== finalDate) {
-      await supabase
-        .from("ascents")
-        .delete()
-        .match({
-          user_id: session.user.id,
-          summit_id: selected.id,
-          achieved_on: originalAchievedOn,
-        });
+      if (!isExperience) {
+        await supabase
+          .from("ascents")
+          .delete()
+          .match({
+            user_id: session.user.id,
+            summit_id: selected.id,
+            achieved_on: originalAchievedOn,
+          });
+      }
       // Update photos date
       await supabase
         .from("summit_photos")
         .update({ taken_on: finalDate })
         .match({
           user_id: session.user.id,
-          summit_id: selected.id,
+          summit_id: expectedSummitId,
           taken_on: originalAchievedOn,
         });
       setPhotos((prev) =>
         prev.map((p) =>
-          p.summit_id === selected.id && p.taken_on === originalAchievedOn
+          p.summit_id === expectedSummitId && p.taken_on === originalAchievedOn
             ? { ...p, taken_on: finalDate }
             : p,
         ),
@@ -2407,10 +2414,14 @@ export function SummitTracker({
 
     let subItems: { id: string; name: string }[] | undefined = undefined;
     if (editingCustomExp.sub_items_input !== undefined) {
-      const lines = editingCustomExp.sub_items_input
-        .split("\n")
-        .map((s: string) => s.trim())
-        .filter((s: string) => s.length > 0);
+      const lines = Array.from(
+        new Set(
+          editingCustomExp.sub_items_input
+            .split("\n")
+            .map((s: string) => s.trim())
+            .filter((s: string) => s.length > 0)
+        )
+      );
       if (lines.length > 0) {
         subItems = lines.map((line: string) => {
           const existing = (editingCustomExp.sub_items || []).find(
@@ -2811,7 +2822,12 @@ export function SummitTracker({
                   padding: 0,
                   margin: 0,
                 }}
-                onClick={() => openRecord(selected, ascent)}
+                onClick={() =>
+                  openRecord(
+                    { ...selected, sub_item_id: ascent.sub_item_id },
+                    ascent,
+                  )
+                }
               >
                 <IconEdit style={{ width: 14, height: 14 }} strokeWidth={1.5} />
               </button>
