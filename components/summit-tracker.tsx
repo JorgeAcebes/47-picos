@@ -83,6 +83,7 @@ export type SelectedItem = {
   note: string;
   iconName?: string;
   subItems?: any;
+  itemType?: 'peak' | 'country' | 'region' | 'experience';
 };
 
 export type SummitPhoto = {
@@ -141,6 +142,7 @@ function peakToItem(peak: Peak): SelectedItem {
     subtitle: `${peak.altitude.toLocaleString("es-ES")} m`,
     detail: peak.range,
     note: peak.note,
+    itemType: 'peak',
   };
 }
 
@@ -866,6 +868,7 @@ export function SummitTracker({
                 note: "",
                 iconName: cat.iconName,
                 subItems: exp.subItems,
+                itemType: 'experience' as const,
               })),
             )
           : countries.map(countryToItem),
@@ -1573,6 +1576,7 @@ export function SummitTracker({
         note: "",
         iconName: category.iconName,
         subItems: exp.subItems,
+        itemType: 'experience' as const,
       };
       setSelectingLocationForExp(null);
       setSelected(item);
@@ -1608,6 +1612,7 @@ export function SummitTracker({
         note: "",
         iconName: category.iconName,
         subItems: exp.subItems,
+        itemType: 'experience' as const,
       };
       let placeName = placeNameArg || "";
       if (!placeName) {
@@ -1658,6 +1663,7 @@ export function SummitTracker({
         note: "",
         iconName: category.iconName,
         subItems: exp.subItems,
+        itemType: 'experience' as const,
       };
       openInformation(item);
     }
@@ -1839,8 +1845,7 @@ export function SummitTracker({
 
   async function saveAscent() {
     if (!supabase || !session || !selected) return;
-    const isExperience =
-      isExp;
+    const isExperience = (selected as any)?.itemType === 'experience';
     if (isExperience && (!selectedLatLng || selectedLatLng.lat === undefined)) {
       setNotice("Debes registrar la experiencia en el mapa primero.");
       return;
@@ -2083,8 +2088,7 @@ export function SummitTracker({
       (p) => p.summit_id === selected.id && !registeredDates.has(p.taken_on),
     );
 
-    const isExperience =
-      isExp;
+    const isExperience = (selected as any)?.itemType === 'experience';
 
     let confirmMessage = isPeaks
       ? "¿Seguro que quieres eliminar esta ascensión?"
@@ -2116,8 +2120,7 @@ export function SummitTracker({
         !a.is_wishlist,
     );
 
-    const isExperience =
-      isExp;
+    const isExperience = (selected as any)?.itemType === 'experience';
     let deleteError = null;
 
     if (isExperience && editingExpRecordId) {
@@ -4135,7 +4138,7 @@ export function SummitTracker({
             <IconClose />
           </button>
 
-          {isExp ? (
+          {((selected as any)?.itemType === 'experience') ? (
             <>
               <span
                 className="eyebrow"
@@ -4544,7 +4547,7 @@ export function SummitTracker({
           )}
 
           {!(
-            isExp
+            ((selected as any)?.itemType === 'experience')
           ) && (
             <>
               {selectedAscents.length > 1 && (
@@ -4798,7 +4801,7 @@ export function SummitTracker({
                     </div>
                   );
                 })
-              ) : hasWishlist && !isExp ? (
+              ) : hasWishlist && !((selected as any)?.itemType === 'experience') ? (
                 <div
                   className="pending-card"
                   style={{
@@ -4815,7 +4818,7 @@ export function SummitTracker({
                     ? isReadOnly
                       ? "Aún no ha registrado esta cima."
                       : "Aún no has registrado esta cima."
-                    : isExp
+                    : ((selected as any)?.itemType === 'experience')
                       ? isReadOnly
                         ? "Aún no ha vivido esta experiencia."
                         : "Aún no has vivido esta experiencia."
@@ -4891,14 +4894,14 @@ export function SummitTracker({
                       ? "Registrar otra fecha"
                       : isPeaks
                         ? "Marcar como completado"
-                        : isExp
+                        : ((selected as any)?.itemType === 'experience')
                           ? "Registrar la experiencia"
                           : "Marcar como visitado"}
                   </button>
                 )}
                 {(!selectedAscents.length || hasWishlist) &&
                   !isReadOnly &&
-                  !isExp && (
+                  !((selected as any)?.itemType === 'experience') && (
                     <button
                       className="button button--quiet button--wide"
                       style={{ marginTop: 8 }}
@@ -4913,7 +4916,7 @@ export function SummitTracker({
             </>
           )}
 
-          {(isExp) && (
+          {(((selected as any)?.itemType === 'experience')) && (
             <>
               {(() => {
                 if (selected.subItems && selected.subItems.length > 0) {
