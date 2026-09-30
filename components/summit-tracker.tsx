@@ -1681,7 +1681,7 @@ export function SummitTracker({
         setSelected(item);
         if (ascentToEdit) {
           const isExp =
-            item.id.startsWith("exp-") || item.id.startsWith("cexp-");
+            isExp;
           if (isExp) {
             const recId =
               (ascentToEdit as any).record_id || (ascentToEdit as any).id;
@@ -1713,7 +1713,7 @@ export function SummitTracker({
         } else {
           // Si no es ascentToEdit pero setSelectedLatLng ya se configuró (ej. click en mapa), no lo borramos.
           setEditingExpRecordId(null);
-          if (!item.id.startsWith("exp-") && !item.id.startsWith("cexp-")) {
+          if (!isExp) {
             setSelectedLatLng(null);
             setLocationName("");
           }
@@ -1836,7 +1836,7 @@ export function SummitTracker({
   async function saveAscent() {
     if (!supabase || !session || !selected) return;
     const isExperience =
-      selected.id.startsWith("exp-") || selected.id.startsWith("cexp-");
+      isExp;
     if (isExperience && (!selectedLatLng || selectedLatLng.lat === undefined)) {
       setNotice("Debes registrar la experiencia en el mapa primero.");
       return;
@@ -2058,7 +2058,7 @@ export function SummitTracker({
     );
 
     const isExperience =
-      selected.id.startsWith("exp-") || selected.id.startsWith("cexp-");
+      isExp;
 
     let confirmMessage = isPeaks
       ? "¿Seguro que quieres eliminar esta ascensión?"
@@ -2091,7 +2091,7 @@ export function SummitTracker({
     );
 
     const isExperience =
-      selected.id.startsWith("exp-") || selected.id.startsWith("cexp-");
+      isExp;
     let deleteError = null;
 
     if (isExperience && editingExpRecordId) {
@@ -2415,10 +2415,13 @@ export function SummitTracker({
     }
 
     if (editingCustomExp.id === "new") {
+      const rawCatId = editingCustomExp.category_id;
+      // Only send category_id if it's a real UUID (not a pseudo-category like "cat-custom-...")
+      const validCategoryId = rawCatId && !rawCatId.startsWith("cat-") ? rawCatId : null;
       const newExp = {
         user_id: session.user.id,
         name: editingCustomExp.name.trim(),
-        category_id: editingCustomExp.category_id || null,
+        category_id: validCategoryId,
         static_category_id: editingCustomExp.static_category_id || null,
         sub_items: subItems || [],
       };
@@ -3748,14 +3751,15 @@ export function SummitTracker({
                   (c) => c.name === listFilter,
                 );
                 if (!cat) return;
-                const isCustomCat =
-                  cat.id.startsWith("cat-custom-") ||
-                  customCategories.some((c) => c.id === cat.id);
-                setEditingCustomExp(
-                  isCustomCat
-                    ? { id: "new", name: "", category_id: cat.id }
-                    : { id: "new", name: "", static_category_id: cat.id },
-                );
+                const isPseudoCat = cat.id.startsWith("cat-custom-");
+                    const isCustomCat = customCategories.some((c) => c.id === cat.id);
+                    setEditingCustomExp(
+                      isPseudoCat
+                        ? { id: "new", name: "", category_id: null, static_category_id: null }
+                        : isCustomCat
+                          ? { id: "new", name: "", category_id: cat.id }
+                          : { id: "new", name: "", static_category_id: cat.id },
+                    );
               }}
             >
               + Añadir experiencia a {listFilter}
@@ -3774,14 +3778,15 @@ export function SummitTracker({
                     ? dynamicCategories.find((c) => c.name === listFilter)
                     : undefined;
                 if (cat) {
-                  const isCustomCat =
-                    cat.id.startsWith("cat-custom-") ||
-                    customCategories.some((c) => c.id === cat.id);
-                  setEditingCustomExp(
-                    isCustomCat
-                      ? { id: "new", name: "", category_id: cat.id }
-                      : { id: "new", name: "", static_category_id: cat.id },
-                  );
+                  const isPseudoCat = cat.id.startsWith("cat-custom-");
+                    const isCustomCat = customCategories.some((c) => c.id === cat.id);
+                    setEditingCustomExp(
+                      isPseudoCat
+                        ? { id: "new", name: "", category_id: null, static_category_id: null }
+                        : isCustomCat
+                          ? { id: "new", name: "", category_id: cat.id }
+                          : { id: "new", name: "", static_category_id: cat.id },
+                    );
                 } else {
                   setSelectingCategoryForNewExp(true);
                 }
@@ -3998,11 +4003,7 @@ export function SummitTracker({
                       </button>
                       <button
                         className={`edit-action-btn ${isEditingExperiences ? "is-active" : ""}`}
-                        title={
-                          isCustomExp
-                            ? "Eliminar experiencia"
-                            : "Ocultar experiencia"
-                        }
+                        title="Ocultar experiencia"
                         style={{
                           position: "absolute",
                           top: "4px",
@@ -4022,11 +4023,7 @@ export function SummitTracker({
                         }}
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (isCustomExp) {
-                            handleDeleteCustomExperience(item.id);
-                          } else {
-                            handleHideItem(item.id, "experience");
-                          }
+                          handleHideItem(item.id, "experience");
                         }}
                       >
                         <svg
@@ -4048,6 +4045,61 @@ export function SummitTracker({
                 </div>
               );
             })}
+          {isExp && !isReadOnly && (
+            <button
+              className="peak-list-item peak-list-item--diff-none"
+              style={{ borderStyle: "dashed", opacity: 0.7 }}
+              onClick={() => {
+                const cat =
+                  listFilter !== "all"
+                    ? dynamicCategories.find((c) => c.name === listFilter)
+                    : undefined;
+                if (cat) {
+                  const isPseudoCat = cat.id.startsWith("cat-custom-");
+                  const isCustomCat = customCategories.some((c) => c.id === cat.id);
+                  setEditingCustomExp(
+                    isPseudoCat
+                      ? { id: "new", name: "", category_id: null, static_category_id: null }
+                      : isCustomCat
+                        ? { id: "new", name: "", category_id: cat.id }
+                        : { id: "new", name: "", static_category_id: cat.id },
+                  );
+                } else {
+                  setSelectingCategoryForNewExp(true);
+                }
+              }}
+            >
+              <span
+                style={{
+                  flexShrink: 0,
+                  width: 20,
+                  display: "flex",
+                  justifyContent: "center",
+                }}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="var(--pine)"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ width: 14, height: 14 }}
+                >
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+              </span>
+              <span className="item-info">
+                <span
+                  className="item-name"
+                  style={{ color: "var(--pine)", fontWeight: 600 }}
+                >
+                  Añadir experiencia
+                </span>
+              </span>
+            </button>
+          )}
         </div>
       </section>
 
@@ -4135,7 +4187,7 @@ export function SummitTracker({
             <IconClose />
           </button>
 
-          {selected.id.startsWith("exp-") || selected.id.startsWith("cexp-") ? (
+          {isExp ? (
             <>
               <span
                 className="eyebrow"
@@ -4160,13 +4212,8 @@ export function SummitTracker({
               <h2>{selected.title}</h2>
               <div style={{ marginTop: "16px" }}>
                 {(() => {
-                  const cat = dynamicCategories.find(
-                    (c) => c.name === selected.detail,
-                  );
-                  const exp = cat?.experiences.find(
-                    (e) => e.id === selected.id,
-                  );
-                  if (exp?.subItems) {
+                  const exp = selected;
+                  if (exp?.subItems && exp.subItems.length > 0) {
                     return (
                       <div style={{ marginTop: 16 }}>
                         <h4
@@ -4543,7 +4590,7 @@ export function SummitTracker({
           )}
 
           {!(
-            selected.id.startsWith("exp-") || selected.id.startsWith("cexp-")
+            isExp
           ) && (
             <>
               {selectedAscents.length > 1 && (
@@ -4814,8 +4861,7 @@ export function SummitTracker({
                     ? isReadOnly
                       ? "Aún no ha registrado esta cima."
                       : "Aún no has registrado esta cima."
-                    : selected.id.startsWith("exp-") ||
-                        selected.id.startsWith("cexp-")
+                    : isExp
                       ? isReadOnly
                         ? "Aún no ha vivido esta experiencia."
                         : "Aún no has vivido esta experiencia."
@@ -4891,8 +4937,7 @@ export function SummitTracker({
                       ? "Registrar otra fecha"
                       : isPeaks
                         ? "Marcar como completado"
-                        : selected.id.startsWith("exp-") ||
-                            selected.id.startsWith("cexp-")
+                        : isExp
                           ? "Registrar la experiencia"
                           : "Marcar como visitado"}
                   </button>
@@ -4914,8 +4959,7 @@ export function SummitTracker({
             </>
           )}
 
-          {(selected.id.startsWith("exp-") ||
-            selected.id.startsWith("cexp-")) && (
+          {(isExp) && (
             <>
               {(() => {
                 if (selected.subItems && selected.subItems.length > 0) {
@@ -5025,8 +5069,7 @@ export function SummitTracker({
             <span className="eyebrow">
               {isPeaks
                 ? "REGISTRAR ASCENSIÓN"
-                : selected.id.startsWith("exp-") ||
-                    selected.id.startsWith("cexp-")
+                : isExp
                   ? "REGISTRAR EXPERIENCIA"
                   : "REGISTRAR VISITA"}
             </span>
@@ -5038,8 +5081,7 @@ export function SummitTracker({
                 marginTop: 4,
               }}
             >
-              {(selected.id.startsWith("exp-") ||
-                selected.id.startsWith("cexp-")) &&
+              {(isExp) &&
                 selected.iconName && (
                   <span style={{ color: "var(--foreground)" }}>
                     {getIconComponent(selected.iconName, 26)}
@@ -5050,12 +5092,11 @@ export function SummitTracker({
               </h2>
             </div>
             <p>
-              {selected.id.startsWith("exp-") || selected.id.startsWith("cexp-")
+              {isExp
                 ? selected.subtitle
                 : `${selected.label} · ${selected.subtitle}`}
             </p>
-            {(selected.id.startsWith("exp-") ||
-              selected.id.startsWith("cexp-")) && (
+            {(isExp) && (
               <div style={{ marginBottom: 16, zIndex: 50 }}>
                 <div style={{ marginBottom: 8 }}>
                   <label
@@ -5120,8 +5161,7 @@ export function SummitTracker({
                 <span>
                   {isPeaks
                     ? "Fecha de la ascensión"
-                    : selected.id.startsWith("exp-") ||
-                        selected.id.startsWith("cexp-")
+                    : isExp
                       ? "Fecha de la experiencia"
                       : "Fecha de la visita"}
                 </span>
@@ -5533,8 +5573,7 @@ export function SummitTracker({
               Notas
               <textarea
                 placeholder={
-                  selected.id.startsWith("exp-") ||
-                  selected.id.startsWith("cexp-")
+                  isExp
                     ? "Acompañantes, sensaciones ..."
                     : "Ciudades visitadas, experiencias, lo que quieras recordar..."
                 }
@@ -6130,8 +6169,7 @@ export function SummitTracker({
                         >
                           {cat.experiences.map((exp) => {
                             const isCustomExp =
-                              (exp.id.startsWith("exp-") === false &&
-                                exp.id.startsWith("cexp-") === false) ||
+                              !exp.id.startsWith("exp-") ||
                               customExperiences.some((c) => c.id === exp.id);
                             return (
                               <div key={exp.id} style={{ marginBottom: "8px" }}>
@@ -6698,13 +6736,14 @@ export function SummitTracker({
                     fontWeight: 500,
                   }}
                   onClick={() => {
-                    const isCustomCat =
-                      cat.id.startsWith("cat-custom-") ||
-                      customCategories.some((c) => c.id === cat.id);
+                    const isPseudoCat = cat.id.startsWith("cat-custom-");
+                    const isCustomCat = customCategories.some((c) => c.id === cat.id);
                     setEditingCustomExp(
-                      isCustomCat
-                        ? { id: "new", name: "", category_id: cat.id }
-                        : { id: "new", name: "", static_category_id: cat.id },
+                      isPseudoCat
+                        ? { id: "new", name: "", category_id: null, static_category_id: null }
+                        : isCustomCat
+                          ? { id: "new", name: "", category_id: cat.id }
+                          : { id: "new", name: "", static_category_id: cat.id },
                     );
                     setSelectingCategoryForNewExp(false);
                   }}
@@ -7037,11 +7076,12 @@ export function SummitTracker({
                   className="button button--quiet"
                   style={{ color: "var(--danger, #a34f3d)" }}
                   disabled={saving}
-                  onClick={() =>
-                    handleDeleteCustomExperience(editingCustomExp.id)
-                  }
+                  onClick={() => {
+                    handleHideItem(editingCustomExp.id, "experience");
+                    setEditingCustomExp(null);
+                  }}
                 >
-                  Eliminar
+                  Ocultar / Eliminar
                 </button>
               ) : (
                 <div></div>

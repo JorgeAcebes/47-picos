@@ -1,43 +1,20 @@
 import re
-with open('app/globals.css', 'r', encoding='utf-8') as f:
-    c = f.read()
 
-target = r'''/* Experiences specific zooms: they appear earlier */
-.mode-experiences .map[data-zoom="3"] .summit-pin--experience,
-.mode-experiences .map[data-zoom="4"] .summit-pin--experience {
-  opacity: 0.6;
-  pointer-events: auto;
-  transform: scale(0.7);
-}
+filepath = "components/summit-tracker.tsx"
 
-.mode-experiences .map[data-zoom="5"] .summit-pin--experience,
-.mode-experiences .map[data-zoom="6"] .summit-pin--experience,
-.mode-experiences .map[data-zoom="7"] .summit-pin--experience {
-  opacity: 1;
-  pointer-events: auto;
-  transform: scale(1.1);
-}'''
+with open(filepath, "r", encoding="utf-8") as f:
+    content = f.read()
 
-replacement = r'''/* Experiences specific zooms: they appear earlier */
-.mode-experiences .map[data-zoom="1"] .summit-pin--experience,
-.mode-experiences .map[data-zoom="2"] .summit-pin--experience,
-.mode-experiences .map[data-zoom="3"] .summit-pin--experience,
-.mode-experiences .map[data-zoom="4"] .summit-pin--experience {
-  opacity: 0.8;
-  pointer-events: auto;
-  transform: scale(0.85);
-}
+pattern1 = re.compile(r'selected\.id\.startsWith\("exp-"\)\s*\|\|\s*selected\.id\.startsWith\("cexp-"\)')
+content = pattern1.sub('isExp', content)
 
-.mode-experiences .map[data-zoom="5"] .summit-pin--experience,
-.mode-experiences .map[data-zoom="6"] .summit-pin--experience,
-.mode-experiences .map[data-zoom="7"] .summit-pin--experience {
-  opacity: 1;
-  pointer-events: auto;
-  transform: scale(1.1);
-}'''
+pattern2 = re.compile(r'item\.id\.startsWith\("exp-"\)\s*\|\|\s*item\.id\.startsWith\("cexp-"\)')
+content = pattern2.sub('isExp', content)
 
-c = re.sub(target.replace('\n', r'\r?\n'), replacement.replace('\n', '\n'), c)
+pattern3 = re.compile(r'!item\.id\.startsWith\("exp-"\)\s*&&\s*!item\.id\.startsWith\("cexp-"\)')
+content = pattern3.sub('!isExp', content)
 
-with open('app/globals.css', 'w', encoding='utf-8') as f:
-    f.write(c)
-print('Done!')
+with open(filepath, "w", encoding="utf-8") as f:
+    f.write(content)
+
+print("Replaced patterns.")
