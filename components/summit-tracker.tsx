@@ -2240,7 +2240,7 @@ export function SummitTracker({
 
     setConfirmAction({
       message:
-        "¿Estás seguro de que quieres eliminar esta categoría? Se eliminarán también todas sus experiencias asociadas.",
+        "¿Estás seguro de que quieres eliminar esta categoría y sus experiencias asociadas?",
       onConfirm: async () => {
         if (!supabase || !session) return;
         setSaving(true);
@@ -2294,7 +2294,7 @@ export function SummitTracker({
     setConfirmAction({
       message:
         itemType === "category"
-          ? "¿Estás seguro de que quieres eliminar esta categoría? Se eliminarán también todas sus experiencias asociadas."
+          ? "¿Estás seguro de que quieres eliminar esta categoría y sus experiencias asociadas?"
           : "¿Estás seguro de que quieres eliminar esta experiencia?",
       onConfirm: async () => {
         const { data, error } = await supabase!
