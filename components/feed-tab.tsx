@@ -6,6 +6,7 @@ import { formatDistanceToNow, format } from "date-fns";
 import { es } from "date-fns/locale";
 import { countries } from "@/data/countries";
 import { peaks } from "@/data/peaks";
+import { predefinedCategories } from "@/data/experiences";
 
 function isUnknownDate(dateVal: string | undefined | null): boolean {
   if (!dateVal) return true;
@@ -244,6 +245,14 @@ function FeedItemCard({ item, session, onAuthRequired }: { item: any, session: S
       finalLocationName = peak.name;
     } else {
       finalLocationName = (item.summit_id || '').toUpperCase();
+    }
+  } else if (item.type === "experience") {
+    if (item.experience_title) {
+      if (item.sub_item_title) {
+        finalLocationName = `${item.experience_title} (${item.sub_item_title})`;
+      } else {
+        finalLocationName = item.experience_title;
+      }
     }
   }
 
@@ -564,7 +573,7 @@ export function FeedTab({ session, isActive = true, onAuthRequired }: { session:
       // Fetch experiences
       const { data: expData, error: expErr } = await supabase
         .from("experience_records")
-        .select("id, user_id, experience_id, created_at, achieved_on, notes, location_name, profiles!experience_records_user_id_profiles_fkey(username, avatar_url, is_public)")
+        .select("id, user_id, experience_id, sub_item_id, created_at, achieved_on, notes, location_name, profiles!experience_records_user_id_profiles_fkey(username, avatar_url, is_public)")
         .eq('is_wishlist', false)
         .order("created_at", { ascending: false })
         .limit(limit);
@@ -580,7 +589,7 @@ export function FeedTab({ session, isActive = true, onAuthRequired }: { session:
 
       // Combinar y ordenar - filtrar items sin fecha válida
       // Los registros con fecha desconocida (p. ej. 31 dic 1899 / 1900-01-01) se posicionan según su fecha de registro (created_at)
-      const combined = [
+      const combinedBase = [
         ...ascents.map(a => ({
           ...a,
           type: "ascent",
@@ -594,6 +603,41 @@ export function FeedTab({ session, isActive = true, onAuthRequired }: { session:
       ].filter(item => item.record_date && !isNaN(new Date(item.record_date).getTime()))
        .sort((a, b) => new Date(b.record_date).getTime() - new Date(a.record_date).getTime())
        .slice(0, limit);
+       
+      const customExpIds = combinedBase.filter(item => item.type === 'experience' && item.experience_id).map(item => item.experience_id);
+      const customExperiences: Record<string, string> = {};
+      if (customExpIds.length > 0) {
+        const { data: customExpData } = await supabase.from('custom_experiences').select('id, name').in('id', customExpIds);
+        if (customExpData) {
+          customExpData.forEach(ce => { customExperiences[ce.id] = ce.name; });
+        }
+      }
+      
+      const combined = combinedBase.map(item => {
+        if (item.type === 'experience') {
+          let title = '';
+          let subTitle = '';
+          
+          let found = false;
+          for (const cat of predefinedCategories) {
+            const exp = cat.experiences.find(e => e.id === item.experience_id);
+            if (exp) {
+              title = exp.name;
+              if (item.sub_item_id && exp.subItems) {
+                const sub = exp.subItems.find((s: any) => s.id === item.sub_item_id);
+                if (sub) subTitle = sub.name;
+              }
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+             title = customExperiences[item.experience_id] || item.location_name || 'Experiencia';
+          }
+          return { ...item, experience_title: title, sub_item_title: subTitle };
+        }
+        return item;
+      });
 
       // Fetch photos for these users and summits
       // Build a set of unique (user_id, summit_id) pairs to fetch photos for
