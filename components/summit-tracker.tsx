@@ -2028,11 +2028,26 @@ export function SummitTracker({
     setFiles([]);
     setSaving(false);
     setRecordOpen(false);
-    setNotice(
-      isPeaks
-        ? "Registro guardado. ¡Una provincia menos en el mapa!"
-        : "Registro guardado. ¡Un país más en tu lista!",
-    );
+    const isEdit = isExperience ? !!editingExpRecordId : !!originalAchievedOn;
+    const hasPrevious = isExperience
+      ? experienceRecords.some((r) => r.experience_id === selected.id)
+      : ascents.some((a) => a.summit_id === selected.id && !a.is_wishlist);
+
+    let message = "Registro guardado.";
+    if (isEdit) {
+      message = "Cambios guardados.";
+    } else if (hasPrevious) {
+      message = "Nuevo registro añadido.";
+    } else {
+      if (isPeaks) {
+        message = "Registro guardado. ¡Una provincia menos en el mapa!";
+      } else if (isExperience) {
+        message = "Registro guardado. ¡Una experiencia más en tu lista!";
+      } else {
+        message = "Registro guardado. ¡Un país más en tu lista!";
+      }
+    }
+    setNotice(message);
   }
 
   function deleteAscent() {
@@ -2423,6 +2438,8 @@ export function SummitTracker({
         static_category_id: editingCustomExp.static_category_id || null,
         sub_items: subItems || [],
       };
+      console.log("[DEBUG] handleSaveCustomExperience INSERT payload:", JSON.stringify(newExp));
+      console.log("[DEBUG] editingCustomExp full object:", JSON.stringify(editingCustomExp));
       const { data, error } = await supabase
         .from("custom_experiences")
         .insert(newExp)
