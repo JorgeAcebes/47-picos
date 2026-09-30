@@ -2333,8 +2333,8 @@ export function SummitTracker({
     setConfirmAction({
       message:
         item.item_type === "category"
-          ? "ATENCIÓN: Esto eliminará definitivamente TODOS TUS REGISTROS y fotos de esta categoría. (Si es un elemento oficial, volverá a aparecer en tu lista pero vacío). Esta acción no se puede deshacer. ¿Continuar?"
-          : "ATENCIÓN: Esto eliminará definitivamente TODOS TUS REGISTROS y fotos de esta experiencia. (Si es un elemento oficial, volverá a aparecer en tu lista pero vacío). Esta acción no se puede deshacer. ¿Continuar?",
+          ? "¿Seguro que quieres eliminar definitivamente esta categoría y todas sus experiencias? Esta acción no se puede deshacer."
+          : "¿Seguro que quieres eliminar definitivamente esta experiencia? Esta acción no se puede deshacer.",
       onConfirm: async () => {
         if (!supabase || !session) return;
         setSaving(true);
@@ -3764,7 +3764,7 @@ export function SummitTracker({
           )}
         </div>
 
-        {isEditingExperiences && isExp && listFilter !== "all" && (
+        {isEditingExperiences && isExp && (
           <div
             style={{
               display: "flex",
@@ -3781,82 +3781,34 @@ export function SummitTracker({
                 borderColor: "var(--pine)",
               }}
               onClick={() => {
-                const cat = dynamicCategories.find(
-                  (c) => c.name === listFilter,
-                );
-                if (!cat) return;
-                const isPseudoCat = cat.id.startsWith("cat-custom-");
-                    const isCustomCat = customCategories.some((c) => c.id === cat.id);
-                    setEditingCustomExp(
-                      isPseudoCat
-                        ? { id: "new", name: "", category_id: null, static_category_id: null }
-                        : isCustomCat
-                          ? { id: "new", name: "", category_id: cat.id }
-                          : { id: "new", name: "", static_category_id: cat.id },
-                    );
-              }}
-            >
-              + Añadir experiencia a {listFilter}
-            </button>
-          </div>
-        )}
-
-        <div className="peak-list-grid">
-          {isEditingExperiences && isExp && (
-            <button
-              className="peak-list-item peak-list-item--diff-none"
-              style={{ borderStyle: "dashed" }}
-              onClick={() => {
                 const cat =
                   listFilter !== "all"
                     ? dynamicCategories.find((c) => c.name === listFilter)
                     : undefined;
                 if (cat) {
                   const isPseudoCat = cat.id.startsWith("cat-custom-");
-                    const isCustomCat = customCategories.some((c) => c.id === cat.id);
-                    setEditingCustomExp(
-                      isPseudoCat
-                        ? { id: "new", name: "", category_id: null, static_category_id: null }
-                        : isCustomCat
-                          ? { id: "new", name: "", category_id: cat.id }
-                          : { id: "new", name: "", static_category_id: cat.id },
-                    );
+                  const isCustomCat = customCategories.some((c) => c.id === cat.id);
+                  setEditingCustomExp(
+                    isPseudoCat
+                      ? { id: "new", name: "", category_id: null, static_category_id: null }
+                      : isCustomCat
+                        ? { id: "new", name: "", category_id: cat.id }
+                        : { id: "new", name: "", static_category_id: cat.id },
+                  );
                 } else {
                   setSelectingCategoryForNewExp(true);
                 }
               }}
             >
-              <span
-                style={{
-                  flexShrink: 0,
-                  width: 20,
-                  display: "flex",
-                  justifyContent: "center",
-                }}
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="var(--pine)"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{ width: 14, height: 14 }}
-                >
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-              </span>
-              <span className="item-info">
-                <span
-                  className="item-name"
-                  style={{ color: "var(--pine)", fontWeight: 600 }}
-                >
-                  Crear nueva experiencia
-                </span>
-              </span>
+              {listFilter !== "all"
+                ? `+ Añadir experiencia a ${listFilter}`
+                : "+ Crear nueva experiencia"}
             </button>
-          )}
+          </div>
+        )}
+
+        <div className="peak-list-grid">
+
           {sortedItems
             .filter((item) => {
               // Text search filter
@@ -4079,61 +4031,7 @@ export function SummitTracker({
                 </div>
               );
             })}
-          {isExp && !isReadOnly && (
-            <button
-              className="peak-list-item peak-list-item--diff-none"
-              style={{ borderStyle: "dashed", opacity: 0.7 }}
-              onClick={() => {
-                const cat =
-                  listFilter !== "all"
-                    ? dynamicCategories.find((c) => c.name === listFilter)
-                    : undefined;
-                if (cat) {
-                  const isPseudoCat = cat.id.startsWith("cat-custom-");
-                  const isCustomCat = customCategories.some((c) => c.id === cat.id);
-                  setEditingCustomExp(
-                    isPseudoCat
-                      ? { id: "new", name: "", category_id: null, static_category_id: null }
-                      : isCustomCat
-                        ? { id: "new", name: "", category_id: cat.id }
-                        : { id: "new", name: "", static_category_id: cat.id },
-                  );
-                } else {
-                  setSelectingCategoryForNewExp(true);
-                }
-              }}
-            >
-              <span
-                style={{
-                  flexShrink: 0,
-                  width: 20,
-                  display: "flex",
-                  justifyContent: "center",
-                }}
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="var(--pine)"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{ width: 14, height: 14 }}
-                >
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-              </span>
-              <span className="item-info">
-                <span
-                  className="item-name"
-                  style={{ color: "var(--pine)", fontWeight: 600 }}
-                >
-                  Añadir experiencia
-                </span>
-              </span>
-            </button>
-          )}
+
         </div>
       </section>
 
@@ -6391,6 +6289,7 @@ export function SummitTracker({
                 hiddenItems.map((item) => {
                   let name = "Desconocido";
                   let icon = "help-circle";
+                  let isCustom = false;
                   if (item.item_type === "category") {
                     const staticCat = predefinedCategories.find(
                       (c) => c.id === item.item_id,
@@ -6399,6 +6298,7 @@ export function SummitTracker({
                       (c) =>
                         c.id === item.item_id || c.static_id === item.item_id,
                     );
+                    isCustom = !!customCat;
                     name = customCat
                       ? customCat.name
                       : staticCat
@@ -6413,8 +6313,10 @@ export function SummitTracker({
                     const customExp = customExperiences.find(
                       (e) => e.id === item.item_id,
                     );
-                    if (customExp) name = customExp.name;
-                    else {
+                    if (customExp) {
+                      name = customExp.name;
+                      isCustom = true;
+                    } else {
                       for (const c of predefinedCategories) {
                         const ex = c.experiences.find(
                           (e) => e.id === item.item_id,
@@ -6496,15 +6398,17 @@ export function SummitTracker({
                         >
                           <RotateCcw size={16} />
                         </button>
-                        <button
-                          className="button button--quiet button--small"
-                          disabled={saving}
-                          style={{ color: "var(--danger, #a34f3d)", padding: "6px", minWidth: "auto", height: "auto" }}
-                          onClick={() => handlePermanentDelete(item)}
-                          title="Eliminar permanentemente"
-                        >
-                          <IconTrash style={{ width: 16, height: 16 }} />
-                        </button>
+                        {isCustom && (
+                          <button
+                            className="button button--quiet button--small"
+                            disabled={saving}
+                            style={{ color: "var(--danger, #a34f3d)", padding: "6px", minWidth: "auto", height: "auto" }}
+                            onClick={() => handlePermanentDelete(item)}
+                            title="Eliminar permanentemente"
+                          >
+                            <IconTrash style={{ width: 16, height: 16 }} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
