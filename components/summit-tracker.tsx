@@ -4807,7 +4807,7 @@ export function SummitTracker({
                     borderColor: "#ecd9a5",
                   }}
                 >
-                  ★ En tu lista de deseos
+                  ★ {isReadOnly ? "En su lista de deseos" : "En tu lista de deseos"}
                 </div>
               ) : (
                 <div className="pending-card">
