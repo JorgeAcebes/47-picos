@@ -2414,7 +2414,7 @@ export function SummitTracker({
 
     let subItems: { id: string; name: string }[] | undefined = undefined;
     if (editingCustomExp.sub_items_input !== undefined) {
-      const lines = Array.from(
+      const lines: string[] = Array.from(
         new Set(
           editingCustomExp.sub_items_input
             .split("\n")
