@@ -6326,6 +6326,13 @@ export function SummitTracker({
                     );
                     if (customExp) {
                       name = customExp.name;
+                      if (customExp.category_id) {
+                        const parentCat = customCategories.find((c) => c.id === customExp.category_id);
+                        if (parentCat) icon = parentCat.icon_name;
+                      } else if (customExp.static_category_id) {
+                        const parentCat = predefinedCategories.find((c) => c.id === customExp.static_category_id);
+                        if (parentCat) icon = parentCat.iconName;
+                      }
                     } else {
                       for (const c of predefinedCategories) {
                         const ex = c.experiences.find(
@@ -6333,6 +6340,7 @@ export function SummitTracker({
                         );
                         if (ex) {
                           name = ex.name;
+                          icon = c.iconName;
                           isStatic = true;
                           break;
                         }
@@ -6362,20 +6370,7 @@ export function SummitTracker({
                           minWidth: 0,
                         }}
                       >
-                        {item.item_type === "category" ? (
-                          <div style={{ flexShrink: 0 }}>{getIconComponent(icon)}</div>
-                        ) : (
-                          <span
-                            style={{
-                              flexShrink: 0,
-                              width: 18,
-                              height: 18,
-                              borderRadius: "50%",
-                              background: "var(--border)",
-                              display: "inline-block",
-                            }}
-                          />
-                        )}
+                        <div style={{ flexShrink: 0 }}>{getIconComponent(icon)}</div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div
                             style={{
