@@ -6429,9 +6429,9 @@ export function SummitTracker({
                       key={item.id}
                       style={{
                         display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        padding: "12px 16px",
+                        flexDirection: "column",
+                        gap: 16,
+                        padding: "16px",
                         background: "var(--background)",
                         border: "1px solid var(--border)",
                         borderRadius: 8,
@@ -6440,29 +6440,32 @@ export function SummitTracker({
                       <div
                         style={{
                           display: "flex",
-                          alignItems: "center",
+                          alignItems: "flex-start",
                           gap: 12,
                         }}
                       >
                         {item.item_type === "category" ? (
-                          getIconComponent(icon)
+                          <div style={{ flexShrink: 0, marginTop: 2 }}>{getIconComponent(icon)}</div>
                         ) : (
                           <span
                             style={{
+                              flexShrink: 0,
                               width: 18,
                               height: 18,
+                              marginTop: 2,
                               borderRadius: "50%",
                               background: "var(--border)",
                               display: "inline-block",
                             }}
                           />
                         )}
-                        <div>
-                          <div style={{ fontWeight: 500 }}>{name}</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, lineHeight: 1.3 }}>{name}</div>
                           <div
                             style={{
-                              fontSize: "0.8rem",
+                              fontSize: "0.85rem",
                               color: "var(--muted)",
+                              marginTop: 4,
                             }}
                           >
                             {item.item_type === "category"
@@ -6471,7 +6474,7 @@ export function SummitTracker({
                           </div>
                         </div>
                       </div>
-                      <div style={{ display: "flex", gap: 8 }}>
+                      <div style={{ display: "flex", gap: 8, alignSelf: "flex-end" }}>
                         <button
                           className="button button--quiet button--small"
                           disabled={saving}
