@@ -5024,10 +5024,7 @@ export function SummitTracker({
               <IconClose />
             </button>
             <span className="eyebrow">
-              {isPeaks
-                ? "REGISTRAR ASCENSIÓN"
-                : isExp
-                  ? "REGISTRAR EXPERIENCIA"
+              {isPeaks ? "REGISTRAR ASCENSIÓN" : ((selected as any)?.itemType === 'experience') ? "REGISTRAR EXPERIENCIA"
                   : "REGISTRAR VISITA"}
             </span>
             <div
@@ -5038,8 +5035,7 @@ export function SummitTracker({
                 marginTop: 4,
               }}
             >
-              {(isExp) &&
-                selected.iconName && (
+              {(((selected as any)?.itemType === 'experience')) && selected.iconName && (
                   <span style={{ color: "var(--foreground)" }}>
                     {getIconComponent(selected.iconName, 26)}
                   </span>
@@ -5049,11 +5045,10 @@ export function SummitTracker({
               </h2>
             </div>
             <p>
-              {isExp
-                ? selected.subtitle
+              {((selected as any)?.itemType === 'experience') ? selected.subtitle
                 : `${selected.label} · ${selected.subtitle}`}
             </p>
-            {(isExp) && (
+            {(((selected as any)?.itemType === 'experience')) && (
               <div style={{ marginBottom: 16, zIndex: 50 }}>
                 <div style={{ marginBottom: 8 }}>
                   <label
