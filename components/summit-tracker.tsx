@@ -5790,11 +5790,7 @@ export function SummitTracker({
                     );
                     dateStr = ` · ${formatShortDate(lightboxPhoto.taken_on)}${relatedAscent?.end_date ? ` - ${formatShortDate(relatedAscent.end_date)}` : ""}`;
                   }
-                  const pageStr =
-                    currentPhotoGroup.length > 1
-                      ? ` · ${lightboxIndex + 1} de ${currentPhotoGroup.length}`
-                      : "";
-                  return dateStr + pageStr;
+                  return dateStr;
                 })()}
               </span>
             </span>

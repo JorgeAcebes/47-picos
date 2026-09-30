@@ -504,7 +504,7 @@ function FeedItemCard({ item, session, onAuthRequired }: { item: any, session: S
               )}
               <span style={{ opacity: photos[lightboxIndex].caption ? 0.7 : 1 }}>
                 {finalLocationName}
-                {photos.length > 1 && ` · ${lightboxIndex + 1} de ${photos.length}`}
+                
               </span>
             </span>
 
