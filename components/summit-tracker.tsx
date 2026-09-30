@@ -1692,7 +1692,7 @@ export function SummitTracker({
       } else {
         setSelected(item);
         if (ascentToEdit) {
-          if (isExp) {
+          if (item?.itemType === 'experience') {
             const recId =
               (ascentToEdit as any).record_id || (ascentToEdit as any).id;
             if (recId) {
@@ -1723,7 +1723,7 @@ export function SummitTracker({
         } else {
           // Si no es ascentToEdit pero setSelectedLatLng ya se configuró (ej. click en mapa), no lo borramos.
           setEditingExpRecordId(null);
-          if (!isExp) {
+          if (item?.itemType !== 'experience') {
             setSelectedLatLng(null);
             setLocationName("");
           }
