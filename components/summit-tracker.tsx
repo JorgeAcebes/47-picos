@@ -2414,8 +2414,8 @@ export function SummitTracker({
 
     if (editingCustomExp.id === "new") {
       const rawCatId = editingCustomExp.category_id;
-      // Only send category_id if it's a real UUID (not a pseudo-category like "cat-custom-...")
-      const validCategoryId = rawCatId && !rawCatId.startsWith("cat-") ? rawCatId : null;
+      // Only send category_id if it's a real UUID (not a pseudo-category like "cat-custom-..." or undefined)
+      const validCategoryId = (rawCatId && typeof rawCatId === "string" && !rawCatId.startsWith("cat-")) ? rawCatId : null;
       const newExp = {
         user_id: session.user.id,
         name: editingCustomExp.name.trim(),
