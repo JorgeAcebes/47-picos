@@ -1175,7 +1175,7 @@ export function SummitTracker({
       ] = await Promise.all([
         supabase!
           .from("ascents")
-          .select("summit_id, achieved_on, end_date, notes, is_wishlist")
+          .select("summit_id, achieved_on, end_date, notes, is_wishlist, link, link_name")
           .eq("user_id", targetId)
           .order("achieved_on", { ascending: false }),
         supabase!
@@ -1224,7 +1224,7 @@ export function SummitTracker({
       if (isReadOnly && session) {
         const { data: myData } = await supabase!
           .from("ascents")
-          .select("summit_id, achieved_on, end_date, notes, is_wishlist")
+          .select("summit_id, achieved_on, end_date, notes, is_wishlist, link, link_name")
           .eq("user_id", session.user.id);
         if (myData) setMyAscents(myData as Ascent[]);
       }

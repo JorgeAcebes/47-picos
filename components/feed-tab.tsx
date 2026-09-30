@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import type { Session } from "@supabase/supabase-js";
 import Link from "next/link";
 import { formatDistanceToNow, format } from "date-fns";
+import { Link as LinkIcon, Video, Camera, Briefcase, MapPin } from "lucide-react";
 import { es } from "date-fns/locale";
 import { countries } from "@/data/countries";
 import { peaks } from "@/data/peaks";
@@ -305,6 +306,66 @@ function FeedItemCard({ item, session, onAuthRequired }: { item: any, session: S
             {item.notes}
           </p>
         )}
+        {item.link &&
+          (() => {
+            let Icon = LinkIcon;
+            const urlStr = item.link.toLowerCase();
+            if (urlStr.includes("youtube.com") || urlStr.includes("youtu.be"))
+              Icon = Video;
+            else if (urlStr.includes("instagram.com")) Icon = Camera;
+            else if (urlStr.includes("linkedin.com")) Icon = Briefcase;
+            else if (
+              urlStr.includes("google.com/maps") ||
+              urlStr.includes("wikiloc.com") ||
+              urlStr.includes("komoot.com") ||
+              urlStr.includes("strava.com")
+            )
+              Icon = MapPin;
+
+            const displayName =
+              item.link_name ||
+              (urlStr.includes("youtube.com") || urlStr.includes("youtu.be")
+                ? "Vídeo en YouTube"
+                : urlStr.includes("instagram.com")
+                  ? "Publicación en Instagram"
+                  : urlStr.includes("linkedin.com")
+                    ? "Publicación en LinkedIn"
+                    : urlStr.includes("google.com/maps")
+                      ? "Ver en Google Maps"
+                      : urlStr.includes("wikiloc.com")
+                        ? "Ruta en Wikiloc"
+                        : urlStr.includes("strava.com")
+                          ? "Actividad en Strava"
+                          : urlStr.includes("komoot.com")
+                            ? "Ruta en Komoot"
+                            : "Enlace adjunto");
+
+            return (
+              <a
+                href={item.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  marginTop: 8,
+                  fontSize: "14px",
+                  color: "var(--pine)",
+                  textDecoration: "none",
+                  fontWeight: 500,
+                  padding: "4px 10px",
+                  backgroundColor: "rgba(35, 78, 82, 0.05)",
+                  borderRadius: 16,
+                  border: "1px solid rgba(35, 78, 82, 0.1)",
+                }}
+              >
+                <Icon size={14} />
+                {displayName}
+              </a>
+            );
+          })()}
+
       </div>
 
       {photos.length > 0 && (
@@ -560,7 +621,7 @@ export function FeedTab({ session, isActive = true, onAuthRequired }: { session:
       // Fetch ascents
       const { data: ascData, error: ascErr } = await supabase
         .from("ascents")
-        .select("id, user_id, summit_id, created_at, achieved_on, end_date, notes, profiles!ascents_user_id_profiles_fkey(username, avatar_url, is_public)")
+        .select("id, user_id, summit_id, created_at, achieved_on, end_date, notes, link, link_name, profiles!ascents_user_id_profiles_fkey(username, avatar_url, is_public)")
         .eq('is_wishlist', false)
         .order("created_at", { ascending: false })
         .limit(limit);
@@ -573,7 +634,7 @@ export function FeedTab({ session, isActive = true, onAuthRequired }: { session:
       // Fetch experiences
       const { data: expData, error: expErr } = await supabase
         .from("experience_records")
-        .select("id, user_id, experience_id, sub_item_id, created_at, achieved_on, notes, location_name, profiles!experience_records_user_id_profiles_fkey(username, avatar_url, is_public)")
+        .select("id, user_id, experience_id, sub_item_id, created_at, achieved_on, notes, link, link_name, location_name, profiles!experience_records_user_id_profiles_fkey(username, avatar_url, is_public)")
         .eq('is_wishlist', false)
         .order("created_at", { ascending: false })
         .limit(limit);
