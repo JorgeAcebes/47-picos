@@ -1677,7 +1677,7 @@ export function SummitTracker({
 
     const baseUrl = window.location.origin;
     const challenge = isPeaks ? "peaks" : "countries";
-    const profileUrl = `${baseUrl}/perfil/${myProfile.username}?challenge=${challenge}`;
+    const profileUrl = `${baseUrl}/perfil/${myProfile.username}?challenge=${challenge}#panel=${item.id}`;
 
     // Build share text based on item type
     const dateStr = formatDate(ascent.achieved_on);
