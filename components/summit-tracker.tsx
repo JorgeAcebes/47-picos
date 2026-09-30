@@ -740,7 +740,7 @@ export function SummitTracker({
       return;
     }
     setTimeout(() => window.dispatchEvent(new Event("resize")), 50);
-    if (experiencesMode && !isPeaks) {
+    if (experiencesMode && !isPeaks && session) {
       document.body.classList.add("mode-experiences");
       document.body.classList.remove("mode-countries");
     } else if (isPeaks) {
@@ -750,7 +750,12 @@ export function SummitTracker({
       document.body.classList.add("mode-countries");
       document.body.classList.remove("mode-experiences");
     }
-  }, [experiencesMode, isPeaks, isActive]);
+
+    return () => {
+      document.body.classList.remove("mode-experiences");
+      document.body.classList.remove("mode-countries");
+    };
+  }, [experiencesMode, isPeaks, isActive, session]);
 
   // ── Mode config ────────────────────────────
   const isExp = experiencesMode && !isPeaks;
@@ -3062,7 +3067,7 @@ export function SummitTracker({
   /* ── Render ───────────────────────────── */
   return (
     <main
-      className={`${isPeaks ? "" : isExp ? "mode-experiences" : "mode-countries"} ${selected ? "panel-open" : ""}`}
+      className={`${isPeaks ? "" : (isExp && session) ? "mode-experiences" : "mode-countries"} ${selected ? "panel-open" : ""}`}
     >
       {/* ── Topbar ──────────────────────── */}
       <header className="topbar">
