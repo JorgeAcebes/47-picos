@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, "dev/**"]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  verify:
+    name: Verification Pipeline (Harness)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Canonical Verification Harness
+        run: npm run verify
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: "https://mock.supabase.co"
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: "mock-anon-key"

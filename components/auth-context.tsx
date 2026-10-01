@@ -65,11 +65,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshProfile = useCallback(async (activeSession?: Session | null) => {
     const s = activeSession !== undefined ? activeSession : globalSession;
     if (!s || !supabase) {
-      setProfile(null);
-      globalProfile = null;
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("app_user_profile");
-      }
       return;
     }
 
@@ -94,55 +89,77 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     if (!supabase) return;
-    await supabase.auth.signOut();
-    setSession(null);
-    setProfile(null);
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error("Error during signOut:", err);
+    }
     globalSession = null;
     globalProfile = null;
+    setSession(null);
+    setProfile(null);
     if (typeof window !== "undefined") {
       localStorage.removeItem("app_user_profile");
     }
   }, []);
 
   useEffect(() => {
+    // Restore cached profile on client if not already populated
+    if (!globalProfile) {
+      const stored = getStoredProfile();
+      if (stored) {
+        globalProfile = stored;
+        setProfile(stored);
+      }
+    }
+
     if (!supabase) {
       setLoading(false);
       return;
     }
 
+    let isMounted = true;
+
     // Initial session load
     supabase.auth.getSession().then(({ data: { session: initSession } }) => {
-      globalSession = initSession;
-      setSession(initSession);
-      setLoading(false);
-      isAuthInitialized = true;
+      if (!isMounted) return;
       if (initSession) {
-        refreshProfile(initSession);
-      } else {
-        setProfile(null);
-        globalProfile = null;
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("app_user_profile");
+        globalSession = initSession;
+        setSession(initSession);
+        if (!globalProfile || globalProfile.id !== initSession.user.id) {
+          refreshProfile(initSession);
         }
       }
+      setLoading(false);
+      isAuthInitialized = true;
     });
 
     // Listen for auth changes (sign in, sign out, token refresh)
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      globalSession = nextSession;
-      setSession(nextSession);
-      if (nextSession) {
-        refreshProfile(nextSession);
-      } else {
-        setProfile(null);
+    const { data: listener } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (!isMounted) return;
+
+      if (event === "SIGNED_OUT") {
+        globalSession = null;
         globalProfile = null;
+        setSession(null);
+        setProfile(null);
         if (typeof window !== "undefined") {
           localStorage.removeItem("app_user_profile");
+        }
+        return;
+      }
+
+      if (nextSession) {
+        globalSession = nextSession;
+        setSession(nextSession);
+        if (!globalProfile || globalProfile.id !== nextSession.user.id) {
+          refreshProfile(nextSession);
         }
       }
     });
 
     return () => {
+      isMounted = false;
       listener.subscription.unsubscribe();
     };
   }, [refreshProfile]);

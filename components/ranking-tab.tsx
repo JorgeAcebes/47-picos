@@ -7,6 +7,8 @@ import dynamic from "next/dynamic";
 import { AuthDialog } from "@/components/auth-dialog";
 import { IconLogo } from "@/components/icons";
 import { useAuth } from "./auth-context";
+import { ProfileSettings } from "./profile-settings";
+import { usePendingRequests } from "./use-pending-requests";
 import "./ranking.css";
 
 const CollectiveMap = dynamic(
@@ -26,6 +28,9 @@ type ScopeFilter = "all" | "following";
 type ModeFilter = "countries" | "peaks";
 
 const globalRankingCache: Record<string, RankingEntry[]> = {};
+let globalRankingLastFetched: Record<string, number> = {};
+let cachedTotalUsersCount: number | null = null;
+const RANKING_CACHE_TTL = 60 * 1000;
 
 export function RankingTab({ 
   onNavigate, 
@@ -34,16 +39,24 @@ export function RankingTab({
   onNavigate?: (tab: string) => void;
   isActive?: boolean;
 }) {
-  const { session, profile: myProfile } = useAuth();
-  const [mode, setMode] = useState<ModeFilter>("countries");
+  const { session, profile: myProfile, refreshProfile } = useAuth();
+  const [mode, setMode] = useState<ModeFilter>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("ranking_mode") as ModeFilter | null;
+      if (saved === "countries" || saved === "peaks") return saved;
+    }
+    return "countries";
+  });
   const [scope, setScope] = useState<ScopeFilter>("all");
   
   const initialCacheKey = `${mode}-${scope}-${session?.user?.id || 'anon'}`;
   const [entries, setEntries] = useState<RankingEntry[]>(() => globalRankingCache[initialCacheKey] || []);
   const [loading, setLoading] = useState(() => !globalRankingCache[initialCacheKey]);
   
+  const hasPendingRequests = usePendingRequests();
+  const [profileOpen, setProfileOpen] = useState(false);
   const [mapLink, setMapLink] = useState("/");
-  const [totalUsersCount, setTotalUsersCount] = useState<number>(0);
+  const [totalUsersCount, setTotalUsersCount] = useState<number>(() => cachedTotalUsersCount || 0);
   const [showCollectiveMap, setShowCollectiveMap] = useState(false);
   const [authOpen, setAuthOpen] = useState<"login" | "register" | false>(false);
 
@@ -52,8 +65,6 @@ export function RankingTab({
       let stored = localStorage.getItem("last_map_path") || "/";
       if (stored !== "/" && stored !== "/picos") stored = "/";
       setMapLink(stored);
-      const savedMode = localStorage.getItem("ranking_mode") as ModeFilter | null;
-      if (savedMode === "countries" || savedMode === "peaks") setMode(savedMode);
     }
   }, []);
 
@@ -61,8 +72,14 @@ export function RankingTab({
     if (!isActive) return;
     async function fetchTotalUsers() {
       if (!supabase) return;
+      if (cachedTotalUsersCount !== null) {
+        setTotalUsersCount(cachedTotalUsersCount);
+      }
       const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
-      if (count !== null) setTotalUsersCount(count);
+      if (count !== null) {
+        setTotalUsersCount(count);
+        cachedTotalUsersCount = count;
+      }
     }
     fetchTotalUsers();
   }, [isActive]);
@@ -73,11 +90,36 @@ export function RankingTab({
 
     async function fetchRanking() {
       const cacheKey = `${mode}-${scope}-${session?.user?.id || 'anon'}`;
+      const now = Date.now();
+      const isFresh = globalRankingCache[cacheKey] && (now - (globalRankingLastFetched[cacheKey] || 0) < RANKING_CACHE_TTL);
+
       if (globalRankingCache[cacheKey]) {
         setEntries(globalRankingCache[cacheKey]);
         setLoading(false);
       } else {
         setLoading(true);
+      }
+
+      if (isFresh) {
+        // Prefetch opposite mode in background if not already cached
+        const otherMode: ModeFilter = mode === "countries" ? "peaks" : "countries";
+        const otherKey = `${otherMode}-${scope}-${session?.user?.id || 'anon'}`;
+        if (!globalRankingCache[otherKey] && supabase) {
+          Promise.resolve(
+            supabase.rpc("get_user_ranking", {
+              p_summit_ids: null,
+              p_following_only: scope === "following",
+              p_follower: session?.user?.id || null,
+              p_mode: otherMode
+            })
+          ).then(({ data }) => {
+            if (data && !ignore) {
+              globalRankingCache[otherKey] = data as RankingEntry[];
+              globalRankingLastFetched[otherKey] = Date.now();
+            }
+          }).catch(() => {});
+        }
+        return;
       }
 
       try {
@@ -100,7 +142,27 @@ export function RankingTab({
         } else {
           const result = (data as RankingEntry[]) || [];
           globalRankingCache[cacheKey] = result;
+          globalRankingLastFetched[cacheKey] = Date.now();
           setEntries(result);
+        }
+
+        // Also prefetch alternate mode in background
+        const otherMode: ModeFilter = mode === "countries" ? "peaks" : "countries";
+        const otherKey = `${otherMode}-${scope}-${session?.user?.id || 'anon'}`;
+        if (!globalRankingCache[otherKey] && supabase) {
+          Promise.resolve(
+            supabase.rpc("get_user_ranking", {
+              p_summit_ids: null,
+              p_following_only: scope === "following",
+              p_follower: session?.user?.id || null,
+              p_mode: otherMode
+            })
+          ).then(({ data: altData }) => {
+            if (altData && !ignore) {
+              globalRankingCache[otherKey] = altData as RankingEntry[];
+              globalRankingLastFetched[otherKey] = Date.now();
+            }
+          }).catch(() => {});
         }
       } catch (err) {
         if (!ignore) console.error(err);
@@ -142,18 +204,34 @@ export function RankingTab({
   }, [entries]);
 
   return (
-    <div className={`ranking-theme ${mode === "countries" ? "mode-countries" : ""}`} style={{ backgroundColor: "var(--bg-color)" }}>
+    <main className={`ranking-theme ${mode === "countries" ? "mode-countries" : ""}`} style={{ backgroundColor: "var(--bg-color)" }}>
       {/* ── Standard Topbar ────────────────── */}
       <header className="topbar">
         <Link className="brand" href={mapLink}>
           <IconLogo className="brand-icon" style={{ filter: 'brightness(0)' }} />
         </Link>
         <nav>
-          <Link href={mapLink}>Mapa</Link>
-          <Link href="/social">Social</Link>
-          <Link href="/ranking" style={{ fontWeight: 'bold', color: 'var(--purple)' }}>Ranking</Link>
+          <Link href={mapLink} prefetch={true} className="topbar-nav-link topbar-nav-link--mapa">Mapa</Link>
+          <Link href="/social" prefetch={true} className="topbar-nav-link topbar-nav-link--social" style={{ position: 'relative' }}>
+            Social
+            {hasPendingRequests ? (
+              <span 
+                style={{ 
+                  position: 'absolute', 
+                  top: '-2px', 
+                  right: '-6px', 
+                  width: '8px', 
+                  height: '8px', 
+                  backgroundColor: 'red', 
+                  borderRadius: '50%',
+                  pointerEvents: 'none'
+                }} 
+              />
+            ) : null}
+          </Link>
+          <Link href="/ranking" className="topbar-nav-link topbar-nav-link--ranking" style={{ fontWeight: 'bold', color: 'var(--purple)' }}>Ranking</Link>
           {session ? (
-            <Link href={myProfile?.username ? `/perfil/${myProfile.username}` : "/"} className="account-button">
+            <button className="account-button" onClick={() => setProfileOpen(true)}>
               {myProfile?.avatar_url ? (
                 <img src={myProfile.avatar_url} alt="Mi Perfil" className="account-avatar" style={{ objectFit: "cover" }} />
               ) : (
@@ -162,7 +240,7 @@ export function RankingTab({
                 </span>
               )}
               <span>{myProfile?.username || session.user.email?.split("@")[0]}</span>
-            </Link>
+            </button>
           ) : (
             <button className="button button--outline" onClick={() => setAuthOpen("login")}>
               Entrar
@@ -171,33 +249,35 @@ export function RankingTab({
         </nav>
       </header>
 
-      {/* ── Narrow Main Container (like Social) ────────────────── */}
-      <main className="peak-list-section page-container" style={{ maxWidth: '800px', margin: '0 auto', paddingTop: '67px', paddingBottom: '4rem' }}>
+      {/* ── Stable Ranking Container ────────────────── */}
+      <div className="ranking-main-container">
         
-        <div className="section-heading">
+        <div className="section-heading ranking-section-heading">
           <div style={{ width: '100%' }}>
             <span className="eyebrow">EL PODIO</span>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+            <div className="ranking-title-row">
               <h2 style={{ margin: 0 }}>Ranking de {mode === "peaks" ? "Alpinistas" : "Viajeros"}</h2>
-              {mode === "countries" && (
-                <button
-                  className="collective-map-trigger"
-                  onClick={() => setShowCollectiveMap(true)}
-                  title="Mapa colectivo de países"
-                  aria-label="Abrir mapa colectivo de países"
-                >
-                  <svg viewBox="0 0 64 40" width="28" height="18" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="32" cy="12" r="8" />
-                    <path d="M20 38c0-7 5.4-12 12-12s12 5 12 12" />
-                    <circle cx="14" cy="16" r="6" />
-                    <path d="M2 38c0-5.5 4.5-10 10-10 2.2 0 4.3.7 6 2" />
-                    <circle cx="50" cy="16" r="6" />
-                    <path d="M62 38c0-5.5-4.5-10-10-10-2.2 0-4.3.7-6 2" />
-                  </svg>
-                </button>
-              )}
+              <div className="ranking-header-action-slot">
+                {mode === "countries" && (
+                  <button
+                    className="collective-map-trigger"
+                    onClick={() => setShowCollectiveMap(true)}
+                    title="Mapa colectivo de países"
+                    aria-label="Abrir mapa colectivo de países"
+                  >
+                    <svg viewBox="0 0 64 40" width="28" height="18" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="32" cy="12" r="8" />
+                      <path d="M20 38c0-7 5.4-12 12-12s12 5 12 12" />
+                      <circle cx="14" cy="16" r="6" />
+                      <path d="M2 38c0-5.5 4.5-10 10-10 2.2 0 4.3.7 6 2" />
+                      <circle cx="50" cy="16" r="6" />
+                      <path d="M62 38c0-5.5-4.5-10-10-10-2.2 0-4.3.7-6 2" />
+                    </svg>
+                  </button>
+                )}
+              </div>
             </div>
-            <p>
+            <p className="ranking-subtitle">
               {scope === "following"
                 ? `Encuentra tu posición entre las ${loading ? '...' : entries.length} personas que sigues.`
                 : `Encuentra tu posición entre los ${loading ? '...' : entries.length} usuarios totales.`}
@@ -205,13 +285,13 @@ export function RankingTab({
           </div>
         </div>
 
-        <section id="tabla">
-          {/* Filters: Mode selector, then Scope, then Continents */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '1rem', marginBottom: '2rem' }}>
+        <section id="tabla" className="ranking-table-container">
+          {/* Filters: Mode selector, then Scope */}
+          <div className="ranking-filters-bar">
             
             <div className="mode-selector" style={{ margin: 0 }}>
               <button
-                className={`mode-tab ${mode === "peaks" ? "mode-tab--active" : ""}`}
+                className={`mode-tab ranking-mode-tab ${mode === "peaks" ? "mode-tab--active" : ""}`}
                 onClick={() => setMode("peaks")}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mode-tab-icon">
@@ -221,7 +301,7 @@ export function RankingTab({
                 47 Picos
               </button>
               <button
-                className={`mode-tab ${mode === "countries" ? "mode-tab--active" : ""}`}
+                className={`mode-tab ranking-mode-tab ${mode === "countries" ? "mode-tab--active" : ""}`}
                 onClick={() => setMode("countries")}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mode-tab-icon">
@@ -234,14 +314,14 @@ export function RankingTab({
             </div>
             <div className="list-filters" style={{ margin: 0 }}>
               <button
-                className={`list-filter-pill ${scope === 'all' ? 'list-filter-pill--active' : ''}`}
+                className={`list-filter-pill ranking-scope-pill ${scope === 'all' ? 'list-filter-pill--active' : ''}`}
                 onClick={() => handleScopeChange('all')}
                 style={scope === 'all' ? { background: '#d4af37', color: 'white', borderColor: '#d4af37' } : {}}
               >
                 Global
               </button>
               <button
-                className={`list-filter-pill ${scope === 'following' ? 'list-filter-pill--active' : ''}`}
+                className={`list-filter-pill ranking-scope-pill ${scope === 'following' ? 'list-filter-pill--active' : ''}`}
                 onClick={() => handleScopeChange('following')}
                 style={scope === 'following' ? { background: '#d4af37', color: 'white', borderColor: '#d4af37' } : {}}
               >
@@ -258,7 +338,7 @@ export function RankingTab({
 
           <div>
             {scope === 'following' && !session ? (
-              <div className="ranking-empty-msg" style={{ textAlign: "left", paddingTop: "10px" }}>
+              <div className="ranking-empty-msg">
                 Inicia sesión para ver a quién sigues.
               </div>
             ) : loading ? (
@@ -273,7 +353,7 @@ export function RankingTab({
                 const initial = entry.username ? entry.username.charAt(0).toUpperCase() : "?";
 
                 return (
-                  <Link key={entry.user_id} href={`/perfil/${entry.username}?challenge=${mode}`} className={`ranking-row${medalClass}`} style={{ display: 'grid' }}>
+                  <Link key={entry.user_id} href={`/perfil/${entry.username}?challenge=${mode}`} className={`ranking-row${medalClass}`}>
                     <div className="ranking-rank-num">{String(currentRank).padStart(2, '0')}</div>
                     <div className="ranking-who">
                       <div className="ranking-avatar">
@@ -283,8 +363,8 @@ export function RankingTab({
                           initial
                         )}
                       </div>
-                      <div>
-                        <div className="ranking-who-name">@{entry.username}</div>
+                      <div className="ranking-who-text">
+                        <span className="ranking-who-name">@{entry.username}</span>
                       </div>
                     </div>
                     <div className="ranking-stats-col">
@@ -300,12 +380,19 @@ export function RankingTab({
             )}
           </div>
         </section>
-      </main>
+      </div>
 
       {showCollectiveMap && (
         <CollectiveMap onClose={() => setShowCollectiveMap(false)} />
       )}
       {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} initialTab={authOpen === "login" ? "login" : "register"} />}
-    </div>
+      {profileOpen && session && (
+        <ProfileSettings
+          session={session}
+          onClose={() => setProfileOpen(false)}
+          onProfileUpdate={() => refreshProfile()}
+        />
+      )}
+    </main>
   );
 }

@@ -27,9 +27,13 @@ let cachedFollowerStatuses: Record<string, ConnectionStatus> = {};
 let cachedFollowers: Profile[] = [];
 let cachedFollowing: Profile[] = [];
 let cachedRecommended: Profile[] = [];
+const defaultExperiencesCount = predefinedCategories.reduce((acc, cat) => acc + cat.experiences.length, 0);
 let cachedProgressCounts = { countries: 0, peaks: 0, experiences: 0 };
-let cachedTotalCounts = { countries: 196, peaks: 47, experiences: 0 };
+let cachedTotalCounts = { countries: countries.length, peaks: 47, experiences: defaultExperiencesCount };
 let cachedDataUserId: string | null = null;
+let cachedConnectionsLastFetched = 0;
+let isFetchingSocial = false;
+const SOCIAL_CACHE_TTL = 60 * 1000;
 
 export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: string) => void, isActive?: boolean }) {
   const { session, profile: myProfile, refreshProfile } = useAuth();
@@ -49,7 +53,7 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
   const [announcements, setAnnouncements] = useState<any[]>([]);
   
   const [progressCounts, setProgressCounts] = useState(() => isCurrentCache ? cachedProgressCounts : { countries: 0, peaks: 0, experiences: 0 });
-  const [totalCounts, setTotalCounts] = useState(() => isCurrentCache ? cachedTotalCounts : { countries: 196, peaks: 47, experiences: 0 });
+  const [totalCounts, setTotalCounts] = useState(() => isCurrentCache ? cachedTotalCounts : { countries: countries.length, peaks: 47, experiences: defaultExperiencesCount });
   
   // A mapping of profile id to connection status
   const [connections, setConnections] = useState<Record<string, ConnectionStatus>>(() => isCurrentCache ? cachedConnections : {});
@@ -73,6 +77,11 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
   useEffect(() => {
     if (!isActive || !session || !supabase) return;
     
+    const now = Date.now();
+    const isFresh = cachedDataUserId === session.user.id && (now - cachedConnectionsLastFetched < SOCIAL_CACHE_TTL);
+    if (isFresh || isFetchingSocial) return;
+    
+    isFetchingSocial = true;
     async function fetchConnections() {
       // Fetch who I am following
       const { data: followingConns } = await supabase!
@@ -154,64 +163,110 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
     }
     
     async function fetchProgress() {
-      if (!session) return;
-      const { data: ascData } = await supabase!.from('ascents').select('summit_id').eq('user_id', session.user.id).eq('is_wishlist', false);
-      const { data: expData } = await supabase!.from('experience_records').select('experience_id, sub_item_id').eq('user_id', session.user.id).eq('is_wishlist', false);
-      const { data: customExps } = await supabase!.from('custom_experiences').select('id').eq('user_id', session.user.id);
-      
-      let pCount = 0;
-      let cCount = 0;
+      if (!session || !supabase) return;
+
+      const [ascRes, expRes, customExpRes, customCatRes, hiddenRes] = await Promise.all([
+        supabase.from('ascents').select('summit_id').eq('user_id', session.user.id).eq('is_wishlist', false),
+        supabase.from('experience_records').select('experience_id, sub_item_id').eq('user_id', session.user.id).eq('is_wishlist', false),
+        supabase.from('custom_experiences').select('*').eq('user_id', session.user.id),
+        supabase.from('custom_experience_categories').select('*').eq('user_id', session.user.id),
+        supabase.from('hidden_items').select('*').eq('user_id', session.user.id),
+      ]);
+
+      const ascData = ascRes.data || [];
+      const expData = expRes.data || [];
+      const customExps = customExpRes.data || [];
+      const customCats = customCatRes.data || [];
+      const hiddenItems = hiddenRes.data || [];
+
+      // Picos: contar cimas únicas (47 picos provinciales únicos)
+      const uniquePeakNames = new Set(
+        ascData
+          .map(a => peaks.find(p => p.id === a.summit_id)?.name)
+          .filter(Boolean)
+      );
+      const pCount = uniquePeakNames.size;
+
+      // Países: contar países únicos
+      const countryIds = new Set(countries.map(c => c.id));
+      const uniqueCountries = new Set(
+        ascData
+          .filter(a => countryIds.has(a.summit_id) || a.summit_id.startsWith('country-'))
+          .map(a => a.summit_id)
+      );
+      const cCount = uniqueCountries.size;
+
+      // Experiencias: calcular categorías y experiencias visibles idéntico a SummitTracker
+      const hiddenCategoryIds = new Set(
+        hiddenItems.filter((h: any) => h.item_type === "category").map((h: any) => h.item_id)
+      );
+      const hiddenExperienceIds = new Set(
+        hiddenItems.filter((h: any) => h.item_type === "experience").map((h: any) => h.item_id)
+      );
+
+      const visiblePredefined = predefinedCategories
+        .filter(cat => !hiddenCategoryIds.has(cat.id))
+        .map(cat => {
+          const linkedCustom = customExps
+            .filter((ce: any) => ce.static_category_id === cat.id)
+            .map((ce: any) => ({ id: ce.id, name: ce.name, subItems: ce.sub_items }));
+          return {
+            ...cat,
+            experiences: [
+              ...cat.experiences.filter(exp => !hiddenExperienceIds.has(exp.id)),
+              ...linkedCustom.filter((exp: any) => !hiddenExperienceIds.has(exp.id)),
+            ],
+          };
+        });
+
+      const customCategoriesList = customCats
+        .filter((cat: any) => !cat.static_id && !hiddenCategoryIds.has(cat.id))
+        .map((cat: any) => ({
+          id: cat.id,
+          name: cat.name,
+          experiences: customExps
+            .filter((ce: any) => ce.category_id === cat.id && !hiddenExperienceIds.has(ce.id))
+            .map((ce: any) => ({ id: ce.id, name: ce.name, subItems: ce.sub_items })),
+        }));
+
+      const orphanExperiences = customExps.filter(
+        (ce: any) => !ce.category_id && !ce.static_category_id && !hiddenExperienceIds.has(ce.id)
+      );
+
+      const allExperiencesList: Array<{ id: string; subItems?: any[] }> = [
+        ...visiblePredefined.flatMap(c => c.experiences),
+        ...customCategoriesList.flatMap((c: any) => c.experiences),
+        ...orphanExperiences.map((ce: any) => ({ id: ce.id, subItems: ce.sub_items })),
+      ];
+
       let expCompletedCount = 0;
-      let customExpCount = 0;
-      
-      if (ascData) {
-        const countryIds = new Set(countries.map(c => c.id));
-        const peakIds = new Set(peaks.map(p => p.id));
-        
-        const uniqueSummits = new Set(ascData.map(a => a.summit_id));
-        
-        for (const summit_id of uniqueSummits) {
-          if (countryIds.has(summit_id)) cCount++;
-          if (peakIds.has(summit_id)) pCount++;
-        }
-      }
-      
-      if (customExps) {
-        customExpCount = customExps.length;
-      }
-      
-      if (expData) {
-        for (const cat of predefinedCategories) {
-          for (const exp of cat.experiences) {
-            if (exp.subItems && exp.subItems.length > 0) {
-              const allCompleted = exp.subItems.every((item: any) => 
-                expData.some(r => r.experience_id === exp.id && r.sub_item_id === item.id)
-              );
-              if (allCompleted) expCompletedCount++;
-            } else {
-              const completed = expData.some(r => r.experience_id === exp.id);
-              if (completed) expCompletedCount++;
-            }
+      for (const exp of allExperiencesList) {
+        if (!exp.subItems || exp.subItems.length === 0) {
+          if (expData.some((r: any) => r.experience_id === exp.id)) {
+            expCompletedCount++;
           }
-        }
-        
-        if (customExps) {
-          for (const cExp of customExps) {
-            const completed = expData.some(r => r.experience_id === cExp.id);
-            if (completed) expCompletedCount++;
+        } else {
+          const subItemIds = exp.subItems.map((s: any) => s.id);
+          const completedSubItems = new Set(
+            expData
+              .filter((r: any) => r.experience_id === exp.id && r.sub_item_id)
+              .map((r: any) => r.sub_item_id)
+          );
+          if (subItemIds.length > 0 && subItemIds.every((id: string) => completedSubItems.has(id))) {
+            expCompletedCount++;
           }
         }
       }
-      
+
       const newProgress = {
         countries: cCount,
         peaks: pCount,
-        experiences: expCompletedCount
+        experiences: expCompletedCount,
       };
       const newTotals = {
         countries: countries.length,
         peaks: 47,
-        experiences: predefinedCategories.reduce((acc, cat) => acc + cat.experiences.length, 0) + customExpCount
+        experiences: allExperiencesList.length,
       };
       setProgressCounts(newProgress);
       setTotalCounts(newTotals);
@@ -220,9 +275,14 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
       cachedDataUserId = session.user.id;
     }
 
-    fetchConnections();
-    fetchRecommended();
-    fetchProgress();
+    Promise.allSettled([
+      fetchConnections(),
+      fetchRecommended(),
+      fetchProgress()
+    ]).finally(() => {
+      cachedConnectionsLastFetched = Date.now();
+      isFetchingSocial = false;
+    });
   }, [session, isActive]);
 
   useEffect(() => {
@@ -403,8 +463,8 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
           <IconLogo className="brand-icon" style={{ filter: 'brightness(0)' }} />
         </Link>
         <nav>
-          <Link href={mapLink}>Mapa</Link>
-          <Link href="/social" style={{ fontWeight: 'bold', position: 'relative' }}>
+          <Link href={mapLink} prefetch={true} className="topbar-nav-link topbar-nav-link--mapa">Mapa</Link>
+          <Link href="/social" className="topbar-nav-link topbar-nav-link--social" style={{ fontWeight: 'bold', position: 'relative' }}>
             Social
             {hasPendingRequests ? (
               <span 
@@ -414,8 +474,8 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
                 }}
                 style={{ 
                   position: 'absolute', 
-                  top: '0', 
-                  right: '-10px', 
+                  top: '-2px', 
+                  right: '-6px', 
                   width: '8px', 
                   height: '8px', 
                   backgroundColor: 'red', 
@@ -425,7 +485,7 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
               />
             ) : null}
           </Link>
-          <Link href="/ranking">Ranking</Link>
+          <Link href="/ranking" prefetch={true} className="topbar-nav-link topbar-nav-link--ranking">Ranking</Link>
           {session ? (
             <button className="account-button" onClick={() => setProfileOpen(true)}>
               {myProfile?.avatar_url ? (

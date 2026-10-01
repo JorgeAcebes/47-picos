@@ -134,6 +134,7 @@ type Props = {
   onSwitchMode?: (mode: ChallengeMode) => void;
   onNavigate?: (tab: string) => void;
   isActive?: boolean;
+  initialExperiencesMode?: boolean;
 };
 
 function peakToItem(peak: Peak): SelectedItem {
@@ -491,6 +492,12 @@ function IconLinkedin() {
 
 const cachedAscentsByUser: Record<string, Ascent[]> = {};
 const cachedPhotosByUser: Record<string, SummitPhoto[]> = {};
+const cachedExperienceRecordsByUser: Record<string, ExperienceRecord[]> = {};
+const cachedCustomExperiencesByUser: Record<string, any[]> = {};
+const cachedCustomCategoriesByUser: Record<string, any[]> = {};
+const cachedHiddenItemsByUser: Record<string, HiddenItem[]> = {};
+let cachedTrackerLastFetched: Record<string, number> = {};
+const TRACKER_CACHE_TTL = 60 * 1000;
 
 export function SummitTracker({
   mode: initialModeProp,
@@ -498,6 +505,7 @@ export function SummitTracker({
   onSwitchMode,
   onNavigate,
   isActive = true,
+  initialExperiencesMode = false,
 }: Props) {
   const router = useRouter();
   const [currentMode, setCurrentMode] =
@@ -517,6 +525,7 @@ export function SummitTracker({
   }, [isActive]);
 
   const { session, profile: authProfile, refreshProfile } = useAuth();
+  const [mounted, setMounted] = useState(false);
   const [myProfile, setMyProfile] = useState<{
     username: string;
     avatar_url: string | null;
@@ -525,13 +534,47 @@ export function SummitTracker({
   } | null>(() => authProfile);
 
   useEffect(() => {
-    if (authProfile) setMyProfile(authProfile);
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    setMyProfile(authProfile);
   }, [authProfile]);
 
   const targetId = targetProfile ? targetProfile.id : session?.user.id;
   const [ascents, setAscents] = useState<Ascent[]>(() => (targetId && cachedAscentsByUser[targetId]) ? cachedAscentsByUser[targetId] : []);
   const [photos, setPhotos] = useState<SummitPhoto[]>(() => (targetId && cachedPhotosByUser[targetId]) ? cachedPhotosByUser[targetId] : []);
   const [selected, setSelected] = useState<SelectedItem | null>(null);
+  const panelPushedRef = useRef(false);
+  const recordOpenedFromPanelRef = useRef(false);
+  const [panelIdToOpen, setPanelIdToOpen] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = sessionStorage.getItem("auto_open_panel");
+        if (stored) {
+          sessionStorage.removeItem("auto_open_panel");
+          return stored;
+        }
+      } catch (e) {
+        console.warn(e);
+      }
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    if (panelIdToOpen) {
+      panelPushedRef.current = true;
+      const targetHash = `#panel=${encodeURIComponent(panelIdToOpen)}`;
+      if (window.location.hash !== targetHash) {
+        window.history.pushState(
+          { hasPanel: true },
+          "",
+          targetHash,
+        );
+      }
+    }
+  }, [panelIdToOpen]);
   const [authOpen, setAuthOpen] = useState<"login" | "register" | false>(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [recordOpen, setRecordOpen] = useState(false);
@@ -582,12 +625,18 @@ export function SummitTracker({
   }, [lightboxPhoto]);
 
   // Experience features
-  const [experienceRecords, setExperienceRecords] = useState<
-    ExperienceRecord[]
-  >([]);
-  const [customExperiences, setCustomExperiences] = useState<any[]>([]); // We use any[] for now or import CustomExperience
-  const [customCategories, setCustomCategories] = useState<any[]>([]);
-  const [hiddenItems, setHiddenItems] = useState<HiddenItem[]>([]);
+  const [experienceRecords, setExperienceRecords] = useState<ExperienceRecord[]>(
+    () => (targetId && cachedExperienceRecordsByUser[targetId]) ? cachedExperienceRecordsByUser[targetId] : []
+  );
+  const [customExperiences, setCustomExperiences] = useState<any[]>(
+    () => (targetId && cachedCustomExperiencesByUser[targetId]) ? cachedCustomExperiencesByUser[targetId] : []
+  );
+  const [customCategories, setCustomCategories] = useState<any[]>(
+    () => (targetId && cachedCustomCategoriesByUser[targetId]) ? cachedCustomCategoriesByUser[targetId] : []
+  );
+  const [hiddenItems, setHiddenItems] = useState<HiddenItem[]>(
+    () => (targetId && cachedHiddenItemsByUser[targetId]) ? cachedHiddenItemsByUser[targetId] : []
+  );
   const [editingCustomCategory, setEditingCustomCategory] = useState<any>(null); // null, 'new', or existing category object
   const [editingCustomExp, setEditingCustomExp] = useState<any>(null); // null, 'new', or existing custom experience
   const [confirmAction, setConfirmAction] = useState<{
@@ -619,18 +668,22 @@ export function SummitTracker({
   const [editorPhoto, setEditorPhoto] = useState<SummitPhoto | null>(null);
   const [diffMode, setDiffMode] = useState(false);
   const [regionsMode, setRegionsMode] = useState(false);
-  const [experiencesMode, setExperiencesMode] = useState(false);
+  const [experiencesMode, setExperiencesMode] = useState(
+    initialExperiencesMode || false,
+  );
   const [isEditingExperiences, setIsEditingExperiences] = useState(false);
   const [iconDropdownOpen, setIconDropdownOpen] = useState(false);
 
   useEffect(() => {
-    if (!isReadOnly) {
+    if (initialExperiencesMode) {
+      setExperiencesMode(true);
+    } else if (!isReadOnly) {
       const savedExp = localStorage.getItem("myExperiencesMode");
       if (savedExp === "true") setExperiencesMode(true);
       const savedReg = localStorage.getItem("myRegionsMode");
       if (savedReg === "true") setRegionsMode(true);
     }
-  }, [isReadOnly]);
+  }, [isReadOnly, initialExperiencesMode]);
 
   useEffect(() => {
     if (!isReadOnly) {
@@ -747,6 +800,15 @@ export function SummitTracker({
       } else if (hash.startsWith("#panel")) {
         setEditorPhoto(null);
         setLightboxPhoto(null);
+        const panelId = decodeURIComponent(hash.startsWith("#panel=") ? hash.substring(7) : hash.substring(6));
+        if (panelId) {
+          if (!selected || selected.id !== panelId.split("::")[0]) {
+            setPanelIdToOpen(panelId);
+          }
+        } else {
+          setSelected(null);
+          setRecordOpen(false);
+        }
       } else {
         setEditorPhoto(null);
         setLightboxPhoto(null);
@@ -754,6 +816,9 @@ export function SummitTracker({
         setRecordOpen(false);
         setProfileOpen(false);
         setAuthOpen(false);
+        setPanelIdToOpen(null);
+        panelPushedRef.current = false;
+        recordOpenedFromPanelRef.current = false;
       }
     };
     window.addEventListener("hashchange", handleHashChange);
@@ -762,7 +827,7 @@ export function SummitTracker({
       window.removeEventListener("hashchange", handleHashChange);
       window.removeEventListener("popstate", handleHashChange);
     };
-  }, [isActive]);
+  }, [isActive, selected]);
 
   useEffect(() => {
     if (!isActive) {
@@ -882,7 +947,7 @@ export function SummitTracker({
     return [...visiblePredefined, ...customCats];
   }, [customExperiences, customCategories, hiddenItems]);
 
-  const allItems = useMemo(
+  const allItems: SelectedItem[] = useMemo(
     () =>
       isPeaks
         ? peaks.map(peakToItem)
@@ -1004,15 +1069,45 @@ export function SummitTracker({
   // Restore selection on load
   useEffect(() => {
     const hash = window.location.hash;
-    if (hash.startsWith("#panel=")) {
-      const id = hash.substring(7);
-      if (id) {
-        let item = allItems.find((i) => i.id === id);
+    const targetHash = panelIdToOpen ? `#panel=${panelIdToOpen}` : hash;
+    if (targetHash.startsWith("#panel=")) {
+      const rawId = targetHash.substring(7);
+      if (rawId) {
+        const id = decodeURIComponent(rawId);
+        let baseId = id;
+        let subItemId: string | undefined = undefined;
+        if (id.includes("::")) {
+          const parts = id.split("::");
+          baseId = parts[0];
+          subItemId = parts[1];
+        }
+
+        // Check if it's an experience and we need to activate experiencesMode
+        if (!experiencesMode && !isPeaks) {
+          const isPredefined = predefinedCategories.some((cat) =>
+            cat.experiences.some((exp) => exp.id === baseId),
+          );
+          const isCustom = customExperiences.some((exp) => exp.id === baseId);
+          if (isPredefined || isCustom || baseId.startsWith("exp-")) {
+            setExperiencesMode(true);
+            return;
+          }
+        }
+
+        // Check if it's a peak and we need to switch mode
+        if (!isPeaks && peaks.some((p) => p.id === baseId)) {
+          setCurrentMode("peaks");
+          return;
+        }
+
+        let item: SelectedItem | undefined = allItems.find(
+          (i) => i.id === baseId || i.id === id,
+        );
         if (!item && !isPeaks) {
           for (const [countryId, regions] of Object.entries(
             regionsByCountryIsoA2,
           )) {
-            const region = regions.find((r) => r.id === id);
+            const region = regions.find((r) => r.id === baseId);
             if (region) {
               const country = countries.find((c) => c.iso_a2 === countryId);
               if (country) {
@@ -1022,12 +1117,32 @@ export function SummitTracker({
             }
           }
         }
-        if (item && (!selected || selected.id !== item.id)) {
-          setSelected(item);
+        if (item) {
+          let selectedItem: SelectedItem = item;
+          if (subItemId) {
+            selectedItem = { ...item, sub_item_id: subItemId };
+          }
+          if (
+            !selected ||
+            selected.id !== selectedItem.id ||
+            selected.sub_item_id !== selectedItem.sub_item_id
+          ) {
+            setSelected(selectedItem);
+          }
+          if (panelIdToOpen) {
+            setPanelIdToOpen(null);
+          }
         }
       }
     }
-  }, [allItems, isPeaks, selected]);
+  }, [
+    allItems,
+    isPeaks,
+    selected,
+    panelIdToOpen,
+    experiencesMode,
+    customExperiences,
+  ]);
 
   // Contar únicas
   const achievedCount = useMemo(() => {
@@ -1120,6 +1235,18 @@ export function SummitTracker({
   }, [selected]);
 
   useEffect(() => {
+    if (selected?.sub_item_id) {
+      const timeout = setTimeout(() => {
+        const el = document.querySelector(`.subitem-details[open]`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 150);
+      return () => clearTimeout(timeout);
+    }
+  }, [selected?.sub_item_id]);
+
+  useEffect(() => {
     let timeout: NodeJS.Timeout;
     if (notice) {
       timeout = setTimeout(() => {
@@ -1178,14 +1305,28 @@ export function SummitTracker({
   /* ── Load progress ────────────────────── */
   useEffect(() => {
     async function loadProgress() {
-      if (!supabase || !session) {
+      const targetId = targetProfile ? targetProfile.id : session?.user.id;
+      if (!supabase || !targetId) {
         if (!targetProfile) {
           setAscents([]);
           setPhotos([]);
         }
         return;
       }
-      const targetId = targetProfile ? targetProfile.id : session.user.id;
+      const now = Date.now();
+      const isFresh = targetId && cachedAscentsByUser[targetId] && (now - (cachedTrackerLastFetched[targetId] || 0) < TRACKER_CACHE_TTL);
+      if (isFresh) {
+        if (!isReadOnly && !profileOpen && session && !myProfile) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("username, avatar_url, enable_regions, enable_experiences")
+            .eq("id", session.user.id)
+            .single();
+          if (profile) setMyProfile(profile);
+        }
+        return;
+      }
+
       const [
         ascentResult,
         photoResult,
@@ -1228,12 +1369,23 @@ export function SummitTracker({
         setPhotos(photoResult.data as SummitPhoto[]);
         cachedPhotosByUser[targetId] = photoResult.data as SummitPhoto[];
       }
-      if (expResult.data)
+      if (expResult.data) {
         setExperienceRecords(expResult.data as ExperienceRecord[]);
-      if (customExpResult.data) setCustomExperiences(customExpResult.data);
-      if (customCatResult.data) setCustomCategories(customCatResult.data);
-      if (hiddenItemsResult.data)
+        cachedExperienceRecordsByUser[targetId] = expResult.data as ExperienceRecord[];
+      }
+      if (customExpResult.data) {
+        setCustomExperiences(customExpResult.data);
+        cachedCustomExperiencesByUser[targetId] = customExpResult.data;
+      }
+      if (customCatResult.data) {
+        setCustomCategories(customCatResult.data);
+        cachedCustomCategoriesByUser[targetId] = customCatResult.data;
+      }
+      if (hiddenItemsResult.data) {
         setHiddenItems(hiddenItemsResult.data as HiddenItem[]);
+        cachedHiddenItemsByUser[targetId] = hiddenItemsResult.data as HiddenItem[];
+      }
+      cachedTrackerLastFetched[targetId] = Date.now();
 
       if (!isReadOnly && !profileOpen) {
         // Ensure we have current user profile if session exists
@@ -1480,7 +1632,11 @@ export function SummitTracker({
 
   /* ── Handlers ─────────────────────────── */
   const openInformation = useCallback((item: SelectedItem) => {
-    window.location.hash = `panel=${item.id}`;
+    panelPushedRef.current = true;
+    const targetHash = `#panel=${encodeURIComponent(item.id)}`;
+    if (window.location.hash !== targetHash) {
+      window.history.pushState({ hasPanel: true }, "", targetHash);
+    }
     setSelected(item);
     setRecordOpen(false);
     setNotice("");
@@ -1610,6 +1766,10 @@ export function SummitTracker({
       setSelected(item);
       setRecordOpen(true);
       setEditingExpRecordId(null);
+      const targetHash = `#panel=${encodeURIComponent(expId)}`;
+      if (window.location.hash !== targetHash) {
+        window.history.replaceState({ hasPanel: true }, "", targetHash);
+      }
     } else {
       setSelectingLocationForExp(null);
     }
@@ -1780,11 +1940,19 @@ export function SummitTracker({
   const openRecord = useCallback(
     (item?: SelectedItem | null, ascentToEdit?: Ascent | any) => {
       if (!session) {
-        window.location.hash = "panel";
+        const targetHash = "#panel";
+        if (window.location.hash !== targetHash) {
+          window.history.pushState({ hasPanel: true }, "", targetHash);
+        }
         setAuthOpen("login");
         return;
       }
-      window.location.hash = item ? `panel=${item.id}` : "panel";
+      recordOpenedFromPanelRef.current = !!(selected && item && selected.id === item.id);
+      const targetHash = item ? `#panel=${encodeURIComponent(item.id)}` : "#panel";
+      if (window.location.hash !== targetHash) {
+        panelPushedRef.current = true;
+        window.history.pushState({ hasPanel: true }, "", targetHash);
+      }
       setRecordOpen(true);
       if (!item) {
         setClimbDate(null);
@@ -1850,7 +2018,7 @@ export function SummitTracker({
       }
       setNotice("");
     },
-    [session],
+    [session, selected],
   );
 
   const openPeakRecord = useCallback(
@@ -2850,21 +3018,30 @@ export function SummitTracker({
     setSelected(null);
   }
 
-  function closePanel() {
+  const closePanel = useCallback(() => {
     setSelected(null);
     setRecordOpen(false);
     setProfileOpen(false);
     setAuthOpen(false);
+    setPanelIdToOpen(null);
+    panelPushedRef.current = false;
+    recordOpenedFromPanelRef.current = false;
     if (window.location.hash) {
-      window.history.pushState(
+      window.history.replaceState(
         null,
         "",
         window.location.pathname + window.location.search,
       );
-      // Trigger a popstate manually if needed, or state update is enough
-      // Since we just set states above, the UI will update correctly.
     }
-  }
+  }, []);
+
+  const handleCloseRecord = useCallback(() => {
+    if (recordOpenedFromPanelRef.current) {
+      setRecordOpen(false);
+    } else {
+      closePanel();
+    }
+  }, [closePanel]);
 
   function switchMode(target: ChallengeMode) {
     if (target === currentMode) return;
@@ -2875,6 +3052,9 @@ export function SummitTracker({
     setRecordOpen(false);
     setProfileOpen(false);
     setAuthOpen(false);
+    setPanelIdToOpen(null);
+    panelPushedRef.current = false;
+    recordOpenedFromPanelRef.current = false;
 
     setCurrentMode(target);
 
@@ -3244,6 +3424,8 @@ export function SummitTracker({
             <>
               <Link
                 href="/"
+                prefetch={true}
+                className="topbar-nav-link topbar-nav-link--mapa"
                 onClick={(e) => {
                   if (onNavigate) {
                     e.preventDefault();
@@ -3258,6 +3440,7 @@ export function SummitTracker({
             <>
               <a
                 href="#mapa"
+                className="topbar-nav-link topbar-nav-link--mapa"
                 onClick={(e) => {
                   if (onNavigate) {
                     e.preventDefault();
@@ -3272,6 +3455,8 @@ export function SummitTracker({
 
           <Link
             href="/social"
+            prefetch={true}
+            className="topbar-nav-link topbar-nav-link--social"
             style={{ position: "relative" }}
             onClick={(e) => {
               if (onNavigate) {
@@ -3285,8 +3470,8 @@ export function SummitTracker({
               <span
                 style={{
                   position: "absolute",
-                  top: "-4px",
-                  right: "-10px",
+                  top: "-2px",
+                  right: "-6px",
                   width: "8px",
                   height: "8px",
                   backgroundColor: "red",
@@ -3297,6 +3482,8 @@ export function SummitTracker({
           </Link>
           <Link
             href="/ranking"
+            prefetch={true}
+            className="topbar-nav-link topbar-nav-link--ranking"
             onClick={(e) => {
               if (onNavigate) {
                 e.preventDefault();
@@ -3510,7 +3697,7 @@ export function SummitTracker({
                 </button>
               )}
               {!isPeaks &&
-                (myProfile?.enable_experiences || experiencesMode) && (
+                (experiencesMode || (mounted && myProfile?.enable_experiences)) && (
                   <button
                     className={`diff-toggle${experiencesMode ? " diff-toggle--active" : ""}`}
                     onClick={() => setExperiencesMode(!experiencesMode)}
@@ -3532,7 +3719,7 @@ export function SummitTracker({
                     Experiencias
                   </button>
                 )}
-              {!isPeaks && myProfile?.enable_regions && (
+              {!isPeaks && (mounted && myProfile?.enable_regions) && (
                 <button
                   className={`diff-toggle${regionsMode ? " diff-toggle--active" : ""}`}
                   onClick={() => setRegionsMode(!regionsMode)}
@@ -4396,6 +4583,7 @@ export function SummitTracker({
                               <details
                                 key={item.id}
                                 className="subitem-details"
+                                open={item.id === selected?.sub_item_id || undefined}
                                 style={{
                                   display: "flex",
                                   flexDirection: "column",
@@ -5180,7 +5368,7 @@ export function SummitTracker({
           <section className="record-dialog" role="dialog" aria-modal="true">
             <button
               className="icon-button"
-              onClick={() => setRecordOpen(false)}
+              onClick={handleCloseRecord}
               aria-label="Cerrar"
             >
               <IconClose />

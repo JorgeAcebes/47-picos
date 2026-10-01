@@ -2,8 +2,9 @@ import React, { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import type { Session } from "@supabase/supabase-js";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { formatDistanceToNow, format } from "date-fns";
-import { Link as LinkIcon, Video, Camera, Briefcase, MapPin } from "lucide-react";
+import { Link as LinkIcon, Video, Camera, Briefcase, MapPin, Share2 } from "lucide-react";
 import { es } from "date-fns/locale";
 import { countries } from "@/data/countries";
 import { peaks } from "@/data/peaks";
@@ -59,13 +60,8 @@ function formatDateSafe(dateVal: string | undefined | null): string {
   }
 }
 
-function FeedItemCard({ item, session, onAuthRequired }: { item: any, session: Session | null, onAuthRequired?: () => void }) {
-  const [likes, setLikes] = useState(0);
-  const [hasLiked, setHasLiked] = useState(false);
-  const [commentCount, setCommentCount] = useState(0);
-  const [showComments, setShowComments] = useState(false);
-  const [comments, setComments] = useState<any[]>([]);
-  const [newComment, setNewComment] = useState("");
+function FeedItemCard({ item, session: _session, onAuthRequired: _onAuthRequired }: { item: any, session?: Session | null, onAuthRequired?: () => void }) {
+  const router = useRouter();
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
@@ -137,127 +133,6 @@ function FeedItemCard({ item, session, onAuthRequired }: { item: any, session: S
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [lightboxIndex, photos.length]);
 
-  useEffect(() => {
-    async function loadInteractions() {
-      if (!supabase) return;
-
-      // Load Likes
-      const { count } = await supabase
-        .from('feed_likes')
-        .select('*', { count: 'exact', head: true })
-        .eq('entity_type', item.type)
-        .eq('entity_id', item.id);
-      
-      setLikes(count || 0);
-
-      const { count: cCount } = await supabase
-        .from('feed_comments')
-        .select('*', { count: 'exact', head: true })
-        .eq('entity_type', item.type)
-        .eq('entity_id', item.id);
-      
-      setCommentCount(cCount || 0);
-
-      if (session) {
-        const { data } = await supabase
-          .from('feed_likes')
-          .select('id')
-          .eq('entity_type', item.type)
-          .eq('entity_id', item.id)
-          .eq('user_id', session.user.id)
-          .maybeSingle();
-        
-        if (data) setHasLiked(true);
-      }
-    }
-    loadInteractions();
-  }, [item, session]);
-
-  const toggleLike = async () => {
-    if (!session || !supabase) {
-      if (onAuthRequired) onAuthRequired();
-      return;
-    }
-
-    if (hasLiked) {
-      setHasLiked(false);
-      setLikes(prev => prev - 1);
-      await supabase
-        .from('feed_likes')
-        .delete()
-        .eq('entity_type', item.type)
-        .eq('entity_id', item.id)
-        .eq('user_id', session.user.id);
-    } else {
-      setHasLiked(true);
-      setLikes(prev => prev + 1);
-      await supabase
-        .from('feed_likes')
-        .insert({
-          entity_type: item.type,
-          entity_id: item.id,
-          user_id: session.user.id
-        });
-    }
-  };
-
-  const loadComments = async () => {
-    if (!supabase) return;
-    const { data } = await supabase
-      .from('feed_comments')
-      .select('id, user_id, comment, created_at, profiles!feed_comments_user_id_profiles_fkey(username, avatar_url)')
-      .eq('entity_type', item.type)
-      .eq('entity_id', item.id)
-      .order('created_at', { ascending: true });
-    
-    if (data) setComments(data);
-  };
-
-  const handleToggleComments = () => {
-    if (!showComments) {
-      loadComments();
-    }
-    setShowComments(!showComments);
-  };
-
-  const postComment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!session || !supabase) {
-      if (onAuthRequired) onAuthRequired();
-      return;
-    }
-    if (!newComment.trim()) return;
-
-    const commentText = newComment.trim();
-    setNewComment("");
-
-    const { data, error } = await supabase
-      .from('feed_comments')
-      .insert({
-        entity_type: item.type,
-        entity_id: item.id,
-        user_id: session.user.id,
-        comment: commentText
-      })
-      .select('id, user_id, comment, created_at, profiles!feed_comments_user_id_profiles_fkey(username, avatar_url)')
-      .single();
-
-    if (!error && data) {
-      setComments(prev => [...prev, data]);
-      setCommentCount(prev => prev + 1);
-    }
-  };
-
-  const deleteComment = async (commentId: string) => {
-    if (!session || !supabase) return;
-    if (!window.confirm("¿Seguro que quieres eliminar este comentario?")) return;
-    const { error } = await supabase.from('feed_comments').delete().eq('id', commentId).eq('user_id', session.user.id);
-    if (!error) {
-      setComments(prev => prev.filter(c => c.id !== commentId));
-      setCommentCount(prev => Math.max(0, prev - 1));
-    }
-  };
-
   let isCountry = false;
   let isPeak = false;
   let finalLocationName = item.location_name || 'Experiencia';
@@ -290,7 +165,88 @@ function FeedItemCard({ item, session, onAuthRequired }: { item: any, session: S
     title = isPeak ? "ha registrado una ascensión" : "ha visitado un país";
   }
 
+  const displayTitle = finalLocationName;
   const dateRangeStr = formatRecordDateRange(item.achieved_on, item.end_date);
+
+  const username = item.profiles?.username;
+
+  let recordChallenge = "countries";
+  let recordId = "";
+
+  if (item.type === "ascent") {
+    const summitIdLower = (item.summit_id || '').toLowerCase();
+    recordId = summitIdLower;
+    recordChallenge = isPeak ? "peaks" : "countries";
+  } else if (item.type === "experience") {
+    recordChallenge = "experiences";
+    if (item.experience_id) {
+      recordId = item.sub_item_id
+        ? `${item.experience_id}::${item.sub_item_id}`
+        : item.experience_id;
+    }
+  }
+
+  const profileBaseUrl = username ? `/perfil/${username}?challenge=${recordChallenge}` : "";
+  const recordUrlWithHash = username && recordId ? `${profileBaseUrl}#panel=${encodeURIComponent(recordId)}` : profileBaseUrl;
+
+  const handleTitleClick = (e: React.MouseEvent) => {
+    if (!username || !recordId) return;
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) {
+      return;
+    }
+    e.preventDefault();
+    try {
+      sessionStorage.setItem("auto_open_panel", recordId);
+    } catch (err) {
+      console.warn("Could not set sessionStorage:", err);
+    }
+    router.push(profileBaseUrl);
+  };
+
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+
+    const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+    const shareUrl = username && recordId ? `${baseUrl}${recordUrlWithHash}` : `${baseUrl}/social`;
+
+    const shareTitle = `${displayTitle} · ${username || '47 Picos'}`;
+    let shareText = `${username ? `@${username}` : 'Usuario'} ${title}: ${displayTitle}`;
+    if (dateRangeStr) {
+      shareText += ` (${dateRangeStr})`;
+    }
+    if (item.notes) {
+      shareText += `\n"${item.notes}"`;
+    }
+    shareText += `\n\n${shareUrl}`;
+
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        const shareData: ShareData = {
+          title: shareTitle,
+          text: shareText,
+          url: shareUrl,
+        };
+        await navigator.share(shareData);
+      } catch (err: any) {
+        if (err?.name !== "AbortError") {
+          try {
+            await navigator.clipboard.writeText(shareUrl);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2500);
+          } catch {}
+        }
+      }
+    } else if (typeof navigator !== "undefined" && navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      } catch {}
+    }
+  };
 
   return (
     <div className="feed-card">
@@ -315,11 +271,51 @@ function FeedItemCard({ item, session, onAuthRequired }: { item: any, session: S
             {dateRangeStr || formatDateSafe(item.created_at)}
           </div>
         </div>
+        <button
+          className="feed-share-btn"
+          onClick={handleShare}
+          title={copied ? "Enlace copiado al portapapeles" : "Compartir publicación"}
+          aria-label="Compartir publicación"
+          style={{
+            background: "none",
+            border: "none",
+            color: copied ? "var(--pine)" : "var(--muted)",
+            cursor: "pointer",
+            padding: "8px",
+            borderRadius: "50%",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "all 0.2s ease",
+            flexShrink: 0,
+          }}
+        >
+          {copied ? (
+            <span style={{ fontSize: "11px", fontWeight: "bold", color: "var(--pine)" }}>¡Copiado!</span>
+          ) : (
+            <Share2 size={16} />
+          )}
+        </button>
       </div>
 
-      <div className="feed-card-body" style={{ paddingBottom: '12px', paddingTop: '0' }}>
-        <h3 style={{ margin: '0 0 4px', fontSize: '18px', color: 'var(--pine)' }}>
-          {finalLocationName}
+      <div className="feed-card-body" style={{ paddingBottom: hasPhotos ? '12px' : '16px', paddingTop: '0' }}>
+        <h3 style={{ margin: '0 0 4px', fontSize: '18px' }}>
+          {username && recordId ? (
+            <Link
+              href={recordUrlWithHash}
+              onClick={handleTitleClick}
+              className="feed-record-title"
+              style={{
+                color: 'var(--pine)',
+                textDecoration: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              {displayTitle}
+            </Link>
+          ) : (
+            <span style={{ color: 'var(--pine)' }}>{displayTitle}</span>
+          )}
         </h3>
         {item.notes && (
           <p style={{ margin: 0, fontSize: '14px', color: 'var(--ink)', lineHeight: '1.5' }}>
@@ -549,73 +545,14 @@ function FeedItemCard({ item, session, onAuthRequired }: { item: any, session: S
           </div>
         </div>
       )}
-
-      <div className="feed-card-footer">
-        <button className={`interaction-btn ${hasLiked ? 'liked' : ''}`} onClick={toggleLike}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill={hasLiked ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-          </svg>
-          {likes > 0 ? likes : ''}
-        </button>
-        <button className="interaction-btn" onClick={handleToggleComments}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
-          </svg>
-          {commentCount > 0 ? commentCount : 'Comentar'}
-        </button>
-      </div>
-
-      {showComments && (
-        <div style={{ padding: '0 16px 16px', background: '#fafafa', borderTop: '1px solid var(--line)' }}>
-          {comments.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingTop: '16px', marginBottom: '16px' }}>
-              {comments.map(comment => (
-                <div key={comment.id} style={{ display: 'flex', gap: '8px' }}>
-                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--pine)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', flexShrink: 0 }}>
-                    {comment.profiles?.avatar_url ? (
-                      <img src={comment.profiles.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-                    ) : (
-                      comment.profiles?.username?.charAt(0).toUpperCase()
-                    )}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0, fontSize: '13px', lineHeight: '1.4' }}>
-                    <span style={{ fontWeight: 'bold', marginRight: '6px', color: 'var(--ink)' }}>{comment.profiles?.username}</span>
-                    <span style={{ color: 'var(--ink)' }}>{comment.comment}</span>
-                    <div style={{ marginTop: '4px' }}>
-                      <span style={{ fontSize: '11px', color: '#999' }}>{formatDateSafe(comment.created_at)}</span>
-                    </div>
-                  </div>
-                  {session?.user?.id === comment.user_id && (
-                    <button onClick={() => deleteComment(comment.id)} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', padding: '4px', alignSelf: 'flex-start', flexShrink: 0 }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-          
-          <form onSubmit={postComment} style={{ display: 'flex', gap: '8px', paddingTop: comments.length === 0 ? '16px' : '0' }}>
-            <input 
-              type="text" 
-              placeholder="Añade un comentario..." 
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              onClick={() => { if (!session && onAuthRequired) onAuthRequired(); }}
-              style={{ flex: 1, padding: '8px 12px', border: '1px solid var(--line)', borderRadius: '20px', fontSize: '13px', outline: 'none' }}
-            />
-            <button type="submit" disabled={!newComment.trim()} style={{ background: 'none', border: 'none', color: 'var(--pine)', fontWeight: 'bold', fontSize: '13px', cursor: newComment.trim() ? 'pointer' : 'default', opacity: newComment.trim() ? 1 : 0.5 }}>
-              Publicar
-            </button>
-          </form>
-        </div>
-      )}
     </div>
   );
 }
 
 let globalCachedFeedItems: any[] | null = null;
+let globalFeedLastFetched = 0;
 let isFetchingFeed = false;
+const FEED_CACHE_TTL = 60 * 1000;
 
 export function FeedTab({ session, isActive = true, onAuthRequired }: { session: Session | null; isActive?: boolean; onAuthRequired?: () => void }) {
   const [loading, setLoading] = useState(() => !globalCachedFeedItems || globalCachedFeedItems.length === 0);
@@ -626,6 +563,13 @@ export function FeedTab({ session, isActive = true, onAuthRequired }: { session:
 
     async function fetchFeed() {
       if (!supabase || isFetchingFeed) return;
+      const now = Date.now();
+      if (globalCachedFeedItems && globalCachedFeedItems.length > 0 && (now - globalFeedLastFetched < FEED_CACHE_TTL)) {
+        setFeedItems(globalCachedFeedItems);
+        setLoading(false);
+        return;
+      }
+
       if (!globalCachedFeedItems || globalCachedFeedItems.length === 0) {
         setLoading(true);
       }
@@ -825,6 +769,7 @@ export function FeedTab({ session, isActive = true, onAuthRequired }: { session:
 
 
       globalCachedFeedItems = combined;
+      globalFeedLastFetched = Date.now();
       setFeedItems(combined);
       setLoading(false);
       isFetchingFeed = false;

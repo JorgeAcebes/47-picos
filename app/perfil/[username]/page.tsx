@@ -13,6 +13,7 @@ export default async function UserProfilePage({ params, searchParams }: Props) {
   const username = resolvedParams.username;
   const challenge = resolvedSearchParams?.challenge;
   const initialMode = challenge === "peaks" ? "peaks" : "countries";
+  const initialExperiences = challenge === "experiences";
 
   if (!supabase) return notFound();
 
@@ -21,5 +22,11 @@ export default async function UserProfilePage({ params, searchParams }: Props) {
   // use the ANON key, which means they act as an unauthenticated user.
   // We can just pass the username to a client component and let it fetch.
   // The client component has the session cookie implicitly.
-  return <ProfileView username={username} initialMode={initialMode} />;
+  return (
+    <ProfileView
+      username={username}
+      initialMode={initialMode}
+      initialExperiences={initialExperiences}
+    />
+  );
 }

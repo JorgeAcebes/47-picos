@@ -1,0 +1,87 @@
+{
+  "timestamp": "2026-10-01T17:17:40.197Z",
+  "totalTasks": 6,
+  "passedTasks": 6,
+  "failedTasks": 0,
+  "averageScore": 100,
+  "totalDurationMs": 166972,
+  "results": [
+    {
+      "taskId": "eval-01-peaks-integrity",
+      "title": "Spain Peaks Dataset & Shared Summits Integrity",
+      "category": "geodata",
+      "pass": true,
+      "score": 100,
+      "durationMs": 1,
+      "message": "All peak and shared summit validations passed",
+      "details": {
+        "totalPeaks": 52,
+        "uniquePeaks": 47,
+        "issues": []
+      }
+    },
+    {
+      "taskId": "eval-02-countries-and-regions",
+      "title": "World Countries (196) and Sub-national Regions",
+      "category": "geodata",
+      "pass": true,
+      "score": 100,
+      "durationMs": 1,
+      "message": "Countries and regions evaluation passed",
+      "details": {
+        "totalCountries": 196,
+        "totalMappedRegionCountries": 240
+      }
+    },
+    {
+      "taskId": "eval-03-migrations-structure",
+      "title": "Database Migrations Sequence & RLS Policies",
+      "category": "database",
+      "pass": true,
+      "score": 100,
+      "durationMs": 10,
+      "message": "All migrations sequence and RLS policies verified",
+      "details": {
+        "totalMigrations": 21,
+        "issues": []
+      }
+    },
+    {
+      "taskId": "eval-04-experience-categories",
+      "title": "Custom Experiences Dataset & Schema Adherence",
+      "category": "experiences",
+      "pass": true,
+      "score": 100,
+      "durationMs": 1,
+      "message": "Experience categories schema verified",
+      "details": {
+        "categoriesCount": 4,
+        "experiencesCount": 26
+      }
+    },
+    {
+      "taskId": "eval-05-supabase-mock-contracts",
+      "title": "Supabase Mock Contract Validation",
+      "category": "database",
+      "pass": true,
+      "score": 100,
+      "durationMs": 4,
+      "message": "Supabase mock client contracts fully verified",
+      "details": {
+        "issues": []
+      }
+    },
+    {
+      "taskId": "eval-06-quality-gate",
+      "title": "Full Code Quality Gate (Types, Lint, Tests)",
+      "category": "quality",
+      "pass": true,
+      "score": 100,
+      "durationMs": 166950,
+      "message": "Typecheck, ESLint, and Vitest all passed",
+      "details": {
+        "issues": []
+      }
+    }
+  ]
+}

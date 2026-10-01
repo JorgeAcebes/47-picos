@@ -16,7 +16,15 @@ type Profile = {
   is_public: boolean;
 };
 
-export function ProfileView({ username, initialMode = "countries" }: { username: string, initialMode?: "peaks" | "countries" }) {
+export function ProfileView({
+  username,
+  initialMode = "countries",
+  initialExperiences = false,
+}: {
+  username: string;
+  initialMode?: "peaks" | "countries";
+  initialExperiences?: boolean;
+}) {
   const { session } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -119,9 +127,9 @@ export function ProfileView({ username, initialMode = "countries" }: { username:
             <IconLogo className="brand-icon" />
           </Link>
           <nav>
-            <Link href={mapLink}>Mapa</Link>
-            <Link href="/social">Social</Link>
-            <Link href="/ranking">Ranking</Link>
+            <Link href={mapLink} prefetch={true} className="topbar-nav-link topbar-nav-link--mapa">Mapa</Link>
+            <Link href="/social" prefetch={true} className="topbar-nav-link topbar-nav-link--social">Social</Link>
+            <Link href="/ranking" prefetch={true} className="topbar-nav-link topbar-nav-link--ranking">Ranking</Link>
           </nav>
         </header>
 
@@ -156,6 +164,12 @@ export function ProfileView({ username, initialMode = "countries" }: { username:
   const isMe = session?.user.id === profile.id;
 
   return (
-    <SummitTracker mode={mode} onSwitchMode={setMode} targetProfile={isMe ? undefined : { id: profile.id, username: profile.username }} onNavigate={handleNavigate} />
+    <SummitTracker
+      mode={mode}
+      onSwitchMode={setMode}
+      initialExperiencesMode={initialExperiences}
+      targetProfile={isMe ? undefined : { id: profile.id, username: profile.username }}
+      onNavigate={handleNavigate}
+    />
   );
 }

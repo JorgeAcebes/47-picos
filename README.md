@@ -24,3 +24,38 @@ pnpm dev
 ```
 
 El mapa utiliza límites abiertos y teselas de OpenStreetMap. El reto de España incluye 52 demarcaciones (47 cimas físicas distintas al haber compartidas), y el reto mundial incluye los países registrados.
+
+---
+
+## Arnés de Pruebas y Verificación (Harness)
+
+El proyecto cuenta con un arnés dual de verificación técnica y evaluación para agentes:
+
+```bash
+# Ejecutar tests unitarios y de integración (Vitest)
+npm test
+
+# Ejecutar el punto único canónico de verificación (Protect + Types + Lint + Tests + Build)
+npm run verify
+
+# Ejecutar el evaluador de benchmarks de agentes
+npm run harness:eval
+
+# Listar tareas de benchmark disponibles
+npm run harness:eval -- --list
+```
+
+- **Mocks**: Cliente en memoria de Supabase en [`tests/mocks/supabase-mock.ts`](./tests/mocks/supabase-mock.ts) para testing sin conexión.
+- **Reportes**: Los benchmarks generan un informe Markdown en [`.agents/eval/reports/benchmark-report.md`](./.agents/eval/reports/benchmark-report.md).
+
+---
+
+## Skills para Agentes (`.agents/skills/`)
+
+Para asistentes de IA y agentes en Antigravity, se han configurado 4 skills especializadas:
+
+1. [**`code-verification-and-quality`**](./.agents/skills/code-verification-and-quality/SKILL.md): Puerta de calidad, reglas de TypeScript, ESLint, Vitest y resolución de errores típicos (React 19, Leaflet SSR).
+2. [**`supabase-and-migrations`**](./.agents/skills/supabase-and-migrations/SKILL.md): Guía de migraciones SQL contiguas (001 a 021+), políticas RLS y funciones PL/pgSQL.
+3. [**`geodata-and-maps`**](./.agents/skills/geodata-and-maps/SKILL.md): Gestión de los 52 techos provinciales (47 físicos), 196 países, regiones y mapas interactivos con Leaflet.
+4. [**`media-and-experiences`**](./.agents/skills/media-and-experiences/SKILL.md): Optimización de imágenes (Sharp/canvas), subidas a storage y sistema de experiencias personalizadas.
+
