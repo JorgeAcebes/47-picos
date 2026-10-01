@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { SummitTracker } from "./summit-tracker";
-import type { Session } from "@supabase/supabase-js";
 import Link from "next/link";
 import { AuthDialog } from "./auth-dialog";
 import { IconLogo } from "./icons";
 import { useRouter } from "next/navigation";
+import { useAuth } from "./auth-context";
 
 type Profile = {
   id: string;
@@ -17,7 +17,7 @@ type Profile = {
 };
 
 export function ProfileView({ username, initialMode = "countries" }: { username: string, initialMode?: "peaks" | "countries" }) {
-  const [session, setSession] = useState<Session | null>(null);
+  const { session } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [access, setAccess] = useState(false);
@@ -33,17 +33,9 @@ export function ProfileView({ username, initialMode = "countries" }: { username:
   };
 
   useEffect(() => {
-    if (!supabase) return;
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, nextSession) => setSession(nextSession),
-    );
-    
     if (typeof window !== "undefined") {
       setMapLink(localStorage.getItem("last_map_path") || "/");
     }
-    
-    return () => listener.subscription.unsubscribe();
   }, []);
 
   useEffect(() => {

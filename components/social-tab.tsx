@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
-import type { Session } from "@supabase/supabase-js";
 import { AuthDialog } from "./auth-dialog";
 import { IconLogo } from "./icons";
 import { ProfileSettings } from "./profile-settings";
@@ -12,6 +11,7 @@ import { FeedTab } from "./feed-tab";
 import { countries } from "@/data/countries";
 import { peaks } from "@/data/peaks";
 import { predefinedCategories } from "@/data/experiences";
+import { useAuth } from "./auth-context";
 
 type Profile = {
   id: string;
@@ -22,27 +22,38 @@ type Profile = {
 
 type ConnectionStatus = 'pending' | 'accepted' | null;
 
+let cachedConnections: Record<string, ConnectionStatus> = {};
+let cachedFollowerStatuses: Record<string, ConnectionStatus> = {};
+let cachedFollowers: Profile[] = [];
+let cachedFollowing: Profile[] = [];
+let cachedRecommended: Profile[] = [];
+let cachedProgressCounts = { countries: 0, peaks: 0, experiences: 0 };
+let cachedTotalCounts = { countries: 196, peaks: 47, experiences: 0 };
+let cachedDataUserId: string | null = null;
+
 export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: string) => void, isActive?: boolean }) {
-  const [session, setSession] = useState<Session | null>(null);
+  const { session, profile: myProfile, refreshProfile } = useAuth();
   const [authOpen, setAuthOpen] = useState<"login" | "register" | false>(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [myProfile, setMyProfile] = useState<Profile | null>(null);
   const [mapLink, setMapLink] = useState("/");
   
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Profile[]>([]);
-  const [recommended, setRecommended] = useState<Profile[]>([]);
-  const [followers, setFollowers] = useState<Profile[]>([]);
-  const [following, setFollowing] = useState<Profile[]>([]);
+
+  const isCurrentCache = Boolean(session?.user.id && cachedDataUserId === session.user.id);
+
+  const [recommended, setRecommended] = useState<Profile[]>(() => isCurrentCache ? cachedRecommended : []);
+  const [followers, setFollowers] = useState<Profile[]>(() => isCurrentCache ? cachedFollowers : []);
+  const [following, setFollowing] = useState<Profile[]>(() => isCurrentCache ? cachedFollowing : []);
   const [activeTab, setActiveTab] = useState<'feed' | 'discover' | 'followers' | 'following'>('feed');
   const [announcements, setAnnouncements] = useState<any[]>([]);
   
-  const [progressCounts, setProgressCounts] = useState({ countries: 0, peaks: 0, experiences: 0 });
-  const [totalCounts, setTotalCounts] = useState({ countries: 196, peaks: 47, experiences: 0 });
+  const [progressCounts, setProgressCounts] = useState(() => isCurrentCache ? cachedProgressCounts : { countries: 0, peaks: 0, experiences: 0 });
+  const [totalCounts, setTotalCounts] = useState(() => isCurrentCache ? cachedTotalCounts : { countries: 196, peaks: 47, experiences: 0 });
   
   // A mapping of profile id to connection status
-  const [connections, setConnections] = useState<Record<string, ConnectionStatus>>({});
-  const [followerStatuses, setFollowerStatuses] = useState<Record<string, ConnectionStatus>>({});
+  const [connections, setConnections] = useState<Record<string, ConnectionStatus>>(() => isCurrentCache ? cachedConnections : {});
+  const [followerStatuses, setFollowerStatuses] = useState<Record<string, ConnectionStatus>>(() => isCurrentCache ? cachedFollowerStatuses : {});
   const [confirmConfig, setConfirmConfig] = useState<{
     isOpen: boolean;
     message: string;
@@ -52,29 +63,12 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
   const hasPendingRequests = myProfile && !myProfile.is_public && Object.values(followerStatuses).includes('pending');
   
   useEffect(() => {
-    if (!supabase) return;
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, nextSession) => setSession(nextSession),
-    );
-    
     if (typeof window !== "undefined") {
       let stored = localStorage.getItem("last_map_path") || "/";
       if (stored !== "/" && stored !== "/picos") stored = "/";
       setMapLink(stored);
     }
-    
-    return () => listener.subscription.unsubscribe();
   }, []);
-
-  useEffect(() => {
-    if (!isActive) return;
-    if (session && !profileOpen) {
-      supabase?.from("profiles").select("*").eq("id", session.user.id).single().then(({ data }) => {
-        if (data) setMyProfile(data);
-      });
-    }
-  }, [session, profileOpen, isActive]);
 
   useEffect(() => {
     if (!isActive || !session || !supabase) return;
@@ -92,6 +86,7 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
           connMap[conn.following_id] = conn.status;
         }
         setConnections(connMap);
+        cachedConnections = connMap;
         
         // Fetch profiles for following
         const followingIds = followingConns.map(c => c.following_id);
@@ -100,7 +95,10 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
             .from('profiles')
             .select('*')
             .in('id', followingIds);
-          if (followingProfiles) setFollowing(followingProfiles);
+          if (followingProfiles) {
+            setFollowing(followingProfiles);
+            cachedFollowing = followingProfiles;
+          }
         }
       }
 
@@ -118,13 +116,17 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
           fStatusMap[conn.follower_id] = conn.status;
         }
         setFollowerStatuses(fStatusMap);
+        cachedFollowerStatuses = fStatusMap;
 
         if (followerIds.length > 0) {
           const { data: followerProfiles } = await supabase!
             .from('profiles')
             .select('*')
             .in('id', followerIds);
-          if (followerProfiles) setFollowers(followerProfiles);
+          if (followerProfiles) {
+            setFollowers(followerProfiles);
+            cachedFollowers = followerProfiles;
+          }
         }
       }
     }
@@ -148,6 +150,7 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
         }
       }
       setRecommended(combined);
+      cachedRecommended = combined;
     }
     
     async function fetchProgress() {
@@ -200,16 +203,21 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
         }
       }
       
-      setProgressCounts({
+      const newProgress = {
         countries: cCount,
         peaks: pCount,
         experiences: expCompletedCount
-      });
-      setTotalCounts({
+      };
+      const newTotals = {
         countries: countries.length,
         peaks: 47,
         experiences: predefinedCategories.reduce((acc, cat) => acc + cat.experiences.length, 0) + customExpCount
-      });
+      };
+      setProgressCounts(newProgress);
+      setTotalCounts(newTotals);
+      cachedProgressCounts = newProgress;
+      cachedTotalCounts = newTotals;
+      cachedDataUserId = session.user.id;
     }
 
     fetchConnections();
@@ -568,11 +576,9 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
             <button className={`button ${activeTab === 'following' ? 'button--green' : 'button--outline'}`} style={{ flex: 1, whiteSpace: "nowrap" }} onClick={() => setActiveTab('following')}>Siguiendo</button>
           </div>
 
-          {activeTab === 'feed' && (
-            <div style={{ maxWidth: '700px', margin: '0 auto', width: '100%' }}>
-              <FeedTab session={session} isActive={isActive} onAuthRequired={() => setAuthOpen("login")} />
-            </div>
-          )}
+          <div style={{ maxWidth: '700px', margin: '0 auto', width: '100%', display: activeTab === 'feed' ? 'block' : 'none' }}>
+            <FeedTab session={session} isActive={isActive && activeTab === 'feed'} onAuthRequired={() => setAuthOpen("login")} />
+          </div>
 
         {activeTab === 'discover' && (
           <>
@@ -691,7 +697,13 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
       </section>
       
       {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} initialTab={authOpen === "login" ? "login" : "register"} />}
-      {profileOpen && session && <ProfileSettings session={session} onClose={() => setProfileOpen(false)} />}
+      {profileOpen && session && (
+        <ProfileSettings
+          session={session}
+          onClose={() => setProfileOpen(false)}
+          onProfileUpdate={() => refreshProfile()}
+        />
+      )}
       <ConfirmModal
         isOpen={!!confirmConfig?.isOpen}
         message={confirmConfig?.message || ""}

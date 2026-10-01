@@ -3,11 +3,10 @@
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import type { Session } from "@supabase/supabase-js";
-import { countries } from "@/data/countries";
 import dynamic from "next/dynamic";
 import { AuthDialog } from "@/components/auth-dialog";
 import { IconLogo } from "@/components/icons";
+import { useAuth } from "./auth-context";
 import "./ranking.css";
 
 const CollectiveMap = dynamic(
@@ -26,6 +25,8 @@ type ContinentFilter = "Todos" | "África" | "América" | "Asia" | "Europa" | "O
 type ScopeFilter = "all" | "following";
 type ModeFilter = "countries" | "peaks";
 
+const globalRankingCache: Record<string, RankingEntry[]> = {};
+
 export function RankingTab({ 
   onNavigate, 
   isActive = true 
@@ -33,36 +34,20 @@ export function RankingTab({
   onNavigate?: (tab: string) => void;
   isActive?: boolean;
 }) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [entries, setEntries] = useState<RankingEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [cache, setCache] = useState<Record<string, RankingEntry[]>>({});
-  
+  const { session, profile: myProfile } = useAuth();
   const [mode, setMode] = useState<ModeFilter>("countries");
   const [scope, setScope] = useState<ScopeFilter>("all");
   
+  const initialCacheKey = `${mode}-${scope}-${session?.user?.id || 'anon'}`;
+  const [entries, setEntries] = useState<RankingEntry[]>(() => globalRankingCache[initialCacheKey] || []);
+  const [loading, setLoading] = useState(() => !globalRankingCache[initialCacheKey]);
+  
   const [mapLink, setMapLink] = useState("/");
   const [totalUsersCount, setTotalUsersCount] = useState<number>(0);
-  const [myProfile, setMyProfile] = useState<{username: string, avatar_url: string | null} | null>(null);
   const [showCollectiveMap, setShowCollectiveMap] = useState(false);
   const [authOpen, setAuthOpen] = useState<"login" | "register" | false>(false);
 
   useEffect(() => {
-    if (!isActive) return;
-    if (session) {
-      supabase?.from("profiles").select("username, avatar_url").eq("id", session.user.id).single().then(({ data }) => {
-        if (data) setMyProfile(data);
-      });
-    }
-  }, [session, isActive]);
-
-  useEffect(() => {
-    if (!supabase) return;
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, nextSession) => setSession(nextSession),
-    );
-    
     if (typeof window !== "undefined") {
       let stored = localStorage.getItem("last_map_path") || "/";
       if (stored !== "/" && stored !== "/picos") stored = "/";
@@ -70,8 +55,6 @@ export function RankingTab({
       const savedMode = localStorage.getItem("ranking_mode") as ModeFilter | null;
       if (savedMode === "countries" || savedMode === "peaks") setMode(savedMode);
     }
-    
-    return () => listener.subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -90,13 +73,13 @@ export function RankingTab({
 
     async function fetchRanking() {
       const cacheKey = `${mode}-${scope}-${session?.user?.id || 'anon'}`;
-      if (cache[cacheKey]) {
-        setEntries(cache[cacheKey]);
+      if (globalRankingCache[cacheKey]) {
+        setEntries(globalRankingCache[cacheKey]);
         setLoading(false);
-        return;
+      } else {
+        setLoading(true);
       }
 
-      setLoading(true);
       try {
         let summitIds: string[] | null = null;
 
@@ -111,11 +94,13 @@ export function RankingTab({
 
         if (error) {
           console.error("Error fetching ranking:", error);
-          setEntries([]);
+          if (!globalRankingCache[cacheKey]) {
+            setEntries([]);
+          }
         } else {
-          const result = data as RankingEntry[] || [];
+          const result = (data as RankingEntry[]) || [];
+          globalRankingCache[cacheKey] = result;
           setEntries(result);
-          setCache(prev => ({ ...prev, [cacheKey]: result }));
         }
       } catch (err) {
         if (!ignore) console.error(err);
@@ -131,7 +116,7 @@ export function RankingTab({
     return () => {
       ignore = true;
     };
-  }, [mode, scope, session, isActive]);
+  }, [mode, scope, session?.user?.id, isActive]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {

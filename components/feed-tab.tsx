@@ -20,6 +20,34 @@ function isUnknownDate(dateVal: string | undefined | null): boolean {
   return d.getFullYear() <= 1900;
 }
 
+function formatCustomDate(dateVal: string | undefined | null): string {
+  if (!dateVal || isUnknownDate(dateVal)) return '';
+  const trimmed = typeof dateVal === 'string' ? dateVal.split('T')[0] : '';
+  const parts = trimmed.split('-');
+  if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const d = new Date(year, month, day, 12, 0, 0);
+    return format(d, "d MMM yyyy", { locale: es });
+  }
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return '';
+  return format(d, "d MMM yyyy", { locale: es });
+}
+
+function formatRecordDateRange(startDateVal: string | undefined | null, endDateVal: string | undefined | null): string {
+  const startStr = formatCustomDate(startDateVal);
+  if (!startStr) return '';
+  if (endDateVal && !isUnknownDate(endDateVal) && endDateVal !== startDateVal) {
+    const endStr = formatCustomDate(endDateVal);
+    if (endStr && endStr !== startStr) {
+      return `${startStr} - ${endStr}`;
+    }
+  }
+  return startStr;
+}
+
 function formatDateSafe(dateVal: string | undefined | null): string {
   if (!dateVal) return '';
   const d = new Date(dateVal);
@@ -42,7 +70,7 @@ function FeedItemCard({ item, session, onAuthRequired }: { item: any, session: S
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
 
-  const photos: any[] = item.photos || [];
+  const photos: any[] = (item.photos || []).filter((p: any) => p && p.public_url);
   const hasPhotos = photos.length > 0;
   const hasPrevPhoto = lightboxIndex !== null && lightboxIndex > 0;
   const hasNextPhoto = lightboxIndex !== null && lightboxIndex < photos.length - 1;
@@ -262,17 +290,7 @@ function FeedItemCard({ item, session, onAuthRequired }: { item: any, session: S
     title = isPeak ? "ha registrado una ascensión" : "ha visitado un país";
   }
 
-  let displayTitle = finalLocationName;
-  if (item.achieved_on && !isUnknownDate(item.achieved_on)) {
-    const startStr = format(new Date(item.achieved_on), "d MMM yyyy", { locale: es });
-    if (item.end_date && !isUnknownDate(item.end_date)) {
-      const endStr = format(new Date(item.end_date), "d MMM yyyy", { locale: es });
-      displayTitle = `${finalLocationName}: ${startStr} - ${endStr}`;
-    } else {
-      displayTitle = `${finalLocationName}: ${startStr}`;
-    }
-  }
-
+  const dateRangeStr = formatRecordDateRange(item.achieved_on, item.end_date);
 
   return (
     <div className="feed-card">
@@ -293,14 +311,16 @@ function FeedItemCard({ item, session, onAuthRequired }: { item: any, session: S
             </Link>{' '}
             <span style={{ color: 'var(--muted)' }}>{title}</span>
           </div>
-          <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>
-            {formatDateSafe((!item.achieved_on || isUnknownDate(item.achieved_on)) ? item.created_at : item.achieved_on)}
+          <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px', fontWeight: '500' }}>
+            {dateRangeStr || formatDateSafe(item.created_at)}
           </div>
         </div>
       </div>
 
       <div className="feed-card-body" style={{ paddingBottom: '12px', paddingTop: '0' }}>
-        <h3 style={{ margin: '0 0 4px', fontSize: '18px', color: 'var(--pine)' }}>{displayTitle}</h3>
+        <h3 style={{ margin: '0 0 4px', fontSize: '18px', color: 'var(--pine)' }}>
+          {finalLocationName}
+        </h3>
         {item.notes && (
           <p style={{ margin: 0, fontSize: '14px', color: 'var(--ink)', lineHeight: '1.5' }}>
             {item.notes}
@@ -380,48 +400,48 @@ function FeedItemCard({ item, session, onAuthRequired }: { item: any, session: S
               style={{ width: '100%', height: '300px', objectFit: 'cover', cursor: 'pointer', borderRadius: '12px' }} 
             />
           ) : photos.length === 3 ? (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: '4px', borderRadius: '12px', overflow: 'hidden', height: '300px' }}>
-              <div style={{ gridRow: '1 / span 2', gridColumn: '1', position: 'relative', width: '100%', height: '100%' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: '4px', borderRadius: '12px', overflow: 'hidden', height: '300px', width: '100%' }}>
+              <div style={{ gridRow: '1 / span 2', gridColumn: '1', position: 'relative', width: '100%', height: '100%', minHeight: 0, minWidth: 0, overflow: 'hidden' }}>
                 <img 
                   src={photos[0].public_url} 
                   onClick={() => setLightboxIndex(0)} 
                   alt="" 
                   loading="lazy"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} 
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer', display: 'block' }} 
                 />
               </div>
-              <div style={{ gridRow: '1', gridColumn: '2', position: 'relative', width: '100%', height: '100%' }}>
+              <div style={{ gridRow: '1', gridColumn: '2', position: 'relative', width: '100%', height: '100%', minHeight: 0, minWidth: 0, overflow: 'hidden' }}>
                 <img 
                   src={photos[1].public_url} 
                   onClick={() => setLightboxIndex(1)} 
                   alt="" 
                   loading="lazy"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} 
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer', display: 'block' }} 
                 />
               </div>
-              <div style={{ gridRow: '2', gridColumn: '2', position: 'relative', width: '100%', height: '100%' }}>
+              <div style={{ gridRow: '2', gridColumn: '2', position: 'relative', width: '100%', height: '100%', minHeight: 0, minWidth: 0, overflow: 'hidden' }}>
                 <img 
                   src={photos[2].public_url} 
                   onClick={() => setLightboxIndex(2)} 
                   alt="" 
                   loading="lazy"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} 
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer', display: 'block' }} 
                 />
               </div>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', borderRadius: '12px', overflow: 'hidden' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', borderRadius: '12px', overflow: 'hidden', width: '100%' }}>
               {photos.slice(0, 4).map((photo: any, index: number) => {
                 const isLast = index === 3;
                 const hasMore = photos.length > 4;
                 return (
-                  <div key={photo.id || index} style={{ position: 'relative', aspectRatio: '1', width: '100%' }}>
+                  <div key={photo.id || index} style={{ position: 'relative', aspectRatio: '1', width: '100%', minHeight: 0, minWidth: 0, overflow: 'hidden' }}>
                     <img 
                       src={photo.public_url} 
                       onClick={() => setLightboxIndex(index)} 
                       alt="" 
                       loading="lazy"
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} 
+                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer', display: 'block' }} 
                     />
                     {isLast && hasMore && (
                       <div 
@@ -595,23 +615,21 @@ function FeedItemCard({ item, session, onAuthRequired }: { item: any, session: S
 }
 
 let globalCachedFeedItems: any[] | null = null;
-let globalLastSessionId: string | undefined = undefined;
+let isFetchingFeed = false;
 
 export function FeedTab({ session, isActive = true, onAuthRequired }: { session: Session | null; isActive?: boolean; onAuthRequired?: () => void }) {
-  const [loading, setLoading] = useState(!globalCachedFeedItems);
-  const [feedItems, setFeedItems] = useState<any[]>(globalCachedFeedItems || []);
+  const [loading, setLoading] = useState(() => !globalCachedFeedItems || globalCachedFeedItems.length === 0);
+  const [feedItems, setFeedItems] = useState<any[]>(() => globalCachedFeedItems || []);
 
   useEffect(() => {
     if (!isActive) return;
 
     async function fetchFeed() {
-      if (globalCachedFeedItems && globalLastSessionId === session?.user?.id) {
-        setFeedItems(globalCachedFeedItems);
-        setLoading(false);
-        return;
+      if (!supabase || isFetchingFeed) return;
+      if (!globalCachedFeedItems || globalCachedFeedItems.length === 0) {
+        setLoading(true);
       }
-      if (!supabase) return;
-      setLoading(true);
+      isFetchingFeed = true;
 
       const limit = 200;
       let ascents: any[] = [];
@@ -633,9 +651,8 @@ export function FeedTab({ session, isActive = true, onAuthRequired }: { session:
           const summitIdLower = (a.summit_id || '').toLowerCase();
           if (summitIdLower.startsWith('region-')) return false;
 
-          // Excluir registros de países que no tengan fecha establecida
-          const isCountry = summitIdLower.startsWith('country-') || countries.some(c => c.id === summitIdLower);
-          if (isCountry && isUnknownDate(a.achieved_on)) {
+          // Excluir cualquier registro que no tenga fecha establecida válida
+          if (!a.achieved_on || isUnknownDate(a.achieved_on)) {
             return false;
           }
 
@@ -652,26 +669,37 @@ export function FeedTab({ session, isActive = true, onAuthRequired }: { session:
         .limit(limit);
 
       if (expErr && !fetchError) fetchError = expErr.message;
-      if (expData) expRecords = expData;
+      if (expData) {
+        expRecords = expData.filter((e: any) => {
+          // Excluir cualquier experiencia que no tenga fecha establecida válida
+          if (!e.achieved_on || isUnknownDate(e.achieved_on)) {
+            return false;
+          }
+          return true;
+        });
+      }
 
       if (fetchError) {
-        setFeedItems([{ type: 'error', notes: fetchError, id: 'error-1' }]);
+        console.error("Error fetching feed:", fetchError);
+        if (!globalCachedFeedItems || globalCachedFeedItems.length === 0) {
+          setFeedItems([{ type: 'error', notes: fetchError, id: 'error-1' }]);
+        }
         setLoading(false);
+        isFetchingFeed = false;
         return;
       }
 
-      // Combinar y ordenar - filtrar items sin fecha válida
-      // Los registros con fecha desconocida (p. ej. 31 dic 1899 / 1900-01-01) se posicionan según su fecha de registro (created_at)
+      // Combinar y ordenar cronológicamente por la fecha real de la actividad
       const combinedBase = [
         ...ascents.map(a => ({
           ...a,
           type: "ascent",
-          record_date: (!a.achieved_on || isUnknownDate(a.achieved_on)) ? a.created_at : a.achieved_on
+          record_date: a.achieved_on
         })),
         ...expRecords.map(e => ({
           ...e,
           type: "experience",
-          record_date: (!e.achieved_on || isUnknownDate(e.achieved_on)) ? e.created_at : e.achieved_on
+          record_date: e.achieved_on
         }))
       ].filter(item => item.record_date && !isNaN(new Date(item.record_date).getTime()))
        .sort((a, b) => new Date(b.record_date).getTime() - new Date(a.record_date).getTime())
@@ -716,12 +744,20 @@ export function FeedTab({ session, isActive = true, onAuthRequired }: { session:
       // Build a set of unique (user_id, summit_id) pairs to fetch photos for
       const pairSet = new Set<string>();
       combined.forEach(item => {
-        const id = item.summit_id || item.experience_id;
-        if (item.user_id && id) pairSet.add(`${item.user_id}|${id}`);
+        const baseId = item.summit_id || item.experience_id;
+        if (!item.user_id || !baseId) return;
+
+        // If it's a sub-experience (mini-experiencias como Coliseo en exp-7-wonders),
+        // summit_photos lo guarda como `${baseId}::${sub_item_id}`
+        if (item.sub_item_id) {
+          pairSet.add(`${item.user_id}|${baseId}::${item.sub_item_id}`);
+        }
+        pairSet.add(`${item.user_id}|${baseId}`);
       });
       const pairs = [...pairSet].map(p => { const [u, s] = p.split('|'); return { user_id: u, summit_id: s }; });
       
       let photosMap = new Map();
+      let photosMapBySummit = new Map();
       if (pairs.length > 0) {
         // Batch in chunks of 30 pairs to avoid massive queries
         const BATCH_SIZE = 30;
@@ -747,30 +783,55 @@ export function FeedTab({ session, isActive = true, onAuthRequired }: { session:
         });
 
         uniquePhotos.forEach(p => {
+           // Key with exact date
            const key = `${p.user_id}_${p.summit_id}_${p.taken_on || ''}`;
            if (!photosMap.has(key)) photosMap.set(key, []);
            photosMap.get(key).push(p);
+
+           // Also key by user and summit_id without date as fallback
+           const summitKey = `${p.user_id}_${p.summit_id}`;
+           if (!photosMapBySummit.has(summitKey)) photosMapBySummit.set(summitKey, []);
+           photosMapBySummit.get(summitKey).push(p);
         });
       }
 
       // Attach photos to combined items
       combined.forEach(item => {
-         const id = item.summit_id || item.experience_id;
+         const baseId = item.summit_id || item.experience_id;
+         const targetId = item.sub_item_id ? `${baseId}::${item.sub_item_id}` : baseId;
          const recordDate = item.achieved_on || '';
-         const key = `${item.user_id}_${id}_${recordDate}`;
-         item.photos = photosMap.get(key) || [];
+
+         // 1. Match targetId (including sub_item_id) with exact date
+         let matched = (targetId && recordDate) ? photosMap.get(`${item.user_id}_${targetId}_${recordDate}`) : null;
+
+         // 2. If sub_item_id exists but not matched by date, try baseId with exact date
+         if ((!matched || matched.length === 0) && baseId && baseId !== targetId && recordDate) {
+           matched = photosMap.get(`${item.user_id}_${baseId}_${recordDate}`);
+         }
+
+         // 3. Fallback: match targetId without date
+         if ((!matched || matched.length === 0) && targetId) {
+           matched = photosMapBySummit.get(`${item.user_id}_${targetId}`);
+         }
+
+         // 4. Fallback: match baseId without date
+         if ((!matched || matched.length === 0) && baseId) {
+           matched = photosMapBySummit.get(`${item.user_id}_${baseId}`);
+         }
+
+         item.photos = matched || [];
       });
       
 
 
       globalCachedFeedItems = combined;
-      globalLastSessionId = session?.user?.id;
       setFeedItems(combined);
       setLoading(false);
+      isFetchingFeed = false;
     }
     
     fetchFeed();
-  }, [session, isActive]);
+  }, [isActive]);
 
   return (
     <div className="feed-container">

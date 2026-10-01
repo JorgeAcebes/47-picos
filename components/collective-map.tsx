@@ -21,6 +21,7 @@ import { getIconComponent } from "./icons";
 import { predefinedCategories } from "@/data/experiences";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
+import { useAuth } from "./auth-context";
 import { MapSearchControl, type SearchItem } from "./map-search";
 import { SweepOverlay } from "./sweep-overlay";
 
@@ -206,6 +207,7 @@ function ExperiencesToggleControl({ showExperiences, setShowExperiences, experie
 }
 
 export function CollectiveMap({ onClose }: Props) {
+  const { session } = useAuth();
   const [scope, setScope] = useState<"all" | "following">("all");
 
   const [worldGeo, setWorldGeo] = useState<FeatureCollection | null>(_worldGeoCache);
@@ -273,7 +275,6 @@ export function CollectiveMap({ onClose }: Props) {
       let allowedUserIds: string[] | null = null;
       
       if (scope === "following") {
-        const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           const { data: following } = await supabase
             .from('connections')
@@ -346,7 +347,7 @@ export function CollectiveMap({ onClose }: Props) {
       }
     }
     fetchExperiences();
-  }, [scope, showExperiences]);
+  }, [scope, showExperiences, session]);
 
   const getVisitorCount = useCallback((summitId: string) => {
     const data = collectiveData.get(summitId);

@@ -2,6 +2,8 @@
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useAuth } from "./auth-context";
 import {
   ChangeEvent,
   useCallback,
@@ -10,7 +12,6 @@ import {
   useRef,
   useState,
 } from "react";
-import type { Session } from "@supabase/supabase-js";
 import { peaks, type Peak } from "@/data/peaks";
 import { countries, type Country } from "@/data/countries";
 import {
@@ -488,6 +489,9 @@ function IconLinkedin() {
   );
 }
 
+const cachedAscentsByUser: Record<string, Ascent[]> = {};
+const cachedPhotosByUser: Record<string, SummitPhoto[]> = {};
+
 export function SummitTracker({
   mode: initialModeProp,
   targetProfile,
@@ -512,15 +516,21 @@ export function SummitTracker({
     return () => window.removeEventListener("popstate", handlePopState);
   }, [isActive]);
 
-  const [session, setSession] = useState<Session | null>(null);
+  const { session, profile: authProfile, refreshProfile } = useAuth();
   const [myProfile, setMyProfile] = useState<{
     username: string;
     avatar_url: string | null;
     enable_regions?: boolean;
     enable_experiences?: boolean;
-  } | null>(null);
-  const [ascents, setAscents] = useState<Ascent[]>([]);
-  const [photos, setPhotos] = useState<SummitPhoto[]>([]);
+  } | null>(() => authProfile);
+
+  useEffect(() => {
+    if (authProfile) setMyProfile(authProfile);
+  }, [authProfile]);
+
+  const targetId = targetProfile ? targetProfile.id : session?.user.id;
+  const [ascents, setAscents] = useState<Ascent[]>(() => (targetId && cachedAscentsByUser[targetId]) ? cachedAscentsByUser[targetId] : []);
+  const [photos, setPhotos] = useState<SummitPhoto[]>(() => (targetId && cachedPhotosByUser[targetId]) ? cachedPhotosByUser[targetId] : []);
   const [selected, setSelected] = useState<SelectedItem | null>(null);
   const [authOpen, setAuthOpen] = useState<"login" | "register" | false>(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -1165,22 +1175,14 @@ export function SummitTracker({
     setSaving(false);
   }
 
-  /* ── Auth ──────────────────────────────── */
-  useEffect(() => {
-    if (!supabase) return;
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, nextSession) => setSession(nextSession),
-    );
-    return () => listener.subscription.unsubscribe();
-  }, []);
-
   /* ── Load progress ────────────────────── */
   useEffect(() => {
     async function loadProgress() {
       if (!supabase || !session) {
-        setAscents([]);
-        setPhotos([]);
+        if (!targetProfile) {
+          setAscents([]);
+          setPhotos([]);
+        }
         return;
       }
       const targetId = targetProfile ? targetProfile.id : session.user.id;
@@ -1218,8 +1220,14 @@ export function SummitTracker({
           .eq("user_id", targetId),
         supabase!.from("hidden_items").select("*").eq("user_id", targetId),
       ]);
-      if (ascentResult.data) setAscents(ascentResult.data as Ascent[]);
-      if (photoResult.data) setPhotos(photoResult.data as SummitPhoto[]);
+      if (ascentResult.data) {
+        setAscents(ascentResult.data as Ascent[]);
+        cachedAscentsByUser[targetId] = ascentResult.data as Ascent[];
+      }
+      if (photoResult.data) {
+        setPhotos(photoResult.data as SummitPhoto[]);
+        cachedPhotosByUser[targetId] = photoResult.data as SummitPhoto[];
+      }
       if (expResult.data)
         setExperienceRecords(expResult.data as ExperienceRecord[]);
       if (customExpResult.data) setCustomExperiences(customExpResult.data);
@@ -3194,21 +3202,39 @@ export function SummitTracker({
     >
       {/* ── Topbar ──────────────────────── */}
       <header className="topbar">
-        <a
-          className="brand"
-          href={isPeaks ? "#inicio" : "#inicio"}
-          onClick={(e) => {
-            if (onNavigate) {
-              e.preventDefault();
-              onNavigate(isPeaks ? "/picos" : "/");
-            }
-          }}
-        >
-          <IconLogo className="brand-icon" />
-          <span>
-            {modeLabelShort} <b>{modeLabelBold}</b>
-          </span>
-        </a>
+        {isReadOnly ? (
+          <Link
+            className="brand"
+            href={isPeaks ? "/picos" : "/"}
+            onClick={(e) => {
+              if (onNavigate) {
+                e.preventDefault();
+                onNavigate(isPeaks ? "/picos" : "/");
+              }
+            }}
+          >
+            <IconLogo className="brand-icon" />
+            <span>
+              {modeLabelShort} <b>{modeLabelBold}</b>
+            </span>
+          </Link>
+        ) : (
+          <a
+            className="brand"
+            href={isPeaks ? "#inicio" : "#inicio"}
+            onClick={(e) => {
+              if (onNavigate) {
+                e.preventDefault();
+                onNavigate(isPeaks ? "/picos" : "/");
+              }
+            }}
+          >
+            <IconLogo className="brand-icon" />
+            <span>
+              {modeLabelShort} <b>{modeLabelBold}</b>
+            </span>
+          </a>
+        )}
 
         {/* ── Mode selector ──────────────── */}
         {/* Movido a la sección del mapa */}
@@ -3216,7 +3242,7 @@ export function SummitTracker({
         <nav>
           {isReadOnly ? (
             <>
-              <a
+              <Link
                 href="/"
                 onClick={(e) => {
                   if (onNavigate) {
@@ -3226,7 +3252,7 @@ export function SummitTracker({
                 }}
               >
                 Mapa
-              </a>
+              </Link>
             </>
           ) : (
             <>
@@ -3244,7 +3270,7 @@ export function SummitTracker({
             </>
           )}
 
-          <a
+          <Link
             href="/social"
             style={{ position: "relative" }}
             onClick={(e) => {
@@ -3252,9 +3278,6 @@ export function SummitTracker({
                 e.preventDefault();
                 onNavigate("/social");
               }
-            }}
-            onMouseEnter={() => {
-              import("./social-tab");
             }}
           >
             Social
@@ -3271,8 +3294,8 @@ export function SummitTracker({
                 }}
               />
             ) : null}
-          </a>
-          <a
+          </Link>
+          <Link
             href="/ranking"
             onClick={(e) => {
               if (onNavigate) {
@@ -3280,12 +3303,9 @@ export function SummitTracker({
                 onNavigate("/ranking");
               }
             }}
-            onMouseEnter={() => {
-              import("./ranking-tab");
-            }}
           >
             Ranking
-          </a>
+          </Link>
           {session ? (
             <button
               className="account-button"
@@ -6157,6 +6177,7 @@ export function SummitTracker({
           session={session}
           onProfileUpdate={(p) => {
             setMyProfile((prev) => ({ ...prev, ...p }));
+            refreshProfile();
             if (p.enable_regions === false) setRegionsMode(false);
           }}
           onClose={() => setProfileOpen(false)}
