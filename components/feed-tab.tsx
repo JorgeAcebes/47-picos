@@ -623,12 +623,24 @@ export function FeedTab({ session, isActive = true, onAuthRequired }: { session:
         .from("ascents")
         .select("id, user_id, summit_id, created_at, achieved_on, end_date, notes, link, link_name, profiles!ascents_user_id_profiles_fkey(username, avatar_url, is_public)")
         .eq('is_wishlist', false)
+        .or('summit_id.not.ilike.country-%,achieved_on.gt.1900-01-01')
         .order("created_at", { ascending: false })
         .limit(limit);
 
       if (ascErr) fetchError = ascErr.message;
       if (ascData) {
-        ascents = ascData.filter((a: any) => !(a.summit_id || '').toLowerCase().startsWith('region-'));
+        ascents = ascData.filter((a: any) => {
+          const summitIdLower = (a.summit_id || '').toLowerCase();
+          if (summitIdLower.startsWith('region-')) return false;
+
+          // Excluir registros de países que no tengan fecha establecida
+          const isCountry = summitIdLower.startsWith('country-') || countries.some(c => c.id === summitIdLower);
+          if (isCountry && isUnknownDate(a.achieved_on)) {
+            return false;
+          }
+
+          return true;
+        });
       }
 
       // Fetch experiences

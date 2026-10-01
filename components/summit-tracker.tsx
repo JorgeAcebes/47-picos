@@ -36,6 +36,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { usePendingRequests } from "./use-pending-requests";
+import { compressImage } from "@/lib/image-utils";
 
 const SpainMap = dynamic(
   () => import("./spain-map").then((module) => module.SpainMap),
@@ -1510,10 +1511,11 @@ export function SummitTracker({
     const uploaded: SummitPhoto[] = [];
     for (const file of nextFiles) {
       if (!file.type.startsWith("image/")) continue;
+      const compressedBlob = await compressImage(file);
       const path = `${session.user.id}/${selected.id}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
       const upload = await supabase.storage
         .from("summit-photos")
-        .upload(path, file, { contentType: file.type, upsert: false });
+        .upload(path, compressedBlob, { contentType: "image/jpeg", upsert: false });
       if (upload.error) {
         setNotice(`Error al subir ${file.name}: ${upload.error.message}`);
         continue;
@@ -2065,10 +2067,11 @@ export function SummitTracker({
     const uploaded: SummitPhoto[] = [];
     for (const file of files) {
       if (!file.type.startsWith("image/")) continue;
+      const compressedBlob = await compressImage(file);
       const path = `${session.user.id}/${selected.id}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
       const upload = await supabase.storage
         .from("summit-photos")
-        .upload(path, file, { contentType: file.type, upsert: false });
+        .upload(path, compressedBlob, { contentType: "image/jpeg", upsert: false });
       if (upload.error) {
         setNotice(
           `Registro guardado, pero una foto no pudo subirse: ${upload.error.message}`,

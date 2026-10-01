@@ -47,14 +47,22 @@ export default function PhotoEditor({ imageUrl, onSave, onCancel }: PhotoEditorP
     const cropWidth = (completedCrop?.width ?? image.width) * scaleX;
     const cropHeight = (completedCrop?.height ?? image.height) * scaleY;
 
-    // Output size
-    canvas.width = cropWidth;
-    canvas.height = cropHeight;
+    // Limit output size to max 1200px dimension
+    const MAX_DIM = 1200;
+    let scaleOut = 1;
+    if (Math.max(cropWidth, cropHeight) > MAX_DIM) {
+      scaleOut = MAX_DIM / Math.max(cropWidth, cropHeight);
+    }
+    
+    canvas.width = cropWidth * scaleOut;
+    canvas.height = cropHeight * scaleOut;
 
-    ctx.translate(canvas.width / 2, canvas.height / 2);
+    // Scale context to draw downsized output
+    ctx.scale(scaleOut, scaleOut);
+    ctx.translate(cropWidth / 2, cropHeight / 2);
     ctx.rotate((rotate * Math.PI) / 180);
     ctx.scale(flipHorizontal ? -1 : 1, flipVertical ? -1 : 1);
-    ctx.translate(-canvas.width / 2, -canvas.height / 2);
+    ctx.translate(-cropWidth / 2, -cropHeight / 2);
 
     ctx.drawImage(
       image,
@@ -72,7 +80,7 @@ export default function PhotoEditor({ imageUrl, onSave, onCancel }: PhotoEditorP
       if (blob) {
         onSave(blob);
       }
-    }, 'image/jpeg', 0.9);
+    }, 'image/jpeg', 0.75);
   }
 
   return (
