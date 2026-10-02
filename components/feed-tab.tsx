@@ -10,6 +10,7 @@ import { es } from "date-fns/locale";
 import { countries } from "@/data/countries";
 import { peaks } from "@/data/peaks";
 import { predefinedCategories } from "@/data/experiences";
+import { lockScroll, unlockScroll } from "@/lib/scroll-lock";
 
 function isUnknownDate(dateVal: string | undefined | null): boolean {
   if (!dateVal) return true;
@@ -141,13 +142,11 @@ function FeedItemCard({ item, session: _session, onAuthRequired: _onAuthRequired
 
   useEffect(() => {
     if (isLightboxOpen) {
-      const prevHtmlOverflow = document.documentElement.style.overflow;
-      const prevBodyOverflow = document.body.style.overflow;
+      lockScroll();
       document.documentElement.style.overflow = "hidden";
       document.body.style.overflow = "hidden";
       return () => {
-        document.documentElement.style.overflow = prevHtmlOverflow;
-        document.body.style.overflow = prevBodyOverflow;
+        unlockScroll();
       };
     }
   }, [isLightboxOpen]);

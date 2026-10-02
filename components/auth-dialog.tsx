@@ -2,6 +2,7 @@
 
 import { FormEvent, useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { lockScroll, unlockScroll } from "@/lib/scroll-lock";
 
 function IconClose() {
   return (
@@ -43,13 +44,11 @@ export function AuthDialog({ onClose, initialTab = "register" }: { onClose: () =
   const [resetBusy, setResetBusy] = useState(false);
 
   useEffect(() => {
-    const prevHtmlOverflow = document.documentElement.style.overflow;
-    const prevBodyOverflow = document.body.style.overflow;
+    lockScroll();
     document.documentElement.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
     return () => {
-      document.documentElement.style.overflow = prevHtmlOverflow;
-      document.body.style.overflow = prevBodyOverflow;
+      unlockScroll();
     };
   }, []);
 

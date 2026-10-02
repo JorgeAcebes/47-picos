@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import type { Session } from "@supabase/supabase-js";
 import { compressImage } from "@/lib/image-utils";
+import { lockScroll, unlockScroll } from "@/lib/scroll-lock";
 
 type Profile = {
   id: string;
@@ -70,13 +71,11 @@ export function ProfileSettings({
   }, [session]);
 
   useEffect(() => {
-    const prevHtmlOverflow = document.documentElement.style.overflow;
-    const prevBodyOverflow = document.body.style.overflow;
+    lockScroll();
     document.documentElement.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
     return () => {
-      document.documentElement.style.overflow = prevHtmlOverflow;
-      document.body.style.overflow = prevBodyOverflow;
+      unlockScroll();
     };
   }, []);
 
@@ -471,57 +470,96 @@ export function ProfileSettings({
                   <div className="toggle-switch"></div>
                 </label>
               </div>
+              {/* Opciones dependientes de Países */}
               <div
                 style={{
+                  marginTop: "0.15rem",
+                  padding: "0.45rem 0.6rem",
+                  borderRadius: "6px",
+                  background: enableCountries ? "rgba(255, 255, 255, 0.9)" : "rgba(240, 240, 240, 0.6)",
+                  border: enableCountries ? "1px solid rgba(0, 0, 0, 0.08)" : "1px dashed rgba(0, 0, 0, 0.14)",
                   display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  paddingLeft: "12px",
-                  opacity: enableCountries ? 1 : 0.45,
+                  flexDirection: "column",
+                  gap: "0.35rem",
+                  opacity: enableCountries ? 1 : 0.55,
+                  transition: "opacity 0.2s ease, background 0.2s ease",
                 }}
               >
-                <span style={{ fontSize: "0.8rem", color: enableCountries ? "inherit" : "var(--muted)" }}>
-                  └ Modo experiencias
-                </span>
-                <label
-                  className="custom-toggle"
-                  style={{ cursor: enableCountries ? "pointer" : "not-allowed" }}
-                  title={enableCountries ? undefined : "Requiere tener activo el Modo Países"}
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "0.1rem",
+                  }}
                 >
-                  <input
-                    type="checkbox"
-                    checked={enableCountries && enableExperiences}
-                    disabled={!enableCountries}
-                    onChange={(e) => enableCountries && setEnableExperiences(e.target.checked)}
-                  />
-                  <div className="toggle-switch"></div>
-                </label>
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  paddingLeft: "12px",
-                  opacity: enableCountries ? 1 : 0.45,
-                }}
-              >
-                <span style={{ fontSize: "0.8rem", color: enableCountries ? "inherit" : "var(--muted)" }}>
-                  └ Modo regiones
-                </span>
-                <label
-                  className="custom-toggle"
-                  style={{ cursor: enableCountries ? "pointer" : "not-allowed" }}
-                  title={enableCountries ? undefined : "Requiere tener activo el Modo Países"}
+                  <span
+                    style={{
+                      fontSize: "0.68rem",
+                      fontWeight: 700,
+                      color: "var(--muted)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    Opciones de Países
+                  </span>
+                  {!enableCountries && (
+                    <span style={{ fontSize: "0.68rem", color: "var(--muted)", fontStyle: "italic" }}>
+                      Requiere Modo Países
+                    </span>
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
                 >
-                  <input
-                    type="checkbox"
-                    checked={enableCountries && enableRegions}
-                    disabled={!enableCountries}
-                    onChange={(e) => enableCountries && setEnableRegions(e.target.checked)}
-                  />
-                  <div className="toggle-switch"></div>
-                </label>
+                  <span style={{ fontSize: "0.8rem", color: enableCountries ? "inherit" : "var(--muted)" }}>
+                    Modo Experiencias
+                  </span>
+                  <label
+                    className="custom-toggle"
+                    style={{ cursor: enableCountries ? "pointer" : "not-allowed" }}
+                    title={enableCountries ? undefined : "Requiere tener activo el Modo Países"}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={enableCountries && enableExperiences}
+                      disabled={!enableCountries}
+                      onChange={(e) => enableCountries && setEnableExperiences(e.target.checked)}
+                    />
+                    <div className="toggle-switch"></div>
+                  </label>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <span style={{ fontSize: "0.8rem", color: enableCountries ? "inherit" : "var(--muted)" }}>
+                    Modo Regiones
+                  </span>
+                  <label
+                    className="custom-toggle"
+                    style={{ cursor: enableCountries ? "pointer" : "not-allowed" }}
+                    title={enableCountries ? undefined : "Requiere tener activo el Modo Países"}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={enableCountries && enableRegions}
+                      disabled={!enableCountries}
+                      onChange={(e) => enableCountries && setEnableRegions(e.target.checked)}
+                    />
+                    <div className="toggle-switch"></div>
+                  </label>
+                </div>
               </div>
             </div>
 

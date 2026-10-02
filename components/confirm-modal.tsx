@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { lockScroll, unlockScroll } from "@/lib/scroll-lock";
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -19,13 +20,11 @@ export function ConfirmModal({
 }: ConfirmModalProps) {
   useEffect(() => {
     if (!isOpen) return;
-    const prevHtmlOverflow = document.documentElement.style.overflow;
-    const prevBodyOverflow = document.body.style.overflow;
+    lockScroll();
     document.documentElement.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
     return () => {
-      document.documentElement.style.overflow = prevHtmlOverflow;
-      document.body.style.overflow = prevBodyOverflow;
+      unlockScroll();
     };
   }, [isOpen]);
 

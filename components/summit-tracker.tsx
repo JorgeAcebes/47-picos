@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { usePendingRequests } from "./use-pending-requests";
 import { compressImage } from "@/lib/image-utils";
+import { lockScroll, unlockScroll } from "@/lib/scroll-lock";
 
 const SpainMap = dynamic(
   () => import("./spain-map").then((module) => module.SpainMap),
@@ -784,20 +785,15 @@ export function SummitTracker({
     (isMobile && !!selected) ||
     !!recordOpen ||
     !!lightboxPhoto ||
-    !!editorPhoto ||
-    !!authOpen ||
-    profileOpen ||
-    showTrashModal;
+    !!editorPhoto;
 
   useEffect(() => {
     if (isScrollLocked) {
-      const prevHtmlOverflow = document.documentElement.style.overflow;
-      const prevBodyOverflow = document.body.style.overflow;
+      lockScroll();
       document.documentElement.style.overflow = "hidden";
       document.body.style.overflow = "hidden";
       return () => {
-        document.documentElement.style.overflow = prevHtmlOverflow;
-        document.body.style.overflow = prevBodyOverflow;
+        unlockScroll();
       };
     }
   }, [isScrollLocked]);
