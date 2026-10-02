@@ -207,4 +207,33 @@ describe("Project Critical Invariants (No Regressions)", () => {
       expect(content).toContain("{renderRecordLink(ascent.link, (ascent as any).link_name)}");
     });
   });
+
+  describe("Test Profile Stealth & Isolation Invariants", () => {
+    it("Invariant 8.1: ranking-tab.tsx must exclude is_test profiles from user counts", () => {
+      const rankingPath = path.join(rootDir, "components/ranking-tab.tsx");
+      const content = fs.readFileSync(rankingPath, "utf-8");
+      expect(content).toContain(".neq('is_test', true)");
+    });
+
+    it("Invariant 8.2: feed-tab.tsx must exclude activities from is_test profiles", () => {
+      const feedPath = path.join(rootDir, "components/feed-tab.tsx");
+      const content = fs.readFileSync(feedPath, "utf-8");
+      expect(content).toContain("if (a.profiles?.is_test) return false;");
+      expect(content).toContain("if (e.profiles?.is_test) return false;");
+    });
+
+    it("Invariant 8.3: social-tab.tsx must exclude is_test profiles from search and recommendations", () => {
+      const socialPath = path.join(rootDir, "components/social-tab.tsx");
+      const content = fs.readFileSync(socialPath, "utf-8");
+      expect(content).toContain(".neq('is_test', true)");
+    });
+
+    it("Invariant 8.4: migration 023 must define is_test on profiles and update get_user_ranking", () => {
+      const migrationPath = path.join(rootDir, "supabase/migrations/023_test_profiles_exclusion.sql");
+      expect(fs.existsSync(migrationPath)).toBe(true);
+      const content = fs.readFileSync(migrationPath, "utf-8");
+      expect(content).toContain("is_test BOOLEAN NOT NULL DEFAULT false");
+      expect(content).toContain("p.is_test IS NOT TRUE");
+    });
+  });
 });

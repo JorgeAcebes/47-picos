@@ -19,6 +19,7 @@ export type UserProfile = {
   enable_experiences?: boolean;
   share_photos?: boolean;
   share_notes?: boolean;
+  is_test?: boolean;
 };
 
 type AuthContextType = {

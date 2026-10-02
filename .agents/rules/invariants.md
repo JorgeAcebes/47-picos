@@ -98,3 +98,13 @@ Este documento reúne todas las reglas no negociables de la aplicación. Cualqui
 
 1. **Visibilidad de Enlaces en Tarjetas de Registro**: Cuando un ascenso, visita a país o experiencia cuenta con hipervínculo (`link`), debe renderizarse con su botón/insignia interactiva (`renderRecordLink`) tanto en el feed social como en las tarjetas de registro del panel lateral (`.completed-card`).
 2. **Protocolo Seguro**: Todo hipervínculo debe normalizarse garantizando prefijo `http://` o `https://` para evitar rutas relativas involuntarias al navegar externamente.
+
+---
+
+## 8. Aislamiento y Sigilo de Perfiles de Testeo (`is_test: true`)
+
+1. **Invisibilidad en Ranking**: Todo perfil marcado con `is_test: true` queda **ESTRICTAMENTE EXCLUIDO** de la función `get_user_ranking` (modalidades picos y países) y del conteo de usuarios registrados.
+2. **Invisibilidad en Feed Social**: Las actividades (ascensos y experiencias) de usuarios de testeo no deben aparecer en `feed-tab.tsx`.
+3. **Invisibilidad en Búsqueda y Recomendaciones**: En `social-tab.tsx`, las búsquedas por usuario (`@test...`) y la función `get_recommended_profiles` deben filtrar forzosamente `.neq('is_test', true)`.
+4. **Protección RLS y Vista de Perfil**: Políticas de seguridad a nivel de fila (RLS en Supabase) y `ProfileView` impiden el acceso a perfiles de prueba por parte de otros usuarios.
+5. **Bucle de Ejecución de Tests Profundos**: La suite profunda E2E (`tests/deep/full-user-lifecycle.test.ts`) se ejecuta exclusivamente en el pipeline pre-push (`npm run verify` o `npm run test:deep`), manteniéndose excluida del bucle rápido de desarrollo (`npm run verify:fast`).

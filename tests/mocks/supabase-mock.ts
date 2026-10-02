@@ -1,6 +1,6 @@
 /**
  * Supabase In-Memory Mock Client for testing and harness verification
- * Simulates table operations, basic filtering, auth, and storage.
+ * Simulates table operations, basic filtering, relations/joins, auth, storage, and RPCs.
  */
 
 export interface MockRecord {
@@ -31,7 +31,7 @@ export class MockQueryBuilder {
     return this.store.get(this.tableName)!;
   }
 
-  select(_columns = "*"): this {
+  select(_columns = "*", _options?: { count?: string; head?: boolean }): this {
     return this;
   }
 
@@ -47,6 +47,18 @@ export class MockQueryBuilder {
 
   in(column: string, values: any[]): this {
     this.filters.push((row) => values.includes(row[column]));
+    return this;
+  }
+
+  ilike(column: string, pattern: string): this {
+    const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/%/g, ".*");
+    const regex = new RegExp(`^${escaped}$`, "i");
+    this.filters.push((row) => regex.test(String(row[column] || "")));
+    return this;
+  }
+
+  or(_query: string): this {
+    // Basic permissive simulation for .or() clauses
     return this;
   }
 
@@ -101,7 +113,7 @@ export class MockQueryBuilder {
         ...item,
       }));
       rows.push(...inserted);
-      return { data: this.isSingle ? inserted[0] : inserted, error: null };
+      return { data: this.isSingle ? inserted[0] : inserted, error: null, count: inserted.length };
     }
 
     // Handle UPDATE
@@ -114,7 +126,7 @@ export class MockQueryBuilder {
           updatedRows.push(rows[i]);
         }
       }
-      return { data: this.isSingle ? updatedRows[0] || null : updatedRows, error: null };
+      return { data: this.isSingle ? updatedRows[0] || null : updatedRows, error: null, count: updatedRows.length };
     }
 
     // Handle DELETE
@@ -129,11 +141,30 @@ export class MockQueryBuilder {
         }
       }
       this.store.set(this.tableName, remaining);
-      return { data: deletedRows, error: null };
+      return { data: deletedRows, error: null, count: deletedRows.length };
     }
 
     // Handle SELECT
     let filtered = rows.filter((row) => this.filters.every((f) => f(row)));
+
+    // Join profiles if selecting from ascents or experience_records
+    if (this.tableName === "ascents" || this.tableName === "experience_records") {
+      const profiles = this.store.get("profiles") || [];
+      filtered = filtered.map((row) => {
+        const userProfile = profiles.find((p) => p.id === row.user_id);
+        return {
+          ...row,
+          profiles: userProfile
+            ? {
+                username: userProfile.username,
+                avatar_url: userProfile.avatar_url,
+                is_public: userProfile.is_public,
+                is_test: userProfile.is_test || false,
+              }
+            : null,
+        };
+      });
+    }
 
     if (this.orderCol) {
       const col = this.orderCol;
@@ -208,31 +239,95 @@ export class MockSupabaseClient {
   private store = new Map<string, MockRecord[]>();
   private storageBuckets = new Map<string, MockStorageBucket>();
 
+  private currentUser: {
+    id: string;
+    email: string;
+    user_metadata: any;
+  } | null = {
+    id: "mock-user-uuid-001",
+    email: "test@example.com",
+    user_metadata: { username: "tester" },
+  };
+
+  public setSessionUser(user: { id: string; email: string; user_metadata?: any } | null) {
+    this.currentUser = user ? { ...user, user_metadata: user.user_metadata || {} } : null;
+  }
+
   public auth = {
     getUser: async () => ({
       data: {
-        user: {
-          id: "mock-user-uuid-001",
-          email: "test@example.com",
-          user_metadata: { username: "tester" },
-        },
+        user: this.currentUser as any,
       },
       error: null,
     }),
     getSession: async () => ({
       data: {
-        session: {
-          access_token: "mock-token",
-          user: { id: "mock-user-uuid-001", email: "test@example.com" },
-        },
+        session: (this.currentUser
+          ? {
+              access_token: "mock-token",
+              user: this.currentUser,
+            }
+          : null) as any,
       },
       error: null,
     }),
-    signOut: async () => ({ error: null }),
-    signInWithPassword: async () => ({
-      data: { user: { id: "mock-user-uuid-001" }, session: {} },
-      error: null,
-    }),
+    signOut: async () => {
+      this.currentUser = null;
+      return { error: null };
+    },
+    signInWithPassword: async ({ email }: { email?: string; password?: string } = {}) => {
+      const id = `user-${Date.now()}`;
+      const username = email ? email.split("@")[0] : "user";
+      this.currentUser = {
+        id,
+        email: email || "user@example.com",
+        user_metadata: { username },
+      };
+      return {
+        data: { user: this.currentUser, session: { access_token: "mock-token", user: this.currentUser } },
+        error: null,
+      };
+    },
+    signUp: async ({ email, password: _password, options }: any = {}) => {
+      const id = `user-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      const metadata = options?.data || {};
+      const username = metadata.username || (email ? email.split("@")[0] : "testuser");
+      const isTest = Boolean(
+        metadata.is_test ||
+        (email && (email.includes("@test.") || email.includes("@e2e.") || email.includes("@example."))) ||
+        username.startsWith("test_") ||
+        username.startsWith("qa_")
+      );
+
+      this.currentUser = {
+        id,
+        email: email || "test@example.com",
+        user_metadata: { ...metadata, username, is_test: isTest },
+      };
+
+      // Automatically seed profile in profiles table
+      const profiles = this.store.get("profiles") || [];
+      profiles.push({
+        id,
+        username,
+        avatar_url: metadata.avatar_url || null,
+        is_public: metadata.is_public !== false,
+        is_test: isTest,
+        created_at: new Date().toISOString(),
+      });
+      this.store.set("profiles", profiles);
+
+      return {
+        data: { user: this.currentUser, session: { access_token: "mock-token", user: this.currentUser } },
+        error: null,
+      };
+    },
+    updateUser: async ({ data }: { data: any }) => {
+      if (this.currentUser) {
+        this.currentUser.user_metadata = { ...this.currentUser.user_metadata, ...data };
+      }
+      return { data: { user: this.currentUser }, error: null };
+    },
     onAuthStateChange: () => ({
       data: { subscription: { unsubscribe: () => {} } },
     }),
@@ -246,6 +341,64 @@ export class MockSupabaseClient {
       return this.storageBuckets.get(bucketId)!;
     },
   };
+
+  public async rpc(functionName: string, args: any = {}) {
+    if (functionName === "get_user_ranking") {
+      const profiles = (this.store.get("profiles") || []).filter((p) => p.is_test !== true);
+      const ascents = (this.store.get("ascents") || []).filter((a) => a.is_wishlist !== true);
+      const mode = args?.p_mode || "countries";
+
+      const ranking = profiles
+        .map((p) => {
+          const userAscents = ascents.filter((a) => {
+            if (a.user_id !== p.id) return false;
+            if (mode === "countries") return String(a.summit_id).startsWith("country-");
+            if (mode === "peaks") return !String(a.summit_id).startsWith("country-") && !String(a.summit_id).startsWith("region-");
+            return true;
+          });
+          const uniqueSummits = new Set(userAscents.map((a) => a.summit_id));
+          return {
+            user_id: p.id,
+            username: p.username,
+            avatar_url: p.avatar_url || null,
+            ascents_count: uniqueSummits.size,
+          };
+        })
+        .filter((entry) => entry.ascents_count > 0)
+        .sort((a, b) => b.ascents_count - a.ascents_count);
+
+      return { data: ranking, error: null };
+    }
+
+    if (functionName === "get_recommended_profiles") {
+      const profiles = (this.store.get("profiles") || []).filter(
+        (p) => p.is_test !== true && p.is_public === true && p.id !== this.currentUser?.id
+      );
+      return { data: profiles, error: null };
+    }
+
+    if (functionName === "get_collective_visited_countries") {
+      const profiles = (this.store.get("profiles") || []).filter((p) => p.is_test !== true && p.is_public === true);
+      const publicUserIds = new Set(profiles.map((p) => p.id));
+      const ascents = (this.store.get("ascents") || []).filter(
+        (a) => publicUserIds.has(a.user_id) && String(a.summit_id).startsWith("country-") && a.is_wishlist !== true
+      );
+
+      const map = new Map<string, Set<string>>();
+      for (const a of ascents) {
+        if (!map.has(a.summit_id)) map.set(a.summit_id, new Set());
+        map.get(a.summit_id)!.add(a.user_id);
+      }
+
+      const results = Array.from(map.entries()).map(([country_id, users]) => ({
+        country_id,
+        visitor_count: users.size,
+      }));
+      return { data: results, error: null };
+    }
+
+    return { data: [], error: null };
+  }
 
   from(tableName: string): MockQueryBuilder {
     return new MockQueryBuilder(tableName, this.store);

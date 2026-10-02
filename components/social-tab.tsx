@@ -147,6 +147,7 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
         .from('profiles')
         .select('*')
         .eq('is_public', true)
+        .neq('is_test', true)
         .neq('id', session!.user.id)
         .limit(10);
         
@@ -296,6 +297,7 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
         .from("profiles")
         .select("*")
         .ilike("username", `%${cleanSearchQuery}%`)
+        .neq('is_test', true)
         .limit(20);
       if (data) setSearchResults(data);
     }, 300);

@@ -23,7 +23,8 @@ const allSteps = [
   { name: "Protección de ficheros y migraciones", command: "node", args: ["scripts/protect-files.mjs"] },
   { name: "Tipado estático (tsc)", command: "npx", args: ["tsc", "--noEmit"] },
   { name: "Linter (ESLint)", command: "npx", args: ["eslint", "."], skipInFast: true },
-  { name: "Tests automatizados (Vitest)", command: "npx", args: ["vitest", "run"] },
+  { name: "Tests unitarios y de integración (Vitest)", command: "npx", args: ["vitest", "run"] },
+  { name: "Tests profundos de flujo completo E2E (Pre-Push)", command: "npx", args: ["vitest", "run", "tests/deep"], skipInFast: true },
   { name: "Compilación de producción (Next.js build)", command: "npx", args: ["next", "build"], skipInFast: true },
 ];
 

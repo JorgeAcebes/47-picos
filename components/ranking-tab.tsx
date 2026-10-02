@@ -75,7 +75,7 @@ export function RankingTab({
       if (cachedTotalUsersCount !== null) {
         setTotalUsersCount(cachedTotalUsersCount);
       }
-      const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+      const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).neq('is_test', true);
       if (count !== null) {
         setTotalUsersCount(count);
         cachedTotalUsersCount = count;

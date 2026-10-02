@@ -588,7 +588,7 @@ export function FeedTab({ session, isActive = true, onAuthRequired }: { session:
       // Fetch ascents
       const { data: ascData, error: ascErr } = await supabase
         .from("ascents")
-        .select("id, user_id, summit_id, created_at, achieved_on, end_date, notes, link, link_name, profiles!ascents_user_id_profiles_fkey(username, avatar_url, is_public)")
+        .select("id, user_id, summit_id, created_at, achieved_on, end_date, notes, link, link_name, profiles!ascents_user_id_profiles_fkey(username, avatar_url, is_public, is_test)")
         .eq('is_wishlist', false)
         .or('summit_id.not.ilike.country-%,achieved_on.gt.1900-01-01')
         .order("created_at", { ascending: false })
@@ -597,6 +597,9 @@ export function FeedTab({ session, isActive = true, onAuthRequired }: { session:
       if (ascErr) fetchError = ascErr.message;
       if (ascData) {
         ascents = ascData.filter((a: any) => {
+          // Excluir perfiles de testeo / ocultos
+          if (a.profiles?.is_test) return false;
+
           const summitIdLower = (a.summit_id || '').toLowerCase();
           if (summitIdLower.startsWith('region-')) return false;
 
@@ -612,7 +615,7 @@ export function FeedTab({ session, isActive = true, onAuthRequired }: { session:
       // Fetch experiences
       const { data: expData, error: expErr } = await supabase
         .from("experience_records")
-        .select("id, user_id, experience_id, sub_item_id, created_at, achieved_on, notes, link, link_name, location_name, profiles!experience_records_user_id_profiles_fkey(username, avatar_url, is_public)")
+        .select("id, user_id, experience_id, sub_item_id, created_at, achieved_on, notes, link, link_name, location_name, profiles!experience_records_user_id_profiles_fkey(username, avatar_url, is_public, is_test)")
         .eq('is_wishlist', false)
         .order("created_at", { ascending: false })
         .limit(limit);
@@ -620,6 +623,9 @@ export function FeedTab({ session, isActive = true, onAuthRequired }: { session:
       if (expErr && !fetchError) fetchError = expErr.message;
       if (expData) {
         expRecords = expData.filter((e: any) => {
+          // Excluir perfiles de testeo / ocultos
+          if (e.profiles?.is_test) return false;
+
           // Excluir cualquier experiencia que no tenga fecha establecida válida
           if (!e.achieved_on || isUnknownDate(e.achieved_on)) {
             return false;

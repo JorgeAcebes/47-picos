@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:deep": "vitest run tests/deep",
     "verify:fast": "node scripts/verify.mjs --fast",
     "verify": "node scripts/verify.mjs",
     "harness:eval": "tsx .agents/eval/runner.ts"

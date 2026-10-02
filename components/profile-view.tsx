@@ -56,7 +56,7 @@ export function ProfileView({
         .eq("username", username)
         .single();
 
-      if (profileError || !profileData) {
+      if (profileError || !profileData || (profileData.is_test && (!session || session.user.id !== profileData.id))) {
         setError("Usuario no encontrado.");
         setLoading(false);
         return;
