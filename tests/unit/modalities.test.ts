@@ -155,5 +155,36 @@ describe("Modality Preferences & Filtering Logic", () => {
       expect(enableCountries).toBe(true);
       expect(errorMessage).toContain("Debes mantener activa al menos una modalidad");
     });
+
+    it("should freeze experiences and regions when countries mode is toggled off", () => {
+      let enableCountries = true;
+      let enableExperiences = true;
+      let enableRegions = true;
+
+      const handleToggleCountries = (checked: boolean) => {
+        enableCountries = checked;
+        if (!checked) {
+          enableExperiences = false;
+          enableRegions = false;
+        }
+      };
+
+      // Disabling countries mode
+      handleToggleCountries(false);
+      expect(enableCountries).toBe(false);
+      expect(enableExperiences).toBe(false);
+      expect(enableRegions).toBe(false);
+
+      // Verify payload serialization enforces hierarchy
+      const updates = {
+        enable_countries: enableCountries,
+        enable_regions: enableCountries ? enableRegions : false,
+        enable_experiences: enableCountries ? enableExperiences : false,
+      };
+
+      expect(updates.enable_countries).toBe(false);
+      expect(updates.enable_regions).toBe(false);
+      expect(updates.enable_experiences).toBe(false);
+    });
   });
 });

@@ -108,3 +108,12 @@ Este documento reúne todas las reglas no negociables de la aplicación. Cualqui
 3. **Invisibilidad en Búsqueda y Recomendaciones**: En `social-tab.tsx`, las búsquedas por usuario (`@test...`) y la función `get_recommended_profiles` deben filtrar forzosamente `.neq('is_test', true)`.
 4. **Protección RLS y Vista de Perfil**: Políticas de seguridad a nivel de fila (RLS en Supabase) y `ProfileView` impiden el acceso a perfiles de prueba por parte de otros usuarios.
 5. **Bucle de Ejecución de Tests Profundos**: La suite profunda E2E (`tests/deep/full-user-lifecycle.test.ts`) se ejecuta exclusivamente en el pipeline pre-push (`npm run verify` o `npm run test:deep`), manteniéndose excluida del bucle rápido de desarrollo (`npm run verify:fast`).
+
+---
+
+## 9. Botón de Cuenta en Cabecera (`.account-button`) y Modalidades
+
+1. **Solo Foto o Inicial en Cabecera Superior**: Arriba a la derecha (`.account-button`) en `summit-tracker.tsx`, `ranking-tab.tsx` y `social-tab.tsx`, solo debe aparecer el avatar circular (foto de perfil o inicial `?` / letra inicial). En **NINGÚN** caso debe mostrarse texto con el correo electrónico ni el nombre de usuario al lado del avatar.
+2. **Jerarquía de Modalidades**: "Modo experiencias" y "Modo regiones" dependen jerárquicamente del "Modo países". Si "Modo países" está desactivado (`enable_countries: false` o `canShowCountries: false`), el "Modo experiencias" y el "Modo regiones" quedan congelados y no operativos en la interfaz ni en las opciones de perfil.
+3. **Persistencia sin Pérdida de Datos**: Desactivar una modalidad oculta las vistas, botones, publicaciones y registros correspondientes en UI y Feed, pero jamás destruye los datos históricos de ascensos, visitas o experiencias del usuario.
+4. **Dimensiones del Panel de Ajustes**: El modal de ajustes de perfil (`ProfileSettings`) debe permanecer visible sin requerir scroll vertical en la vista principal.

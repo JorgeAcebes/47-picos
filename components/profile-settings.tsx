@@ -69,6 +69,17 @@ export function ProfileSettings({
     loadProfile();
   }, [session]);
 
+  useEffect(() => {
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    const prevBodyOverflow = document.body.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.documentElement.style.overflow = prevHtmlOverflow;
+      document.body.style.overflow = prevBodyOverflow;
+    };
+  }, []);
+
   const handleTogglePeaks = (checked: boolean) => {
     if (!checked && !enableCountries) {
       setError("Debes mantener activa al menos una modalidad (Picos o Países).");
@@ -85,6 +96,10 @@ export function ProfileSettings({
     }
     setError("");
     setEnableCountries(checked);
+    if (!checked) {
+      setEnableExperiences(false);
+      setEnableRegions(false);
+    }
   };
 
   async function saveProfile(e: React.FormEvent) {
@@ -139,8 +154,8 @@ export function ProfileSettings({
       is_public: isPublic,
       enable_peaks: enablePeaks,
       enable_countries: enableCountries,
-      enable_regions: enableRegions,
-      enable_experiences: enableExperiences,
+      enable_regions: enableCountries ? enableRegions : false,
+      enable_experiences: enableCountries ? enableExperiences : false,
       share_photos: sharePhotos,
       share_notes: shareNotes,
       updated_at: new Date().toISOString(),
@@ -167,7 +182,12 @@ export function ProfileSettings({
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose} role="presentation">
+    <div
+      className="modal-backdrop"
+      onClick={onClose}
+      onWheel={(e) => e.stopPropagation()}
+      role="presentation"
+    >
       <section
         className="auth-dialog"
         onClick={(e) => e.stopPropagation()}
@@ -176,6 +196,8 @@ export function ProfileSettings({
         style={{
           maxHeight: "96vh",
           overflowY: "auto",
+          overscrollBehavior: "contain",
+          WebkitOverflowScrolling: "touch",
           padding: "24px 22px 18px",
           maxWidth: "420px",
         }}
@@ -454,14 +476,23 @@ export function ProfileSettings({
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
+                  paddingLeft: "12px",
+                  opacity: enableCountries ? 1 : 0.45,
                 }}
               >
-                <span style={{ fontSize: "0.82rem" }}>Modo experiencias</span>
-                <label className="custom-toggle">
+                <span style={{ fontSize: "0.8rem", color: enableCountries ? "inherit" : "var(--muted)" }}>
+                  └ Modo experiencias
+                </span>
+                <label
+                  className="custom-toggle"
+                  style={{ cursor: enableCountries ? "pointer" : "not-allowed" }}
+                  title={enableCountries ? undefined : "Requiere tener activo el Modo Países"}
+                >
                   <input
                     type="checkbox"
-                    checked={enableExperiences}
-                    onChange={(e) => setEnableExperiences(e.target.checked)}
+                    checked={enableCountries && enableExperiences}
+                    disabled={!enableCountries}
+                    onChange={(e) => enableCountries && setEnableExperiences(e.target.checked)}
                   />
                   <div className="toggle-switch"></div>
                 </label>
@@ -471,14 +502,23 @@ export function ProfileSettings({
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
+                  paddingLeft: "12px",
+                  opacity: enableCountries ? 1 : 0.45,
                 }}
               >
-                <span style={{ fontSize: "0.82rem" }}>Modo regiones</span>
-                <label className="custom-toggle">
+                <span style={{ fontSize: "0.8rem", color: enableCountries ? "inherit" : "var(--muted)" }}>
+                  └ Modo regiones
+                </span>
+                <label
+                  className="custom-toggle"
+                  style={{ cursor: enableCountries ? "pointer" : "not-allowed" }}
+                  title={enableCountries ? undefined : "Requiere tener activo el Modo Países"}
+                >
                   <input
                     type="checkbox"
-                    checked={enableRegions}
-                    onChange={(e) => setEnableRegions(e.target.checked)}
+                    checked={enableCountries && enableRegions}
+                    disabled={!enableCountries}
+                    onChange={(e) => enableCountries && setEnableRegions(e.target.checked)}
                   />
                   <div className="toggle-switch"></div>
                 </label>

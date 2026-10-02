@@ -634,15 +634,6 @@ export function SummitTracker({
     setMyProfile(authProfile);
   }, [authProfile]);
 
-  useEffect(() => {
-    if (!mounted) return;
-    if (!canShowPeaks && currentMode === "peaks") {
-      switchMode("countries");
-    } else if (!canShowCountries && currentMode === "countries") {
-      switchMode("peaks");
-    }
-  }, [mounted, canShowPeaks, canShowCountries, currentMode]);
-
   const targetId = targetProfile ? targetProfile.id : session?.user.id;
   const [ascents, setAscents] = useState<Ascent[]>(() => (targetId && cachedAscentsByUser[targetId]) ? cachedAscentsByUser[targetId] : []);
   const [photos, setPhotos] = useState<SummitPhoto[]>(() => (targetId && cachedPhotosByUser[targetId]) ? cachedPhotosByUser[targetId] : []);
@@ -764,6 +755,19 @@ export function SummitTracker({
   );
   const [isEditingExperiences, setIsEditingExperiences] = useState(false);
   const [iconDropdownOpen, setIconDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    if (!mounted) return;
+    if (!canShowPeaks && currentMode === "peaks") {
+      switchMode("countries");
+    } else if (!canShowCountries && currentMode === "countries") {
+      switchMode("peaks");
+    }
+    if (!canShowCountries) {
+      if (experiencesMode) setExperiencesMode(false);
+      if (regionsMode) setRegionsMode(false);
+    }
+  }, [mounted, canShowPeaks, canShowCountries, currentMode, experiencesMode, regionsMode]);
 
   const [isMobile, setIsMobile] = useState(false);
 
@@ -1214,6 +1218,7 @@ export function SummitTracker({
         const isExpId = isPredefined || isCustom || baseId.startsWith("exp-");
 
         if (isExpId && (!experiencesMode || isPeaks)) {
+          if (!canShowCountries) return;
           if (isPeaks) setCurrentMode("countries");
           setExperiencesMode(true);
           return;
@@ -3243,9 +3248,11 @@ export function SummitTracker({
       setIconDropdownOpen(false);
       setExperiencesMode(false);
     } else {
+      if (!canShowCountries) return;
       setExperiencesMode(true);
     }
   }, [
+    canShowCountries,
     experiencesMode,
     selected,
     customExperiences,
@@ -3652,6 +3659,8 @@ export function SummitTracker({
           {session ? (
             <button
               className="account-button"
+              aria-label="Mi Perfil"
+              title="Mi Perfil"
               onClick={() => {
                 window.location.hash = "panel";
                 setProfileOpen(true);
@@ -3666,13 +3675,9 @@ export function SummitTracker({
                 />
               ) : (
                 <span className="account-avatar">
-                  {myProfile?.username?.slice(0, 1).toUpperCase() ||
-                    session.user.email?.slice(0, 1).toUpperCase()}
+                  {myProfile?.username?.slice(0, 1).toUpperCase() || "?"}
                 </span>
               )}
-              <span className="account-username">
-                {myProfile?.username || session.user.email?.split("@")[0]}
-              </span>
             </button>
           ) : (
             <button
@@ -3855,6 +3860,7 @@ export function SummitTracker({
                 </button>
               )}
               {!isPeaks &&
+                canShowCountries &&
                 (experiencesMode || (mounted && myProfile?.enable_experiences)) && (
                   <button
                     className={`diff-toggle${experiencesMode ? " diff-toggle--active" : ""}`}
@@ -3877,11 +3883,11 @@ export function SummitTracker({
                     Experiencias
                   </button>
                 )}
-              {!isPeaks && (mounted && myProfile?.enable_regions) && (
-                <button
-                  className={`diff-toggle${regionsMode ? " diff-toggle--active" : ""}`}
-                  onClick={() => setRegionsMode(!regionsMode)}
-                  title="Ver divisiones territoriales"
+              {!isPeaks && canShowCountries && (mounted && myProfile?.enable_regions) && (
+                  <button
+                    className={`diff-toggle${regionsMode ? " diff-toggle--active" : ""}`}
+                    onClick={() => setRegionsMode(!regionsMode)}
+                    title="Ver divisiones territoriales"
                 >
                   <svg
                     className="diff-toggle-icon"
@@ -5527,8 +5533,13 @@ export function SummitTracker({
 
       {/* ── Record dialog ───────────────── */}
       {recordOpen && selected && (
-        <div className="modal-backdrop">
-          <section className="record-dialog" role="dialog" aria-modal="true">
+        <div className="modal-backdrop" onWheel={(e) => e.stopPropagation()}>
+          <section
+            className="record-dialog"
+            role="dialog"
+            aria-modal="true"
+            style={{ overscrollBehavior: "contain" }}
+          >
             <button
               className="icon-button"
               onClick={handleCloseRecord}

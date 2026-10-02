@@ -287,6 +287,15 @@ describe("Project Critical Invariants (No Regressions)", () => {
       expect(content).toContain('.mode-countries .map[data-zoom="5"] .summit-pin:not(.summit-pin--experience)');
       expect(content).toContain('.map[data-zoom="0"] .summit-pin:not(.summit-pin--experience)');
     });
+
+    it("Invariant 9.6: profile-settings.tsx must lock documentElement and body scroll when mounted", () => {
+      const settingsPath = path.join(rootDir, "components/profile-settings.tsx");
+      const content = fs.readFileSync(settingsPath, "utf-8");
+
+      expect(content).toContain('document.documentElement.style.overflow = "hidden"');
+      expect(content).toContain('document.body.style.overflow = "hidden"');
+      expect(content).toContain('overscrollBehavior: "contain"');
+    });
   });
 
   describe("Modality Preferences & Visibility Invariants", () => {
@@ -332,6 +341,57 @@ describe("Project Critical Invariants (No Regressions)", () => {
       const content = fs.readFileSync(migrationPath, "utf-8");
       expect(content).toContain("enable_peaks BOOLEAN DEFAULT true");
       expect(content).toContain("enable_countries BOOLEAN DEFAULT true");
+    });
+  });
+
+  describe("Topbar Account Button & Modality Hierarchy Invariants", () => {
+    it("Invariant 11.1: Topbar account button must ONLY display avatar and NEVER display email or username text", () => {
+      const trackerPath = path.join(rootDir, "components/summit-tracker.tsx");
+      const rankingPath = path.join(rootDir, "components/ranking-tab.tsx");
+      const socialPath = path.join(rootDir, "components/social-tab.tsx");
+
+      const trackerContent = fs.readFileSync(trackerPath, "utf-8");
+      const rankingContent = fs.readFileSync(rankingPath, "utf-8");
+      const socialContent = fs.readFileSync(socialPath, "utf-8");
+
+      for (const [name, content] of [
+        ["summit-tracker.tsx", trackerContent],
+        ["ranking-tab.tsx", rankingContent],
+        ["social-tab.tsx", socialContent],
+      ]) {
+        // Must contain account-button and account-avatar
+        expect(content, `${name} must include account-button`).toContain('className="account-button"');
+        expect(content, `${name} must include account-avatar`).toContain('className="account-avatar"');
+
+        // Must NOT render username or email text next to the avatar
+        expect(content, `${name} must not render username text in account-button`).not.toMatch(
+          /className="account-button"[\s\S]*?<span>\{myProfile\?\.username/
+        );
+        expect(content, `${name} must not render email text in account-button`).not.toMatch(
+          /className="account-button"[\s\S]*?session\.user\.email\?\.split\("@"\)/
+        );
+        expect(content, `${name} must not contain account-username class`).not.toContain("account-username");
+      }
+    });
+
+    it("Invariant 11.2: profile-settings.tsx must freeze experiences and regions when countries mode is disabled", () => {
+      const settingsPath = path.join(rootDir, "components/profile-settings.tsx");
+      const content = fs.readFileSync(settingsPath, "utf-8");
+
+      expect(content).toContain("setEnableExperiences(false)");
+      expect(content).toContain("setEnableRegions(false)");
+      expect(content).toContain("enable_regions: enableCountries ? enableRegions : false");
+      expect(content).toContain("enable_experiences: enableCountries ? enableExperiences : false");
+      expect(content).toContain("disabled={!enableCountries}");
+    });
+
+    it("Invariant 11.3: summit-tracker.tsx must force experiencesMode and regionsMode to false if canShowCountries is false", () => {
+      const trackerPath = path.join(rootDir, "components/summit-tracker.tsx");
+      const content = fs.readFileSync(trackerPath, "utf-8");
+
+      expect(content).toContain("if (!canShowCountries) {");
+      expect(content).toContain("if (experiencesMode) setExperiencesMode(false)");
+      expect(content).toContain("if (regionsMode) setRegionsMode(false)");
     });
   });
 });

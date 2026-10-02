@@ -250,15 +250,24 @@ export function RankingTab({
           </Link>
           <Link href="/ranking" className="topbar-nav-link topbar-nav-link--ranking" style={{ fontWeight: 'bold', color: 'var(--purple)' }}>Ranking</Link>
           {session ? (
-            <button className="account-button" onClick={() => setProfileOpen(true)}>
+            <button
+              className="account-button"
+              aria-label="Mi Perfil"
+              title="Mi Perfil"
+              onClick={() => setProfileOpen(true)}
+            >
               {myProfile?.avatar_url ? (
-                <img src={myProfile.avatar_url} alt="Mi Perfil" className="account-avatar" style={{ objectFit: "cover" }} />
+                <img
+                  src={myProfile.avatar_url}
+                  alt="Mi Perfil"
+                  className="account-avatar"
+                  style={{ objectFit: "cover" }}
+                />
               ) : (
                 <span className="account-avatar">
-                  {myProfile?.username?.slice(0, 1).toUpperCase() || session.user.email?.slice(0, 1).toUpperCase()}
+                  {myProfile?.username?.slice(0, 1).toUpperCase() || "?"}
                 </span>
               )}
-              <span>{myProfile?.username || session.user.email?.split("@")[0]}</span>
             </button>
           ) : (
             <button className="button button--outline" onClick={() => setAuthOpen("login")}>
