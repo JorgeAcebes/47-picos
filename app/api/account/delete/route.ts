@@ -29,6 +29,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Token inválido o expirado" }, { status: 401 });
     }
 
+    // Clean up photos in summit-photos bucket to avoid orphaned storage objects
+    try {
+      const { data: files, error: listError } = await supabaseAdmin.storage
+        .from("summit-photos")
+        .list(user.id);
+
+      if (!listError && files && files.length > 0) {
+        const pathsToDelete = files.map((file) => `${user.id}/${file.name}`);
+        await supabaseAdmin.storage.from("summit-photos").remove(pathsToDelete);
+      }
+    } catch (storageErr) {
+      console.error("Error cleaning up user photos during account deletion:", storageErr);
+      // Non-fatal, continue with user deletion
+    }
+
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(user.id);
     
     if (deleteError) {

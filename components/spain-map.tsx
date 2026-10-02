@@ -18,7 +18,8 @@ import { SweepOverlay } from "./sweep-overlay";
 // Override Leaflet's default canvas padding to preload vector shapes far outside the viewport
 L.Canvas.prototype.options.padding = 0.5;
 
-const PROVINCES_URL =
+const PROVINCES_URL = "/provincias_spain.geojson";
+const PROVINCES_FALLBACK_URL =
   "https://gist.githubusercontent.com/josemamira/3af52a4698d42b3f676fbc23f807a605/raw/cc5e247b63b05520c167639ed51d61acd560b1c1/provincias_spain.geojson";
 
 // ── Module-level GeoJSON cache ────────────
@@ -29,10 +30,23 @@ function fetchProvinces(): Promise<FeatureCollection> {
   if (_geoCache) return Promise.resolve(_geoCache);
   if (!_geoPromise) {
     _geoPromise = fetch(PROVINCES_URL)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .catch(() => {
+        return fetch(PROVINCES_FALLBACK_URL).then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json();
+        });
+      })
       .then((data: FeatureCollection) => {
         _geoCache = data;
         return data;
+      })
+      .catch((err) => {
+        _geoPromise = null;
+        throw err;
       });
   }
   return _geoPromise;

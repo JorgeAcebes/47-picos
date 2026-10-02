@@ -47,19 +47,27 @@ export default function PhotoEditor({ imageUrl, onSave, onCancel }: PhotoEditorP
     const cropWidth = (completedCrop?.width ?? image.width) * scaleX;
     const cropHeight = (completedCrop?.height ?? image.height) * scaleY;
 
+    const isRotated90 = Math.abs(rotate % 180) === 90;
+    const outputWidth = isRotated90 ? cropHeight : cropWidth;
+    const outputHeight = isRotated90 ? cropWidth : cropHeight;
+
     // Limit output size to max 1200px dimension
     const MAX_DIM = 1200;
     let scaleOut = 1;
-    if (Math.max(cropWidth, cropHeight) > MAX_DIM) {
-      scaleOut = MAX_DIM / Math.max(cropWidth, cropHeight);
+    if (Math.max(outputWidth, outputHeight) > MAX_DIM) {
+      scaleOut = MAX_DIM / Math.max(outputWidth, outputHeight);
     }
     
-    canvas.width = cropWidth * scaleOut;
-    canvas.height = cropHeight * scaleOut;
+    canvas.width = Math.round(outputWidth * scaleOut);
+    canvas.height = Math.round(outputHeight * scaleOut);
+
+    // Fill white background to prevent transparent pixels from becoming black when exported to JPEG
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Scale context to draw downsized output
     ctx.scale(scaleOut, scaleOut);
-    ctx.translate(cropWidth / 2, cropHeight / 2);
+    ctx.translate(outputWidth / 2, outputHeight / 2);
     ctx.rotate((rotate * Math.PI) / 180);
     ctx.scale(flipHorizontal ? -1 : 1, flipVertical ? -1 : 1);
     ctx.translate(-cropWidth / 2, -cropHeight / 2);

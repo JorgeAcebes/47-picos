@@ -44,12 +44,17 @@ export function LocationSearch({ value, onChange, onSelect, placeholder = "Busca
       }
       setIsLoading(true);
       try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(value)}&limit=5&accept-language=es`);
+        const res = await fetch(`/api/geocoding?q=${encodeURIComponent(value)}`);
         const data = await res.json();
-        setResults(data);
-        setIsOpen(true);
+        if (Array.isArray(data)) {
+          setResults(data);
+          setIsOpen(true);
+        } else {
+          setResults([]);
+        }
       } catch (err) {
         console.error("Error searching location:", err);
+        setResults([]);
       } finally {
         setIsLoading(false);
       }

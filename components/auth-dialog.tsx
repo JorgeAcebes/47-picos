@@ -83,26 +83,36 @@ export function AuthDialog({ onClose, initialTab = "register" }: { onClose: () =
         // Si no tiene '@' o solo lo tiene al principio, asumimos que puede ser un nombre de usuario
         if (!email.includes("@") || email.indexOf("@") === 0) {
           const cleanUsername = email.replace(/^@/, "").toLowerCase();
-          // Llamamos a la función RPC para buscar el email (Supabase usa Argon2 ahora, por lo que no podemos verificar el hash en Postgres nativo)
-          const { data: foundEmail, error } = await supabase.rpc("get_email_for_login", {
-            p_username: cleanUsername
-          });
-          
-          if (error) {
-            console.error("Error buscando el usuario:", error);
+          try {
+            const res = await fetch("/api/auth/username-login", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ username: cleanUsername, password }),
+            });
+            const data = await res.json();
+            setBusy(false);
+            if (!res.ok) {
+              handleError({ message: data.error || "Correo o contraseña incorrectos." });
+              return;
+            }
+            if (data.session) {
+              await supabase.auth.setSession(data.session);
+              onClose();
+              return;
+            }
+          } catch (err: any) {
+            setBusy(false);
+            handleError(err);
+            return;
           }
-          
-          if (foundEmail) {
-            loginEmail = foundEmail;
-          }
-        }
-
-        const result = await supabase.auth.signInWithPassword({ email: loginEmail, password });
-        setBusy(false);
-        if (result.error) {
-          handleError(result.error);
         } else {
-          onClose();
+          const result = await supabase.auth.signInWithPassword({ email: loginEmail, password });
+          setBusy(false);
+          if (result.error) {
+            handleError(result.error);
+          } else {
+            onClose();
+          }
         }
       } else {
         // Sign-up attempt

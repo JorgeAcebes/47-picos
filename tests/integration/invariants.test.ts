@@ -170,4 +170,41 @@ describe("Project Critical Invariants (No Regressions)", () => {
       expect(content).toMatch(/\.ranking-avatar\s*\{[^}]*margin:\s*4px/);
     });
   });
+
+  describe("Experiences & Map Invariants", () => {
+    it("Invariant 6.1: world-map.tsx must only render experience markers when experiencesMode is true", () => {
+      const worldMapPath = path.join(rootDir, "components/world-map.tsx");
+      const content = fs.readFileSync(worldMapPath, "utf-8");
+
+      expect(content).toContain("if (experiencesMode && experienceRecords)");
+      expect(content).toContain("experiencesModeRef.current = experiencesMode;");
+    });
+
+    it("Invariant 6.2: summit-tracker.tsx must guard handleExperienceClick and conditionally pass experienceRecords", () => {
+      const trackerPath = path.join(rootDir, "components/summit-tracker.tsx");
+      const content = fs.readFileSync(trackerPath, "utf-8");
+
+      expect(content).toMatch(/function handleExperienceClick[\s\S]*?if \(!experiencesMode\) return;/);
+      expect(content).toMatch(/experiencesMode\s*\?\s*experienceRecords\.map/);
+    });
+
+    it("Invariant 6.3: summit-tracker.tsx must close experience records upon deactivating experiences mode", () => {
+      const trackerPath = path.join(rootDir, "components/summit-tracker.tsx");
+      const content = fs.readFileSync(trackerPath, "utf-8");
+
+      expect(content).toContain("handleToggleExperiences");
+      expect(content).toContain("isSelectedExperience");
+      expect(content).toContain("setExperiencesMode(false)");
+    });
+  });
+
+  describe("Record Links Invariants", () => {
+    it("Invariant 7.1: summit-tracker.tsx must render record links in completed record cards", () => {
+      const trackerPath = path.join(rootDir, "components/summit-tracker.tsx");
+      const content = fs.readFileSync(trackerPath, "utf-8");
+
+      expect(content).toContain("renderRecordLink");
+      expect(content).toContain("{renderRecordLink(ascent.link, (ascent as any).link_name)}");
+    });
+  });
 });

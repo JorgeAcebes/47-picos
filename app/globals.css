@@ -394,7 +394,7 @@ img {
 nav {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   margin-left: auto;
   margin-right: 34px;
 }
@@ -502,17 +502,13 @@ nav a {
   box-sizing: border-box;
 }
 
-.topbar-nav-link--mapa {
-  min-width: 46px;
-}
-
 .topbar-nav-link--social {
-  min-width: 56px;
   position: relative;
 }
 
-.topbar-nav-link--ranking {
-  min-width: 68px;
+.topbar nav .account-button,
+.topbar nav > .button {
+  margin-left: 6px;
 }
 
 nav a::after {
@@ -1101,8 +1097,10 @@ nav a:hover::after {
 }
 
 /* Experiences pins: hidden in countries mode */
+.mode-countries .experience-hitbox,
 .mode-countries .summit-pin--experience {
   display: none !important;
+  pointer-events: none !important;
 }
 
 /* Ensure collective map experiences are always visible regardless of global mode */
@@ -2379,7 +2377,7 @@ textarea:focus {
   }
 
   .topbar nav {
-    gap: 12px;
+    gap: 10px;
     margin-right: 0;
   }
 

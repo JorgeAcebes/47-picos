@@ -189,6 +189,72 @@ function formatShortDate(date: string) {
   }).format(new Date(`${date}T12:00:00`));
 }
 
+function renderRecordLink(link?: string | null, linkName?: string | null) {
+  if (!link) return null;
+  let Icon = LinkIcon;
+  const urlStr = link.toLowerCase();
+  if (urlStr.includes("youtube.com") || urlStr.includes("youtu.be"))
+    Icon = Video;
+  else if (urlStr.includes("instagram.com")) Icon = Camera;
+  else if (urlStr.includes("linkedin.com")) Icon = Briefcase;
+  else if (
+    urlStr.includes("google.com/maps") ||
+    urlStr.includes("wikiloc.com") ||
+    urlStr.includes("komoot.com") ||
+    urlStr.includes("strava.com")
+  )
+    Icon = MapPin;
+
+  const displayName =
+    linkName ||
+    (urlStr.includes("youtube.com") || urlStr.includes("youtu.be")
+      ? "Vídeo en YouTube"
+      : urlStr.includes("instagram.com")
+        ? "Publicación en Instagram"
+        : urlStr.includes("linkedin.com")
+          ? "Publicación en LinkedIn"
+          : urlStr.includes("google.com/maps")
+            ? "Ver en Google Maps"
+            : urlStr.includes("wikiloc.com")
+              ? "Ruta en Wikiloc"
+              : urlStr.includes("strava.com")
+                ? "Actividad en Strava"
+                : urlStr.includes("komoot.com")
+                  ? "Ruta en Komoot"
+                  : "Enlace adjunto");
+
+  const href =
+    link.startsWith("http://") || link.startsWith("https://")
+      ? link
+      : `https://${link}`;
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        marginTop: 8,
+        fontSize: "13px",
+        color: "var(--pine)",
+        textDecoration: "none",
+        fontWeight: 500,
+        padding: "4px 10px",
+        backgroundColor: "rgba(35, 78, 82, 0.05)",
+        borderRadius: 16,
+        border: "1px solid rgba(35, 78, 82, 0.1)",
+        width: "fit-content",
+      }}
+    >
+      <Icon size={14} />
+      <span style={{ textDecoration: "underline" }}>{displayName}</span>
+    </a>
+  );
+}
+
 /* ── SVG icon components ────────────────── */
 function IconLogo({ className }: { className?: string }) {
   return (
@@ -1083,20 +1149,29 @@ export function SummitTracker({
         }
 
         // Check if it's an experience and we need to activate experiencesMode
-        if (!experiencesMode && !isPeaks) {
-          const isPredefined = predefinedCategories.some((cat) =>
-            cat.experiences.some((exp) => exp.id === baseId),
-          );
-          const isCustom = customExperiences.some((exp) => exp.id === baseId);
-          if (isPredefined || isCustom || baseId.startsWith("exp-")) {
-            setExperiencesMode(true);
-            return;
-          }
+        const isPredefined = predefinedCategories.some((cat) =>
+          cat.experiences.some((exp) => exp.id === baseId),
+        );
+        const isCustom = customExperiences.some((exp) => exp.id === baseId);
+        const isExpId = isPredefined || isCustom || baseId.startsWith("exp-");
+
+        if (isExpId && (!experiencesMode || isPeaks)) {
+          if (isPeaks) setCurrentMode("countries");
+          setExperiencesMode(true);
+          return;
         }
 
         // Check if it's a peak and we need to switch mode
         if (!isPeaks && peaks.some((p) => p.id === baseId)) {
+          if (experiencesMode) setExperiencesMode(false);
           setCurrentMode("peaks");
+          return;
+        }
+
+        // Check if it's a country and we need to switch mode
+        if (isPeaks && (baseId.startsWith("country-") || countries.some((c) => c.id === baseId))) {
+          if (experiencesMode) setExperiencesMode(false);
+          setCurrentMode("countries");
           return;
         }
 
@@ -1581,6 +1656,8 @@ export function SummitTracker({
         lng: r.lng,
         location_name: r.location_name,
         sub_item_id: r.sub_item_id,
+        link: r.link || null,
+        link_name: r.link_name || null,
       })),
     ];
 
@@ -1869,6 +1946,11 @@ export function SummitTracker({
       shareText += `\n"${ascent.notes}"`;
     }
 
+    if (ascent.link) {
+      const linkLabel = (ascent as any).link_name ? `${(ascent as any).link_name}: ` : "";
+      shareText += `\n${linkLabel}${ascent.link}`;
+    }
+
     shareText += `\n\n${profileUrl}`;
 
     // Download photos as File objects for sharing
@@ -1915,6 +1997,7 @@ export function SummitTracker({
   }
 
   function handleExperienceClick(record: ExperienceRecord) {
+    if (!experiencesMode) return;
     let category = dynamicCategories.find((c) =>
       c.experiences.some((e) => e.id === record.experience_id),
     );
@@ -1939,6 +2022,7 @@ export function SummitTracker({
 
   const openRecord = useCallback(
     (item?: SelectedItem | null, ascentToEdit?: Ascent | any) => {
+      if (isReadOnly) return;
       if (!session) {
         const targetHash = "#panel";
         if (window.location.hash !== targetHash) {
@@ -2086,6 +2170,14 @@ export function SummitTracker({
       );
       setNotice("Eliminado de tu lista de deseos.");
     } else {
+      const hasRealAscent = ascents.some(
+        (a) => a.summit_id === selected.id && !a.is_wishlist,
+      );
+      if (hasRealAscent) {
+        setNotice("Ya has completado esta cumbre o lugar. No es necesario añadirlo a tu lista de deseos.");
+        return;
+      }
+
       const finalDate = new Date().toISOString().slice(0, 10);
       const ascentResult = await supabase.from("ascents").upsert(
         {
@@ -2173,6 +2265,12 @@ export function SummitTracker({
       isEndDateEnabled && climbEndDate
         ? climbEndDate.toISOString().slice(0, 10)
         : null;
+
+    if (finalEndDate && finalDate && finalEndDate < finalDate) {
+      setNotice("La fecha de fin no puede ser anterior a la fecha de inicio.");
+      setSaving(false);
+      return;
+    }
 
     let dbError = null;
 
@@ -3024,6 +3122,8 @@ export function SummitTracker({
     setProfileOpen(false);
     setAuthOpen(false);
     setPanelIdToOpen(null);
+    setEditingExpRecordId(null);
+    setSelectedLatLng(null);
     panelPushedRef.current = false;
     recordOpenedFromPanelRef.current = false;
     if (window.location.hash) {
@@ -3042,6 +3142,56 @@ export function SummitTracker({
       closePanel();
     }
   }, [closePanel]);
+
+  const handleToggleExperiences = useCallback(() => {
+    if (experiencesMode) {
+      // Deactivating experiences mode: close open experience record/panel if active
+      const isSelectedExperience =
+        Boolean(
+          selected &&
+          ((selected as any).itemType === "experience" ||
+            selected.id.startsWith("exp-") ||
+            predefinedCategories.some((cat) =>
+              cat.experiences.some((exp) => exp.id === selected.id),
+            ) ||
+            customExperiences.some((exp) => exp.id === selected.id))
+        ) ||
+        (typeof window !== "undefined" &&
+          window.location.hash.startsWith("#panel=") &&
+          (() => {
+            const rawId = decodeURIComponent(
+              window.location.hash.substring(7),
+            ).split("::")[0];
+            return (
+              rawId.startsWith("exp-") ||
+              predefinedCategories.some((cat) =>
+                cat.experiences.some((exp) => exp.id === rawId),
+              ) ||
+              customExperiences.some((exp) => exp.id === rawId)
+            );
+          })());
+
+      if (isSelectedExperience) {
+        closePanel();
+      }
+      if (selectingLocationForExp) {
+        setSelectingLocationForExp(null);
+      }
+      setSelectingCategoryForNewExp(false);
+      setExpSelectorOpen(false);
+      setIsEditingExperiences(false);
+      setIconDropdownOpen(false);
+      setExperiencesMode(false);
+    } else {
+      setExperiencesMode(true);
+    }
+  }, [
+    experiencesMode,
+    selected,
+    customExperiences,
+    closePanel,
+    selectingLocationForExp,
+  ]);
 
   function switchMode(target: ChallengeMode) {
     if (target === currentMode) return;
@@ -3220,63 +3370,7 @@ export function SummitTracker({
         {ascent.notes && (
           <p style={{ marginTop: "4px" }}>&ldquo;{ascent.notes}&rdquo;</p>
         )}
-        {ascent.link &&
-          (() => {
-            let Icon = LinkIcon;
-            const urlStr = ascent.link.toLowerCase();
-            if (urlStr.includes("youtube.com") || urlStr.includes("youtu.be"))
-              Icon = Video;
-            else if (urlStr.includes("instagram.com")) Icon = Camera;
-            else if (urlStr.includes("linkedin.com")) Icon = Briefcase;
-            else if (
-              urlStr.includes("google.com/maps") ||
-              urlStr.includes("wikiloc.com") ||
-              urlStr.includes("komoot.com") ||
-              urlStr.includes("strava.com")
-            )
-              Icon = MapPin;
-
-            const displayName =
-              (ascent as any).link_name ||
-              (urlStr.includes("youtube.com") || urlStr.includes("youtu.be")
-                ? "Vídeo en YouTube"
-                : urlStr.includes("instagram.com")
-                  ? "Publicación en Instagram"
-                  : urlStr.includes("linkedin.com")
-                    ? "Publicación en LinkedIn"
-                    : urlStr.includes("google.com/maps")
-                      ? "Ver en Google Maps"
-                      : urlStr.includes("wikiloc.com")
-                        ? "Ruta en Wikiloc"
-                        : urlStr.includes("strava.com")
-                          ? "Actividad en Strava"
-                          : urlStr.includes("komoot.com")
-                            ? "Ruta en Komoot"
-                            : "Enlace adjunto");
-
-            return (
-              <a
-                href={ascent.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  marginTop: "12px",
-                  color: "var(--pine)",
-                  textDecoration: "none",
-                  fontWeight: 600,
-                  fontSize: "13px",
-                }}
-              >
-                <Icon size={16} />
-                <span style={{ textDecoration: "underline" }}>
-                  {displayName}
-                </span>
-              </a>
-            );
-          })()}
+        {renderRecordLink(ascent.link, (ascent as any).link_name)}
 
         {ascentPhotos.length > 0 && (
           <div className="photo-section" style={{ marginTop: 16 }}>
@@ -3700,7 +3794,7 @@ export function SummitTracker({
                 (experiencesMode || (mounted && myProfile?.enable_experiences)) && (
                   <button
                     className={`diff-toggle${experiencesMode ? " diff-toggle--active" : ""}`}
-                    onClick={() => setExperiencesMode(!experiencesMode)}
+                    onClick={handleToggleExperiences}
                     title="Ver experiencias"
                   >
                     <svg
@@ -3819,12 +3913,16 @@ export function SummitTracker({
                 completedRegions={completedRegionIds}
                 activeId={selected?.id}
                 experiencesMode={experiencesMode}
-                experienceRecords={experienceRecords.map((r) => {
-                  const cat = dynamicCategories.find((c) =>
-                    c.experiences.some((e) => e.id === r.experience_id),
-                  );
-                  return { ...r, icon_name: cat?.iconName || "telescope" };
-                })}
+                experienceRecords={
+                  experiencesMode
+                    ? experienceRecords.map((r) => {
+                        const cat = dynamicCategories.find((c) =>
+                          c.experiences.some((e) => e.id === r.experience_id),
+                        );
+                        return { ...r, icon_name: cat?.iconName || "telescope" };
+                      })
+                    : []
+                }
                 selectingLocation={!!selectingLocationForExp}
                 onMapClick={handleMapClickForExp}
                 onCancelSelectingLocation={handleCancelSelectingLocationForExp}
@@ -5102,6 +5200,7 @@ export function SummitTracker({
                           &ldquo;{ascent.notes}&rdquo;
                         </p>
                       )}
+                      {renderRecordLink(ascent.link, (ascent as any).link_name)}
 
                       {ascentPhotos.length > 0 && (
                         <div

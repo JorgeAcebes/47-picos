@@ -3,9 +3,10 @@ export async function compressImage(
   maxWidthPx = 1200,
   quality = 0.75
 ): Promise<Blob> {
+  let bitmap: ImageBitmap | null = null;
   try {
     // createImageBitmap is widely supported and efficient for this
-    const bitmap = await createImageBitmap(file);
+    bitmap = await createImageBitmap(file);
 
     let width = bitmap.width;
     let height = bitmap.height;
@@ -24,9 +25,23 @@ export async function compressImage(
     const ctx = canvas.getContext("2d");
     if (!ctx) return file; // Fallback in case canvas isn't supported
 
+    // Detect if image format may contain an alpha channel (PNG, WebP, GIF, SVG)
+    const isTransparentFormat =
+      !file.type ||
+      file.type === "image/png" ||
+      file.type === "image/webp" ||
+      file.type === "image/gif" ||
+      file.type === "image/svg+xml";
+
+    // Fill white background to prevent transparent pixels from becoming black when exported to JPEG
+    if (isTransparentFormat) {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, width, height);
+    }
+
     ctx.drawImage(bitmap, 0, 0, width, height);
 
-    return new Promise((resolve) => {
+    return await new Promise((resolve) => {
       canvas.toBlob(
         (blob) => {
           if (blob) {
@@ -42,5 +57,13 @@ export async function compressImage(
   } catch (error) {
     console.error("Error compressing image:", error);
     return file; // Fallback to original if anything fails
+  } finally {
+    if (bitmap) {
+      try {
+        bitmap.close();
+      } catch (err) {
+        console.error("Error closing ImageBitmap:", err);
+      }
+    }
   }
 }

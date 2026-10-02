@@ -84,3 +84,17 @@ Este documento reúne todas las reglas no negociables de la aplicación. Cualqui
 1. **Contenedor Inmutable**: Anchos de columnas fijos independientemente de filtros o longitud de textos.
 2. **Anillos del Podio Top-3**: Los avatares con contorno (`outline: 2px solid ...; outline-offset: 2px;`) deben conservar `margin: 4px;` en `.ranking-avatar` para no ser recortados.
 3. **Gutter Estable**: `html, body` deben conservar `scrollbar-gutter: stable;` para evitar desplazamientos horizontales al cambiar de pestaña.
+
+---
+
+## 6. Modo de Experiencias y Cartografía (`components/world-map.tsx`, `components/summit-tracker.tsx`)
+
+1. **Visibilidad Estricta de Marcadores en Mapa**: Los marcadores de experiencias en el mapa mundial (`WorldMap`) NUNCA deben renderizarse si `experiencesMode` es falso (`if (experiencesMode && experienceRecords)`). Ocultar únicamente mediante CSS es insuficiente porque los hitboxes de Leaflet interceptan clics.
+2. **Cierre de Registro al Desactivar Modo Experiencias**: Al pulsar el botón de alternar experiencias para desactivarlo, si el usuario tiene abierto un registro o panel de experiencia, dicho registro debe cerrarse (`closePanel()`) y purgar el hash `#panel=` de la URL. Si el elemento abierto no es una experiencia (país o región), debe permanecer abierto.
+
+---
+
+## 7. Enlaces en Registros y Feed (`components/summit-tracker.tsx`, `components/feed-tab.tsx`)
+
+1. **Visibilidad de Enlaces en Tarjetas de Registro**: Cuando un ascenso, visita a país o experiencia cuenta con hipervínculo (`link`), debe renderizarse con su botón/insignia interactiva (`renderRecordLink`) tanto en el feed social como en las tarjetas de registro del panel lateral (`.completed-card`).
+2. **Protocolo Seguro**: Todo hipervínculo debe normalizarse garantizando prefijo `http://` o `https://` para evitar rutas relativas involuntarias al navegar externamente.

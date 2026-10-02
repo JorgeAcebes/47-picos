@@ -356,9 +356,14 @@ function FeedItemCard({ item, session: _session, onAuthRequired: _onAuthRequired
                             ? "Ruta en Komoot"
                             : "Enlace adjunto");
 
+            const href =
+              item.link.startsWith("http://") || item.link.startsWith("https://")
+                ? item.link
+                : `https://${item.link}`;
+
             return (
               <a
-                href={item.link}
+                href={href}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import type { Session } from "@supabase/supabase-js";
+import { compressImage } from "@/lib/image-utils";
 
 type Profile = {
   id: string;
@@ -68,11 +69,16 @@ export function ProfileSettings({ session, onClose, onProfileUpdate }: { session
     let avatarUrl = profile?.avatar_url || null;
 
     if (avatarFile) {
-      const ext = avatarFile.name.split('.').pop();
-      const path = `${session.user.id}/avatar_${Date.now()}.${ext}`;
+      if (!avatarFile.type.startsWith("image/")) {
+        setError("El archivo seleccionado debe ser una imagen válida.");
+        setSaving(false);
+        return;
+      }
+      const compressedBlob = await compressImage(avatarFile, 256, 0.85);
+      const path = `${session.user.id}/avatar_${Date.now()}.jpg`;
       const { error: uploadError } = await supabase.storage
         .from("summit-photos")
-        .upload(path, avatarFile, { upsert: true });
+        .upload(path, compressedBlob, { contentType: "image/jpeg", upsert: true });
         
       if (uploadError) {
         setError("Error al subir la foto de perfil: " + uploadError.message);

@@ -12,7 +12,7 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // Parse URL hash for errors (e.g. if the link expired)
+  // Parse URL hash for errors (e.g. if the link expired) or PKCE code in query params
   useEffect(() => {
     if (typeof window !== "undefined") {
       const hash = window.location.hash;
@@ -22,6 +22,24 @@ export default function ResetPasswordPage() {
         } else {
           setError("Ocurrió un error con el enlace de recuperación.");
         }
+        return;
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
+      if (code && supabase) {
+        supabase.auth.exchangeCodeForSession(code).then(({ error: exchangeError }) => {
+          if (exchangeError) {
+            setError("El enlace de recuperación es inválido o ha caducado. Por favor, solicita uno nuevo.");
+          }
+        });
+      } else if (supabase) {
+        // If no code and no access_token in hash, check if there is an active session
+        supabase.auth.getSession().then(({ data }) => {
+          if (!data?.session && !hash.includes("access_token")) {
+            setError("No se ha detectado ninguna sesión de recuperación activa. Por favor, solicita un enlace nuevo.");
+          }
+        });
       }
     }
   }, []);

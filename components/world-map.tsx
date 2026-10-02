@@ -23,7 +23,8 @@ import { SweepOverlay } from "./sweep-overlay";
 // Override Leaflet's default canvas padding to preload vector shapes far outside the viewport
 L.Canvas.prototype.options.padding = 0.5;
 
-const WORLD_TOPO_URL =
+const WORLD_TOPO_URL = "/world-countries.topo.json";
+const WORLD_TOPO_FALLBACK_URL =
   "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json";
 const WORLD_REGIONS_TOPO_URL = "/world-regions.topo.json";
 
@@ -38,7 +39,16 @@ function fetchWorldGeo(): Promise<FeatureCollection> {
   if (_worldGeoCache) return Promise.resolve(_worldGeoCache);
   if (!_worldGeoPromise) {
     _worldGeoPromise = fetch(WORLD_TOPO_URL)
-      .then((response) => response.json())
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      })
+      .catch(() => {
+        return fetch(WORLD_TOPO_FALLBACK_URL).then((response) => {
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.json();
+        });
+      })
       .then((topology: Topology) => {
         const countriesGeo = feature(
           topology,
@@ -47,6 +57,10 @@ function fetchWorldGeo(): Promise<FeatureCollection> {
         fixAntimeridian(countriesGeo);
         _worldGeoCache = countriesGeo;
         return countriesGeo;
+      })
+      .catch((err) => {
+        _worldGeoPromise = null;
+        throw err;
       });
   }
   return _worldGeoPromise;
@@ -65,6 +79,10 @@ function fetchWorldRegionsGeo(): Promise<FeatureCollection> {
         fixAntimeridian(regionsGeo);
         _regionsGeoCache = regionsGeo;
         return regionsGeo;
+      })
+      .catch((err) => {
+        _regionsGeoPromise = null;
+        throw err;
       });
   }
   return _regionsGeoPromise;
@@ -285,6 +303,7 @@ export const WorldMap = memo(function WorldMap({ completed, wishlist, onInformat
   onInformationRef.current = onInformation;
   onRegionInformationRef.current = onRegionInformation;
   selectingLocationRef.current = selectingLocation;
+  experiencesModeRef.current = experiencesMode;
 
 
 
@@ -656,7 +675,7 @@ export const WorldMap = memo(function WorldMap({ completed, wishlist, onInformat
       ));
       }
 
-      if (experienceRecords) {
+      if (experiencesMode && experienceRecords) {
         const expMarkers = experienceRecords.map((r, i) => {
           let expIcon = expIconCache.get(r.icon_name);
           if (!expIcon) {
@@ -683,7 +702,11 @@ export const WorldMap = memo(function WorldMap({ completed, wishlist, onInformat
               icon={expIcon}
               zIndexOffset={1000}
               eventHandlers={{
-                click: () => onExperienceClick && onExperienceClick(r),
+                click: () => {
+                  if (experiencesModeRef.current && onExperienceClick) {
+                    onExperienceClick(r);
+                  }
+                },
               }}
             />
           );
