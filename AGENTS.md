@@ -82,6 +82,12 @@ Una tarea sólo se considera concluida cuando:
 - Avatares del podio Top-3 requieren `margin: 4px;` en `.ranking-avatar` para evitar recorte del contorno.
 - `html, body` deben conservar `scrollbar-gutter: stable;`.
 
+### 4.6 Botón de Cuenta en Cabecera y Modalidades (`summit-tracker.tsx`, `ranking-tab.tsx`, `social-tab.tsx`, `profile-settings.tsx`)
+- **Solo Foto o Inicial en Cabecera Superior**: Arriba a la derecha (`.account-button`), solo debe aparecer la foto de perfil o la letra inicial (o `?`), **en ningún caso** el nombre del correo electrónico ni el nombre de usuario.
+- **Jerarquía de Modalidades**: Modo experiencias y Modo regiones dependen estrictamente del Modo países. Si se desactiva el Modo países, experiencias y regiones se congelan automáticamente (inactivas y deshabilitadas en interfaz y ajustes).
+- **Ocultación sin Pérdida de Datos**: Desactivar una modalidad oculta los botones, publicaciones y vistas correspondientes, pero conserva íntegramente los datos y registros del usuario.
+- **Ajustes de Perfil sin Scroll**: El modal de ajustes de perfil debe ser completamente visible sin necesidad de scroll vertical.
+
 ---
 
 ## 5. Reglas Críticas de Seguridad y Base de Datos

@@ -1,7 +1,8 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { lockScroll, unlockScroll } from "@/lib/scroll-lock";
 
 function IconClose() {
   return (
@@ -41,6 +42,15 @@ export function AuthDialog({ onClose, initialTab = "register" }: { onClose: () =
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [resetMessage, setResetMessage] = useState("");
   const [resetBusy, setResetBusy] = useState(false);
+
+  useEffect(() => {
+    lockScroll();
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      unlockScroll();
+    };
+  }, []);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -180,8 +190,13 @@ export function AuthDialog({ onClose, initialTab = "register" }: { onClose: () =
 
   if (isForgotPassword) {
     return (
-      <div className="modal-backdrop" role="presentation">
-        <section className="auth-dialog" role="dialog" aria-modal="true">
+      <div className="modal-backdrop" onWheel={(e) => e.stopPropagation()} role="presentation">
+        <section
+          className="auth-dialog"
+          role="dialog"
+          aria-modal="true"
+          style={{ overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" }}
+        >
           <button className="icon-button" aria-label="Cerrar" onClick={() => setIsForgotPassword(false)}>
             <IconClose />
           </button>
@@ -219,12 +234,13 @@ export function AuthDialog({ onClose, initialTab = "register" }: { onClose: () =
   }
 
   return (
-    <div className="modal-backdrop" role="presentation">
+    <div className="modal-backdrop" onWheel={(e) => e.stopPropagation()} role="presentation">
       <section
         className="auth-dialog"
         role="dialog"
         aria-modal="true"
         aria-label="Acceso a 47 Picos"
+        style={{ overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" }}
       >
         <button className="icon-button" aria-label="Cerrar" onClick={onClose}>
           <IconClose />

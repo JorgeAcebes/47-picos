@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { usePendingRequests } from "./use-pending-requests";
 import { compressImage } from "@/lib/image-utils";
+import { lockScroll, unlockScroll } from "@/lib/scroll-lock";
 
 const SpainMap = dynamic(
   () => import("./spain-map").then((module) => module.SpainMap),
@@ -126,6 +127,8 @@ type ChallengeMode = "peaks" | "countries";
 type TargetProfile = {
   id: string;
   username: string;
+  enable_peaks?: boolean;
+  enable_countries?: boolean;
 };
 
 type Props = {
@@ -574,22 +577,6 @@ export function SummitTracker({
   initialExperiencesMode = false,
 }: Props) {
   const router = useRouter();
-  const [currentMode, setCurrentMode] =
-    useState<ChallengeMode>(initialModeProp);
-  const isPeaks = currentMode === "peaks";
-  const isReadOnly = !!targetProfile;
-  const hasPendingRequests = usePendingRequests();
-
-  useEffect(() => {
-    if (!isActive) return;
-    const handlePopState = () => {
-      if (window.location.pathname === "/picos") setCurrentMode("peaks");
-      else if (window.location.pathname === "/") setCurrentMode("countries");
-    };
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, [isActive]);
-
   const { session, profile: authProfile, refreshProfile } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [myProfile, setMyProfile] = useState<{
@@ -597,7 +584,48 @@ export function SummitTracker({
     avatar_url: string | null;
     enable_regions?: boolean;
     enable_experiences?: boolean;
+    enable_peaks?: boolean;
+    enable_countries?: boolean;
   } | null>(() => authProfile);
+
+  const isReadOnly = !!targetProfile;
+  const enablePeaks = !myProfile || myProfile.enable_peaks !== false;
+  const enableCountries = !myProfile || myProfile.enable_countries !== false;
+  const targetEnablePeaks = !targetProfile || targetProfile.enable_peaks !== false;
+  const targetEnableCountries = !targetProfile || targetProfile.enable_countries !== false;
+
+  const canShowPeaks = isReadOnly ? (enablePeaks && targetEnablePeaks) : enablePeaks;
+  const canShowCountries = isReadOnly ? (enableCountries && targetEnableCountries) : enableCountries;
+  const hasBothModes = canShowPeaks && canShowCountries;
+
+  const [currentMode, setCurrentMode] = useState<ChallengeMode>(() => {
+    const authEnablePeaks = !authProfile || authProfile.enable_peaks !== false;
+    const authEnableCountries = !authProfile || authProfile.enable_countries !== false;
+    const targetPeaks = !targetProfile || targetProfile.enable_peaks !== false;
+    const targetCountries = !targetProfile || targetProfile.enable_countries !== false;
+    const effectivePeaks = isReadOnly ? (authEnablePeaks && targetPeaks) : authEnablePeaks;
+    const effectiveCountries = isReadOnly ? (authEnableCountries && targetCountries) : authEnableCountries;
+
+    if (!effectivePeaks && initialModeProp === "peaks") return "countries";
+    if (!effectiveCountries && initialModeProp === "countries") return "peaks";
+    return initialModeProp;
+  });
+
+  const isPeaks = currentMode === "peaks";
+  const hasPendingRequests = usePendingRequests();
+
+  useEffect(() => {
+    if (!isActive) return;
+    const handlePopState = () => {
+      if (window.location.pathname === "/picos") {
+        if (canShowPeaks) setCurrentMode("peaks");
+      } else if (window.location.pathname === "/") {
+        if (canShowCountries) setCurrentMode("countries");
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [isActive, canShowPeaks, canShowCountries]);
 
   useEffect(() => {
     setMounted(true);
@@ -679,17 +707,6 @@ export function SummitTracker({
     [],
   );
 
-  useEffect(() => {
-    if (lightboxPhoto !== null) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [lightboxPhoto]);
-
   // Experience features
   const [experienceRecords, setExperienceRecords] = useState<ExperienceRecord[]>(
     () => (targetId && cachedExperienceRecordsByUser[targetId]) ? cachedExperienceRecordsByUser[targetId] : []
@@ -739,6 +756,47 @@ export function SummitTracker({
   );
   const [isEditingExperiences, setIsEditingExperiences] = useState(false);
   const [iconDropdownOpen, setIconDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    if (!mounted) return;
+    if (!canShowPeaks && currentMode === "peaks") {
+      switchMode("countries");
+    } else if (!canShowCountries && currentMode === "countries") {
+      switchMode("peaks");
+    }
+    if (!canShowCountries) {
+      if (experiencesMode) setExperiencesMode(false);
+      if (regionsMode) setRegionsMode(false);
+    }
+  }, [mounted, canShowPeaks, canShowCountries, currentMode, experiencesMode, regionsMode]);
+
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(typeof window !== "undefined" && window.innerWidth <= 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  const isScrollLocked =
+    (isMobile && !!selected) ||
+    !!recordOpen ||
+    !!lightboxPhoto ||
+    !!editorPhoto;
+
+  useEffect(() => {
+    if (isScrollLocked) {
+      lockScroll();
+      document.documentElement.style.overflow = "hidden";
+      document.body.style.overflow = "hidden";
+      return () => {
+        unlockScroll();
+      };
+    }
+  }, [isScrollLocked]);
 
   useEffect(() => {
     if (initialExperiencesMode) {
@@ -845,7 +903,7 @@ export function SummitTracker({
     if (session) {
       supabase
         ?.from("profiles")
-        .select("username, avatar_url, enable_regions, enable_experiences")
+        .select("username, avatar_url, enable_regions, enable_experiences, enable_peaks, enable_countries")
         .eq("id", session.user.id)
         .single()
         .then(({ data }) => {
@@ -1156,6 +1214,7 @@ export function SummitTracker({
         const isExpId = isPredefined || isCustom || baseId.startsWith("exp-");
 
         if (isExpId && (!experiencesMode || isPeaks)) {
+          if (!canShowCountries) return;
           if (isPeaks) setCurrentMode("countries");
           setExperiencesMode(true);
           return;
@@ -1163,6 +1222,7 @@ export function SummitTracker({
 
         // Check if it's a peak and we need to switch mode
         if (!isPeaks && peaks.some((p) => p.id === baseId)) {
+          if (!canShowPeaks) return;
           if (experiencesMode) setExperiencesMode(false);
           setCurrentMode("peaks");
           return;
@@ -1170,6 +1230,7 @@ export function SummitTracker({
 
         // Check if it's a country and we need to switch mode
         if (isPeaks && (baseId.startsWith("country-") || countries.some((c) => c.id === baseId))) {
+          if (!canShowCountries) return;
           if (experiencesMode) setExperiencesMode(false);
           setCurrentMode("countries");
           return;
@@ -1394,7 +1455,7 @@ export function SummitTracker({
         if (!isReadOnly && !profileOpen && session && !myProfile) {
           const { data: profile } = await supabase
             .from("profiles")
-            .select("username, avatar_url, enable_regions, enable_experiences")
+            .select("username, avatar_url, enable_regions, enable_experiences, enable_peaks, enable_countries")
             .eq("id", session.user.id)
             .single();
           if (profile) setMyProfile(profile);
@@ -1467,7 +1528,7 @@ export function SummitTracker({
         if (session && !myProfile) {
           const { data: profile } = await supabase
             .from("profiles")
-            .select("username, avatar_url, enable_regions, enable_experiences")
+            .select("username, avatar_url, enable_regions, enable_experiences, enable_peaks, enable_countries")
             .eq("id", session.user.id)
             .single();
           if (profile) setMyProfile(profile);
@@ -3183,9 +3244,11 @@ export function SummitTracker({
       setIconDropdownOpen(false);
       setExperiencesMode(false);
     } else {
+      if (!canShowCountries) return;
       setExperiencesMode(true);
     }
   }, [
+    canShowCountries,
     experiencesMode,
     selected,
     customExperiences,
@@ -3195,6 +3258,8 @@ export function SummitTracker({
 
   function switchMode(target: ChallengeMode) {
     if (target === currentMode) return;
+    if (target === "peaks" && !canShowPeaks) return;
+    if (target === "countries" && !canShowCountries) return;
 
     // Clear panels explicitly without using history.back()
     // to prevent race conditions with navigation.
@@ -3590,6 +3655,8 @@ export function SummitTracker({
           {session ? (
             <button
               className="account-button"
+              aria-label="Mi Perfil"
+              title="Mi Perfil"
               onClick={() => {
                 window.location.hash = "panel";
                 setProfileOpen(true);
@@ -3604,13 +3671,9 @@ export function SummitTracker({
                 />
               ) : (
                 <span className="account-avatar">
-                  {myProfile?.username?.slice(0, 1).toUpperCase() ||
-                    session.user.email?.slice(0, 1).toUpperCase()}
+                  {myProfile?.username?.slice(0, 1).toUpperCase() || "?"}
                 </span>
               )}
-              <span className="account-username">
-                {myProfile?.username || session.user.email?.split("@")[0]}
-              </span>
             </button>
           ) : (
             <button
@@ -3725,22 +3788,24 @@ export function SummitTracker({
       {/* ── Map ─────────────────────────── */}
       <section className="map-section">
         {/* ── Mode selector ──────────────── */}
-        <div className="mode-selector">
-          <button
-            className={`mode-tab ${isPeaks ? "mode-tab--active" : ""}`}
-            onClick={() => switchMode("peaks")}
-          >
-            <IconMountain className="mode-tab-icon" />
-            47 Picos
-          </button>
-          <button
-            className={`mode-tab ${!isPeaks ? "mode-tab--active" : ""}`}
-            onClick={() => switchMode("countries")}
-          >
-            <IconGlobe className="mode-tab-icon" />
-            196 Países
-          </button>
-        </div>
+        {hasBothModes && (
+          <div className="mode-selector">
+            <button
+              className={`mode-tab ${isPeaks ? "mode-tab--active" : ""}`}
+              onClick={() => switchMode("peaks")}
+            >
+              <IconMountain className="mode-tab-icon" />
+              47 Picos
+            </button>
+            <button
+              className={`mode-tab ${!isPeaks ? "mode-tab--active" : ""}`}
+              onClick={() => switchMode("countries")}
+            >
+              <IconGlobe className="mode-tab-icon" />
+              196 Países
+            </button>
+          </div>
+        )}
 
         <div id="mapa" className="section-heading map-heading-row">
           <div>
@@ -3791,6 +3856,7 @@ export function SummitTracker({
                 </button>
               )}
               {!isPeaks &&
+                canShowCountries &&
                 (experiencesMode || (mounted && myProfile?.enable_experiences)) && (
                   <button
                     className={`diff-toggle${experiencesMode ? " diff-toggle--active" : ""}`}
@@ -3813,11 +3879,11 @@ export function SummitTracker({
                     Experiencias
                   </button>
                 )}
-              {!isPeaks && (mounted && myProfile?.enable_regions) && (
-                <button
-                  className={`diff-toggle${regionsMode ? " diff-toggle--active" : ""}`}
-                  onClick={() => setRegionsMode(!regionsMode)}
-                  title="Ver divisiones territoriales"
+              {!isPeaks && canShowCountries && (mounted && myProfile?.enable_regions) && (
+                  <button
+                    className={`diff-toggle${regionsMode ? " diff-toggle--active" : ""}`}
+                    onClick={() => setRegionsMode(!regionsMode)}
+                    title="Ver divisiones territoriales"
                 >
                   <svg
                     className="diff-toggle-icon"
@@ -5463,8 +5529,13 @@ export function SummitTracker({
 
       {/* ── Record dialog ───────────────── */}
       {recordOpen && selected && (
-        <div className="modal-backdrop">
-          <section className="record-dialog" role="dialog" aria-modal="true">
+        <div className="modal-backdrop" onWheel={(e) => e.stopPropagation()}>
+          <section
+            className="record-dialog"
+            role="dialog"
+            aria-modal="true"
+            style={{ overscrollBehavior: "contain" }}
+          >
             <button
               className="icon-button"
               onClick={handleCloseRecord}
@@ -6065,6 +6136,7 @@ export function SummitTracker({
           onClick={() => window.history.back()}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
+          onWheel={(e) => e.stopPropagation()}
         >
           {hasPrevPhoto && (
             <button
@@ -6466,6 +6538,13 @@ export function SummitTracker({
             setMyProfile((prev) => ({ ...prev, ...p }));
             refreshProfile();
             if (p.enable_regions === false) setRegionsMode(false);
+            if (p.enable_experiences === false) setExperiencesMode(false);
+            if (p.enable_peaks === false && currentMode === "peaks") {
+              switchMode("countries");
+            }
+            if (p.enable_countries === false && currentMode === "countries") {
+              switchMode("peaks");
+            }
           }}
           onClose={() => setProfileOpen(false)}
         />

@@ -217,14 +217,14 @@ function MapZoomListener() {
   const map = useMapEvents({
     zoom: () => {
       const container = map.getContainer();
-      container.setAttribute("data-zoom", Math.round(map.getZoom()).toString());
+      container.setAttribute("data-zoom", Math.max(0, Math.round(map.getZoom() || 0)).toString());
     },
     zoomend: () => {
       const zoom = map.getZoom();
       const center = map.getCenter();
       sessionStorage.setItem("mapState_world", JSON.stringify({ zoom, center }));
       const container = map.getContainer();
-      container.setAttribute("data-zoom", Math.round(zoom).toString());
+      container.setAttribute("data-zoom", Math.max(0, Math.round(zoom || 0)).toString());
     },
     moveend: () => {
       const zoom = map.getZoom();
@@ -234,7 +234,7 @@ function MapZoomListener() {
   });
   useEffect(() => {
     const container = map.getContainer();
-    container.setAttribute("data-zoom", Math.round(map.getZoom()).toString());
+    container.setAttribute("data-zoom", Math.max(0, Math.round(map.getZoom() || 0)).toString());
   }, [map]);
   return null;
 }
@@ -813,6 +813,7 @@ export const WorldMap = memo(function WorldMap({ completed, wishlist, onInformat
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        minZoom={1}
         keepBuffer={4}
         updateWhenIdle={true}
         updateWhenZooming={false}

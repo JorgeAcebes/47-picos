@@ -14,6 +14,8 @@ type Profile = {
   username: string;
   avatar_url: string | null;
   is_public: boolean;
+  enable_peaks?: boolean;
+  enable_countries?: boolean;
 };
 
 export function ProfileView({
@@ -25,7 +27,7 @@ export function ProfileView({
   initialMode?: "peaks" | "countries";
   initialExperiences?: boolean;
 }) {
-  const { session } = useAuth();
+  const { session, profile: myProfile } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [access, setAccess] = useState(false);
@@ -162,13 +164,36 @@ export function ProfileView({
   }
 
   const isMe = session?.user.id === profile.id;
+  const viewerEnablePeaks = !myProfile || myProfile.enable_peaks !== false;
+  const viewerEnableCountries = !myProfile || myProfile.enable_countries !== false;
+  const targetEnablePeaks = !profile || profile.enable_peaks !== false;
+  const targetEnableCountries = !profile || profile.enable_countries !== false;
+
+  const effectiveEnablePeaks = viewerEnablePeaks && targetEnablePeaks;
+  const effectiveEnableCountries = viewerEnableCountries && targetEnableCountries;
+
+  const activeMode =
+    mode === "peaks" && !effectiveEnablePeaks
+      ? "countries"
+      : mode === "countries" && !effectiveEnableCountries
+      ? "peaks"
+      : mode;
 
   return (
     <SummitTracker
-      mode={mode}
+      mode={activeMode}
       onSwitchMode={setMode}
       initialExperiencesMode={initialExperiences}
-      targetProfile={isMe ? undefined : { id: profile.id, username: profile.username }}
+      targetProfile={
+        isMe
+          ? undefined
+          : {
+              id: profile.id,
+              username: profile.username,
+              enable_peaks: effectiveEnablePeaks,
+              enable_countries: effectiveEnableCountries,
+            }
+      }
       onNavigate={handleNavigate}
     />
   );
