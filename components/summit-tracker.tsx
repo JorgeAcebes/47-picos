@@ -126,6 +126,8 @@ type ChallengeMode = "peaks" | "countries";
 type TargetProfile = {
   id: string;
   username: string;
+  enable_peaks?: boolean;
+  enable_countries?: boolean;
 };
 
 type Props = {
@@ -574,22 +576,6 @@ export function SummitTracker({
   initialExperiencesMode = false,
 }: Props) {
   const router = useRouter();
-  const [currentMode, setCurrentMode] =
-    useState<ChallengeMode>(initialModeProp);
-  const isPeaks = currentMode === "peaks";
-  const isReadOnly = !!targetProfile;
-  const hasPendingRequests = usePendingRequests();
-
-  useEffect(() => {
-    if (!isActive) return;
-    const handlePopState = () => {
-      if (window.location.pathname === "/picos") setCurrentMode("peaks");
-      else if (window.location.pathname === "/") setCurrentMode("countries");
-    };
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, [isActive]);
-
   const { session, profile: authProfile, refreshProfile } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [myProfile, setMyProfile] = useState<{
@@ -597,7 +583,48 @@ export function SummitTracker({
     avatar_url: string | null;
     enable_regions?: boolean;
     enable_experiences?: boolean;
+    enable_peaks?: boolean;
+    enable_countries?: boolean;
   } | null>(() => authProfile);
+
+  const isReadOnly = !!targetProfile;
+  const enablePeaks = !myProfile || myProfile.enable_peaks !== false;
+  const enableCountries = !myProfile || myProfile.enable_countries !== false;
+  const targetEnablePeaks = !targetProfile || targetProfile.enable_peaks !== false;
+  const targetEnableCountries = !targetProfile || targetProfile.enable_countries !== false;
+
+  const canShowPeaks = isReadOnly ? (enablePeaks && targetEnablePeaks) : enablePeaks;
+  const canShowCountries = isReadOnly ? (enableCountries && targetEnableCountries) : enableCountries;
+  const hasBothModes = canShowPeaks && canShowCountries;
+
+  const [currentMode, setCurrentMode] = useState<ChallengeMode>(() => {
+    const authEnablePeaks = !authProfile || authProfile.enable_peaks !== false;
+    const authEnableCountries = !authProfile || authProfile.enable_countries !== false;
+    const targetPeaks = !targetProfile || targetProfile.enable_peaks !== false;
+    const targetCountries = !targetProfile || targetProfile.enable_countries !== false;
+    const effectivePeaks = isReadOnly ? (authEnablePeaks && targetPeaks) : authEnablePeaks;
+    const effectiveCountries = isReadOnly ? (authEnableCountries && targetCountries) : authEnableCountries;
+
+    if (!effectivePeaks && initialModeProp === "peaks") return "countries";
+    if (!effectiveCountries && initialModeProp === "countries") return "peaks";
+    return initialModeProp;
+  });
+
+  const isPeaks = currentMode === "peaks";
+  const hasPendingRequests = usePendingRequests();
+
+  useEffect(() => {
+    if (!isActive) return;
+    const handlePopState = () => {
+      if (window.location.pathname === "/picos") {
+        if (canShowPeaks) setCurrentMode("peaks");
+      } else if (window.location.pathname === "/") {
+        if (canShowCountries) setCurrentMode("countries");
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [isActive, canShowPeaks, canShowCountries]);
 
   useEffect(() => {
     setMounted(true);
@@ -606,6 +633,15 @@ export function SummitTracker({
   useEffect(() => {
     setMyProfile(authProfile);
   }, [authProfile]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    if (!canShowPeaks && currentMode === "peaks") {
+      switchMode("countries");
+    } else if (!canShowCountries && currentMode === "countries") {
+      switchMode("peaks");
+    }
+  }, [mounted, canShowPeaks, canShowCountries, currentMode]);
 
   const targetId = targetProfile ? targetProfile.id : session?.user.id;
   const [ascents, setAscents] = useState<Ascent[]>(() => (targetId && cachedAscentsByUser[targetId]) ? cachedAscentsByUser[targetId] : []);
@@ -679,17 +715,6 @@ export function SummitTracker({
     [],
   );
 
-  useEffect(() => {
-    if (lightboxPhoto !== null) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [lightboxPhoto]);
-
   // Experience features
   const [experienceRecords, setExperienceRecords] = useState<ExperienceRecord[]>(
     () => (targetId && cachedExperienceRecordsByUser[targetId]) ? cachedExperienceRecordsByUser[targetId] : []
@@ -739,6 +764,39 @@ export function SummitTracker({
   );
   const [isEditingExperiences, setIsEditingExperiences] = useState(false);
   const [iconDropdownOpen, setIconDropdownOpen] = useState(false);
+
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(typeof window !== "undefined" && window.innerWidth <= 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  const isScrollLocked =
+    (isMobile && !!selected) ||
+    !!recordOpen ||
+    !!lightboxPhoto ||
+    !!editorPhoto ||
+    !!authOpen ||
+    profileOpen ||
+    showTrashModal;
+
+  useEffect(() => {
+    if (isScrollLocked) {
+      const prevHtmlOverflow = document.documentElement.style.overflow;
+      const prevBodyOverflow = document.body.style.overflow;
+      document.documentElement.style.overflow = "hidden";
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.documentElement.style.overflow = prevHtmlOverflow;
+        document.body.style.overflow = prevBodyOverflow;
+      };
+    }
+  }, [isScrollLocked]);
 
   useEffect(() => {
     if (initialExperiencesMode) {
@@ -845,7 +903,7 @@ export function SummitTracker({
     if (session) {
       supabase
         ?.from("profiles")
-        .select("username, avatar_url, enable_regions, enable_experiences")
+        .select("username, avatar_url, enable_regions, enable_experiences, enable_peaks, enable_countries")
         .eq("id", session.user.id)
         .single()
         .then(({ data }) => {
@@ -1163,6 +1221,7 @@ export function SummitTracker({
 
         // Check if it's a peak and we need to switch mode
         if (!isPeaks && peaks.some((p) => p.id === baseId)) {
+          if (!canShowPeaks) return;
           if (experiencesMode) setExperiencesMode(false);
           setCurrentMode("peaks");
           return;
@@ -1170,6 +1229,7 @@ export function SummitTracker({
 
         // Check if it's a country and we need to switch mode
         if (isPeaks && (baseId.startsWith("country-") || countries.some((c) => c.id === baseId))) {
+          if (!canShowCountries) return;
           if (experiencesMode) setExperiencesMode(false);
           setCurrentMode("countries");
           return;
@@ -1394,7 +1454,7 @@ export function SummitTracker({
         if (!isReadOnly && !profileOpen && session && !myProfile) {
           const { data: profile } = await supabase
             .from("profiles")
-            .select("username, avatar_url, enable_regions, enable_experiences")
+            .select("username, avatar_url, enable_regions, enable_experiences, enable_peaks, enable_countries")
             .eq("id", session.user.id)
             .single();
           if (profile) setMyProfile(profile);
@@ -1467,7 +1527,7 @@ export function SummitTracker({
         if (session && !myProfile) {
           const { data: profile } = await supabase
             .from("profiles")
-            .select("username, avatar_url, enable_regions, enable_experiences")
+            .select("username, avatar_url, enable_regions, enable_experiences, enable_peaks, enable_countries")
             .eq("id", session.user.id)
             .single();
           if (profile) setMyProfile(profile);
@@ -3195,6 +3255,8 @@ export function SummitTracker({
 
   function switchMode(target: ChallengeMode) {
     if (target === currentMode) return;
+    if (target === "peaks" && !canShowPeaks) return;
+    if (target === "countries" && !canShowCountries) return;
 
     // Clear panels explicitly without using history.back()
     // to prevent race conditions with navigation.
@@ -3725,22 +3787,24 @@ export function SummitTracker({
       {/* ── Map ─────────────────────────── */}
       <section className="map-section">
         {/* ── Mode selector ──────────────── */}
-        <div className="mode-selector">
-          <button
-            className={`mode-tab ${isPeaks ? "mode-tab--active" : ""}`}
-            onClick={() => switchMode("peaks")}
-          >
-            <IconMountain className="mode-tab-icon" />
-            47 Picos
-          </button>
-          <button
-            className={`mode-tab ${!isPeaks ? "mode-tab--active" : ""}`}
-            onClick={() => switchMode("countries")}
-          >
-            <IconGlobe className="mode-tab-icon" />
-            196 Países
-          </button>
-        </div>
+        {hasBothModes && (
+          <div className="mode-selector">
+            <button
+              className={`mode-tab ${isPeaks ? "mode-tab--active" : ""}`}
+              onClick={() => switchMode("peaks")}
+            >
+              <IconMountain className="mode-tab-icon" />
+              47 Picos
+            </button>
+            <button
+              className={`mode-tab ${!isPeaks ? "mode-tab--active" : ""}`}
+              onClick={() => switchMode("countries")}
+            >
+              <IconGlobe className="mode-tab-icon" />
+              196 Países
+            </button>
+          </div>
+        )}
 
         <div id="mapa" className="section-heading map-heading-row">
           <div>
@@ -6065,6 +6129,7 @@ export function SummitTracker({
           onClick={() => window.history.back()}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
+          onWheel={(e) => e.stopPropagation()}
         >
           {hasPrevPhoto && (
             <button
@@ -6466,6 +6531,13 @@ export function SummitTracker({
             setMyProfile((prev) => ({ ...prev, ...p }));
             refreshProfile();
             if (p.enable_regions === false) setRegionsMode(false);
+            if (p.enable_experiences === false) setExperiencesMode(false);
+            if (p.enable_peaks === false && currentMode === "peaks") {
+              switchMode("countries");
+            }
+            if (p.enable_countries === false && currentMode === "countries") {
+              switchMode("peaks");
+            }
           }}
           onClose={() => setProfileOpen(false)}
         />

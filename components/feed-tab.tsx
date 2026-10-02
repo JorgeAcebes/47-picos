@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import type { Session } from "@supabase/supabase-js";
+import { useAuth } from "./auth-context";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow, format } from "date-fns";
@@ -107,31 +108,64 @@ function FeedItemCard({ item, session: _session, onAuthRequired: _onAuthRequired
     touchStartY.current = null;
   };
 
-  useEffect(() => {
-    if (lightboxIndex !== null) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
+  const isLightboxOpen = lightboxIndex !== null;
+
+  const openLightbox = (index: number) => {
+    setLightboxIndex(index);
+    if (typeof window !== "undefined" && window.location.hash !== "#lightbox") {
+      window.history.pushState({ feedLightbox: true }, "", "#lightbox");
     }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [lightboxIndex]);
+  };
+
+  const closeLightbox = () => {
+    setLightboxIndex(null);
+    if (typeof window !== "undefined" && window.location.hash === "#lightbox") {
+      window.history.back();
+    }
+  };
 
   useEffect(() => {
-    if (lightboxIndex === null) return;
+    if (!isLightboxOpen) return;
+    const handleCloseOnNavigation = () => {
+      if (window.location.hash !== "#lightbox") {
+        setLightboxIndex(null);
+      }
+    };
+    window.addEventListener("popstate", handleCloseOnNavigation);
+    window.addEventListener("hashchange", handleCloseOnNavigation);
+    return () => {
+      window.removeEventListener("popstate", handleCloseOnNavigation);
+      window.removeEventListener("hashchange", handleCloseOnNavigation);
+    };
+  }, [isLightboxOpen]);
+
+  useEffect(() => {
+    if (isLightboxOpen) {
+      const prevHtmlOverflow = document.documentElement.style.overflow;
+      const prevBodyOverflow = document.body.style.overflow;
+      document.documentElement.style.overflow = "hidden";
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.documentElement.style.overflow = prevHtmlOverflow;
+        document.body.style.overflow = prevBodyOverflow;
+      };
+    }
+  }, [isLightboxOpen]);
+
+  useEffect(() => {
+    if (!isLightboxOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft") {
         setLightboxIndex(prev => (prev !== null && prev > 0 ? prev - 1 : prev));
       } else if (e.key === "ArrowRight") {
         setLightboxIndex(prev => (prev !== null && prev < photos.length - 1 ? prev + 1 : prev));
       } else if (e.key === "Escape") {
-        setLightboxIndex(null);
+        closeLightbox();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [lightboxIndex, photos.length]);
+  }, [isLightboxOpen, photos.length]);
 
   let isCountry = false;
   let isPeak = false;
@@ -394,7 +428,7 @@ function FeedItemCard({ item, session: _session, onAuthRequired: _onAuthRequired
           {photos.length === 1 ? (
             <img 
               src={photos[0].public_url} 
-              onClick={() => setLightboxIndex(0)} 
+              onClick={() => openLightbox(0)} 
               alt="Activity media" 
               className="feed-card-media" 
               loading="lazy"
@@ -405,7 +439,7 @@ function FeedItemCard({ item, session: _session, onAuthRequired: _onAuthRequired
               <div style={{ gridRow: '1 / span 2', gridColumn: '1', position: 'relative', width: '100%', height: '100%', minHeight: 0, minWidth: 0, overflow: 'hidden' }}>
                 <img 
                   src={photos[0].public_url} 
-                  onClick={() => setLightboxIndex(0)} 
+                  onClick={() => openLightbox(0)} 
                   alt="" 
                   loading="lazy"
                   style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer', display: 'block' }} 
@@ -414,7 +448,7 @@ function FeedItemCard({ item, session: _session, onAuthRequired: _onAuthRequired
               <div style={{ gridRow: '1', gridColumn: '2', position: 'relative', width: '100%', height: '100%', minHeight: 0, minWidth: 0, overflow: 'hidden' }}>
                 <img 
                   src={photos[1].public_url} 
-                  onClick={() => setLightboxIndex(1)} 
+                  onClick={() => openLightbox(1)} 
                   alt="" 
                   loading="lazy"
                   style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer', display: 'block' }} 
@@ -423,7 +457,7 @@ function FeedItemCard({ item, session: _session, onAuthRequired: _onAuthRequired
               <div style={{ gridRow: '2', gridColumn: '2', position: 'relative', width: '100%', height: '100%', minHeight: 0, minWidth: 0, overflow: 'hidden' }}>
                 <img 
                   src={photos[2].public_url} 
-                  onClick={() => setLightboxIndex(2)} 
+                  onClick={() => openLightbox(2)} 
                   alt="" 
                   loading="lazy"
                   style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer', display: 'block' }} 
@@ -439,14 +473,14 @@ function FeedItemCard({ item, session: _session, onAuthRequired: _onAuthRequired
                   <div key={photo.id || index} style={{ position: 'relative', aspectRatio: '1', width: '100%', minHeight: 0, minWidth: 0, overflow: 'hidden' }}>
                     <img 
                       src={photo.public_url} 
-                      onClick={() => setLightboxIndex(index)} 
+                      onClick={() => openLightbox(index)} 
                       alt="" 
                       loading="lazy"
                       style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer', display: 'block' }} 
                     />
                     {isLast && hasMore && (
                       <div 
-                        onClick={() => setLightboxIndex(index)} 
+                        onClick={() => openLightbox(index)} 
                         style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '24px', fontWeight: 'bold', cursor: 'pointer' }}
                       >
                         +{photos.length - 4}
@@ -461,12 +495,13 @@ function FeedItemCard({ item, session: _session, onAuthRequired: _onAuthRequired
       )}
 
       {/* Lightbox Modal con soporte de deslizamiento táctil y botones de navegación en ordenador */}
-      {lightboxIndex !== null && photos[lightboxIndex] && (
+      {isLightboxOpen && photos[lightboxIndex] && (
         <div 
           className="lightbox-backdrop" 
-          onClick={() => setLightboxIndex(null)} 
+          onClick={closeLightbox} 
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
+          onWheel={(e) => e.stopPropagation()}
           style={{ position: 'fixed', inset: 0, zIndex: 9999 }}
         >
           {hasPrevPhoto && (
@@ -497,7 +532,7 @@ function FeedItemCard({ item, session: _session, onAuthRequired: _onAuthRequired
 
           <button 
             className="lightbox-close" 
-            onClick={(e) => { e.stopPropagation(); setLightboxIndex(null); }}
+            onClick={(e) => { e.stopPropagation(); closeLightbox(); }}
             aria-label="Cerrar imagen"
             style={{ zIndex: 10001 }}
           >
@@ -560,6 +595,9 @@ let isFetchingFeed = false;
 const FEED_CACHE_TTL = 60 * 1000;
 
 export function FeedTab({ session, isActive = true, onAuthRequired }: { session: Session | null; isActive?: boolean; onAuthRequired?: () => void }) {
+  const { profile: myProfile } = useAuth();
+  const enablePeaks = !myProfile || myProfile.enable_peaks !== false;
+  const enableCountries = !myProfile || myProfile.enable_countries !== false;
   const [loading, setLoading] = useState(() => !globalCachedFeedItems || globalCachedFeedItems.length === 0);
   const [feedItems, setFeedItems] = useState<any[]>(() => globalCachedFeedItems || []);
 
@@ -789,16 +827,31 @@ export function FeedTab({ session, isActive = true, onAuthRequired }: { session:
     fetchFeed();
   }, [isActive]);
 
+  const visibleFeedItems = useMemo(() => {
+    return feedItems.filter((item) => {
+      if (item.type === "ascent") {
+        const summitIdLower = (item.summit_id || "").toLowerCase();
+        const isPeak = peaks.some((p) => p.id === summitIdLower);
+        const isCountry =
+          countries.some((c) => c.id === summitIdLower) ||
+          summitIdLower.startsWith("country-");
+        if (!enablePeaks && isPeak) return false;
+        if (!enableCountries && isCountry) return false;
+      }
+      return true;
+    });
+  }, [feedItems, enablePeaks, enableCountries]);
+
   return (
     <div className="feed-container">
       {/* Feed List */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--muted)' }}>Cargando novedades...</div>
-      ) : feedItems.length === 0 ? (
+      ) : visibleFeedItems.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--muted)' }}>No hay actividad reciente para mostrar.</div>
       ) : (
         <div>
-          {feedItems.map(item => (
+          {visibleFeedItems.map(item => (
             <FeedItemCard key={`${item.type}-${item.id}`} item={item} session={session} onAuthRequired={onAuthRequired} />
           ))}
         </div>

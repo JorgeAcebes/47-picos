@@ -40,12 +40,17 @@ export function RankingTab({
   isActive?: boolean;
 }) {
   const { session, profile: myProfile, refreshProfile } = useAuth();
+  const enablePeaks = !myProfile || myProfile.enable_peaks !== false;
+  const enableCountries = !myProfile || myProfile.enable_countries !== false;
+  const hasBothModes = enablePeaks && enableCountries;
+
   const [mode, setMode] = useState<ModeFilter>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("ranking_mode") as ModeFilter | null;
-      if (saved === "countries" || saved === "peaks") return saved;
+      if (saved === "countries" && enableCountries) return "countries";
+      if (saved === "peaks" && enablePeaks) return "peaks";
     }
-    return "countries";
+    return enableCountries ? "countries" : "peaks";
   });
   const [scope, setScope] = useState<ScopeFilter>("all");
   
@@ -61,12 +66,24 @@ export function RankingTab({
   const [authOpen, setAuthOpen] = useState<"login" | "register" | false>(false);
 
   useEffect(() => {
+    if (!enablePeaks && mode === "peaks") {
+      setMode("countries");
+      if (typeof window !== "undefined") localStorage.setItem("ranking_mode", "countries");
+    } else if (!enableCountries && mode === "countries") {
+      setMode("peaks");
+      if (typeof window !== "undefined") localStorage.setItem("ranking_mode", "peaks");
+    }
+  }, [enablePeaks, enableCountries, mode]);
+
+  useEffect(() => {
     if (typeof window !== "undefined") {
       let stored = localStorage.getItem("last_map_path") || "/";
-      if (stored !== "/" && stored !== "/picos") stored = "/";
+      if (!enablePeaks && stored === "/picos") stored = "/";
+      if (!enableCountries && stored === "/") stored = "/picos";
+      if (stored !== "/" && stored !== "/picos") stored = enablePeaks ? "/picos" : "/";
       setMapLink(stored);
     }
-  }, []);
+  }, [enablePeaks, enableCountries]);
 
   useEffect(() => {
     if (!isActive) return;
@@ -101,10 +118,11 @@ export function RankingTab({
       }
 
       if (isFresh) {
-        // Prefetch opposite mode in background if not already cached
+        // Prefetch opposite mode in background if not already cached and enabled
         const otherMode: ModeFilter = mode === "countries" ? "peaks" : "countries";
+        const canPrefetchOther = otherMode === "peaks" ? enablePeaks : enableCountries;
         const otherKey = `${otherMode}-${scope}-${session?.user?.id || 'anon'}`;
-        if (!globalRankingCache[otherKey] && supabase) {
+        if (canPrefetchOther && !globalRankingCache[otherKey] && supabase) {
           Promise.resolve(
             supabase.rpc("get_user_ranking", {
               p_summit_ids: null,
@@ -146,10 +164,11 @@ export function RankingTab({
           setEntries(result);
         }
 
-        // Also prefetch alternate mode in background
+        // Also prefetch alternate mode in background if enabled
         const otherMode: ModeFilter = mode === "countries" ? "peaks" : "countries";
+        const canPrefetchOther = otherMode === "peaks" ? enablePeaks : enableCountries;
         const otherKey = `${otherMode}-${scope}-${session?.user?.id || 'anon'}`;
-        if (!globalRankingCache[otherKey] && supabase) {
+        if (canPrefetchOther && !globalRankingCache[otherKey] && supabase) {
           Promise.resolve(
             supabase.rpc("get_user_ranking", {
               p_summit_ids: null,
@@ -258,7 +277,7 @@ export function RankingTab({
             <div className="ranking-title-row">
               <h2 style={{ margin: 0 }}>Ranking de {mode === "peaks" ? "Alpinistas" : "Viajeros"}</h2>
               <div className="ranking-header-action-slot">
-                {mode === "countries" && (
+                {mode === "countries" && enableCountries && (
                   <button
                     className="collective-map-trigger"
                     onClick={() => setShowCollectiveMap(true)}
@@ -288,30 +307,37 @@ export function RankingTab({
         <section id="tabla" className="ranking-table-container">
           {/* Filters: Mode selector, then Scope */}
           <div className="ranking-filters-bar">
-            
-            <div className="mode-selector" style={{ margin: 0 }}>
-              <button
-                className={`mode-tab ranking-mode-tab ${mode === "peaks" ? "mode-tab--active" : ""}`}
-                onClick={() => setMode("peaks")}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mode-tab-icon">
-                  <path d="M8 3l4 8 5-5 2 4H2L8 3z" />
-                  <path d="M4.14 15.08l2.6-3.51L8 13l4-5.5 4 5.5 2.74-2.42L21.86 15.08" />
-                </svg>
-                47 Picos
-              </button>
-              <button
-                className={`mode-tab ranking-mode-tab ${mode === "countries" ? "mode-tab--active" : ""}`}
-                onClick={() => setMode("countries")}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mode-tab-icon">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M2 12h20" />
-                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z" />
-                </svg>
-                196 Países
-              </button>
-            </div>
+            {hasBothModes && (
+              <div className="mode-selector" style={{ margin: 0 }}>
+                <button
+                  className={`mode-tab ranking-mode-tab ${mode === "peaks" ? "mode-tab--active" : ""}`}
+                  onClick={() => {
+                    setMode("peaks");
+                    if (typeof window !== "undefined") localStorage.setItem("ranking_mode", "peaks");
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mode-tab-icon">
+                    <path d="M8 3l4 8 5-5 2 4H2L8 3z" />
+                    <path d="M4.14 15.08l2.6-3.51L8 13l4-5.5 4 5.5 2.74-2.42L21.86 15.08" />
+                  </svg>
+                  47 Picos
+                </button>
+                <button
+                  className={`mode-tab ranking-mode-tab ${mode === "countries" ? "mode-tab--active" : ""}`}
+                  onClick={() => {
+                    setMode("countries");
+                    if (typeof window !== "undefined") localStorage.setItem("ranking_mode", "countries");
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mode-tab-icon">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M2 12h20" />
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z" />
+                  </svg>
+                  196 Países
+                </button>
+              </div>
+            )}
             <div className="list-filters" style={{ margin: 0 }}>
               <button
                 className={`list-filter-pill ranking-scope-pill ${scope === 'all' ? 'list-filter-pill--active' : ''}`}

@@ -139,6 +139,8 @@ describe("Deep E2E: Full User Lifecycle & Stealth Isolation", () => {
         share_notes: true,
         enable_regions: true,
         enable_experiences: true,
+        enable_peaks: true,
+        enable_countries: true,
       })
       .eq("id", testUserId);
 
@@ -154,6 +156,8 @@ describe("Deep E2E: Full User Lifecycle & Stealth Isolation", () => {
     expect(updatedProfile.data.bio).toBe("Probador automatizado de alta montaña y 196 países");
     expect(updatedProfile.data.avatar_url).toContain("avatar_");
     expect(updatedProfile.data.enable_experiences).toBe(true);
+    expect(updatedProfile.data.enable_peaks).toBe(true);
+    expect(updatedProfile.data.enable_countries).toBe(true);
     expect(updatedProfile.data.is_test).toBe(true);
   });
 

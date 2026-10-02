@@ -1012,6 +1012,7 @@ nav a:hover::after {
 }
 
 /* ── Dynamic map zoom scaling ──────────────── */
+.map[data-zoom="0"] .summit-pin,
 .map[data-zoom="1"] .summit-pin,
 .map[data-zoom="2"] .summit-pin,
 .map[data-zoom="3"] .summit-pin,
@@ -1035,13 +1036,18 @@ nav a:hover::after {
 .map[data-zoom="7"] .summit-pin,
 .map[data-zoom="8"] .summit-pin,
 .map[data-zoom="9"] .summit-pin,
-.map[data-zoom="10"] .summit-pin {
+.map[data-zoom="10"] .summit-pin,
+.map[data-zoom="11"] .summit-pin,
+.map[data-zoom="12"] .summit-pin {
   opacity: 1;
   pointer-events: auto;
   transform: scale(1);
 }
 
-/* Reglas base para ocultar *todos* en zoom bajo (3 al 7) - Spain */
+/* Reglas base para ocultar *todos* en zoom bajo (0 al 7) - Spain */
+.map-spain[data-zoom="0"] .summit-pin,
+.map-spain[data-zoom="1"] .summit-pin,
+.map-spain[data-zoom="2"] .summit-pin,
 .map-spain[data-zoom="3"] .summit-pin,
 .map-spain[data-zoom="4"] .summit-pin,
 .map-spain[data-zoom="5"] .summit-pin,
@@ -1060,18 +1066,23 @@ nav a:hover::after {
 }
 
 .map-spain[data-zoom="9"] .summit-pin,
-.map-spain[data-zoom="10"] .summit-pin {
+.map-spain[data-zoom="10"] .summit-pin,
+.map-spain[data-zoom="11"] .summit-pin,
+.map-spain[data-zoom="12"] .summit-pin {
   opacity: 1;
   pointer-events: auto;
   transform: scale(1);
 }
 
 /* Retrasar aparición de pines de países genéricos (NO experiencias) */
+.mode-countries .summit-pin:not(.summit-pin--experience),
+.mode-countries .map[data-zoom="0"] .summit-pin:not(.summit-pin--experience),
 .mode-countries .map[data-zoom="1"] .summit-pin:not(.summit-pin--experience),
 .mode-countries .map[data-zoom="2"] .summit-pin:not(.summit-pin--experience),
 .mode-countries .map[data-zoom="3"] .summit-pin:not(.summit-pin--experience),
 .mode-countries .map[data-zoom="4"] .summit-pin:not(.summit-pin--experience),
 .mode-countries .map[data-zoom="5"] .summit-pin:not(.summit-pin--experience),
+.map[data-zoom="0"] .summit-pin:not(.summit-pin--experience),
 .map[data-zoom="1"] .summit-pin:not(.summit-pin--experience),
 .map[data-zoom="2"] .summit-pin:not(.summit-pin--experience),
 .map[data-zoom="3"] .summit-pin:not(.summit-pin--experience),
@@ -1090,7 +1101,17 @@ nav a:hover::after {
 }
 
 .mode-countries .map[data-zoom="7"] .summit-pin:not(.summit-pin--experience),
-.map[data-zoom="7"] .summit-pin:not(.summit-pin--experience) {
+.mode-countries .map[data-zoom="8"] .summit-pin:not(.summit-pin--experience),
+.mode-countries .map[data-zoom="9"] .summit-pin:not(.summit-pin--experience),
+.mode-countries .map[data-zoom="10"] .summit-pin:not(.summit-pin--experience),
+.mode-countries .map[data-zoom="11"] .summit-pin:not(.summit-pin--experience),
+.mode-countries .map[data-zoom="12"] .summit-pin:not(.summit-pin--experience),
+.map[data-zoom="7"] .summit-pin:not(.summit-pin--experience),
+.map[data-zoom="8"] .summit-pin:not(.summit-pin--experience),
+.map[data-zoom="9"] .summit-pin:not(.summit-pin--experience),
+.map[data-zoom="10"] .summit-pin:not(.summit-pin--experience),
+.map[data-zoom="11"] .summit-pin:not(.summit-pin--experience),
+.map[data-zoom="12"] .summit-pin:not(.summit-pin--experience) {
   opacity: 1;
   pointer-events: auto;
   transform: scale(1);
@@ -1391,6 +1412,8 @@ nav a:hover::after {
   padding: 37px 34px;
   box-shadow: -6px 0 30px rgba(22, 61, 50, 0.15);
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   animation: slideInRight 0.3s ease;
 }
 
@@ -1667,6 +1690,8 @@ nav a:hover::after {
   padding: 24px;
   animation: fadeIn 0.25s ease;
   cursor: zoom-out;
+  overscroll-behavior: contain;
+  touch-action: none;
 }
 
 .lightbox-backdrop img {
@@ -1779,6 +1804,7 @@ nav a:hover::after {
   place-items: center;
   padding: 18px;
   animation: fadeIn 0.2s ease;
+  overscroll-behavior: contain;
 }
 
 /* ── Auth dialog ────────────────────────── */
@@ -3695,6 +3721,20 @@ textarea:focus {
 @media (max-width: 768px) {
   .page-container {
     padding-top: 24px !important;
+  }
+
+  .info-panel {
+    top: 56px;
+    padding: 28px 20px;
+    width: 100vw;
+  }
+
+  main.panel-open .map-wrapper,
+  main.panel-open .summit-list,
+  main.panel-open .summary-banner,
+  main.panel-open .site-footer {
+    pointer-events: none;
+    user-select: none;
   }
 }
 

@@ -37,6 +37,8 @@ const SOCIAL_CACHE_TTL = 60 * 1000;
 
 export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: string) => void, isActive?: boolean }) {
   const { session, profile: myProfile, refreshProfile } = useAuth();
+  const enablePeaks = !myProfile || myProfile.enable_peaks !== false;
+  const enableCountries = !myProfile || myProfile.enable_countries !== false;
   const [authOpen, setAuthOpen] = useState<"login" | "register" | false>(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [mapLink, setMapLink] = useState("/");
@@ -69,10 +71,12 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
   useEffect(() => {
     if (typeof window !== "undefined") {
       let stored = localStorage.getItem("last_map_path") || "/";
-      if (stored !== "/" && stored !== "/picos") stored = "/";
+      if (!enablePeaks && stored === "/picos") stored = "/";
+      if (!enableCountries && stored === "/") stored = "/picos";
+      if (stored !== "/" && stored !== "/picos") stored = enablePeaks ? "/picos" : "/";
       setMapLink(stored);
     }
-  }, []);
+  }, [enablePeaks, enableCountries]);
 
   useEffect(() => {
     if (!isActive || !session || !supabase) return;
@@ -532,15 +536,15 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
                   </div>
                 </div>
 
-                {(progressCounts.countries > 0 || progressCounts.peaks > 0 || progressCounts.experiences > 0) && (
+                {((enableCountries && progressCounts.countries > 0) || (enablePeaks && progressCounts.peaks > 0) || progressCounts.experiences > 0) && (
                   <div className="profile-stats-row" style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
-                    {progressCounts.countries > 0 && (
+                    {enableCountries && progressCounts.countries > 0 && (
                       <div className="profile-stats-col" style={{ textAlign: 'center' }}>
                         <div className="profile-stats-val" style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--pine)' }}>{progressCounts.countries}/{totalCounts.countries}</div>
                         <div style={{ fontSize: '12px', color: 'var(--muted)' }}>Países</div>
                       </div>
                     )}
-                    {progressCounts.peaks > 0 && (
+                    {enablePeaks && progressCounts.peaks > 0 && (
                       <div className="profile-stats-col" style={{ textAlign: 'center' }}>
                         <div className="profile-stats-val" style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--pine)' }}>{progressCounts.peaks}/{totalCounts.peaks}</div>
                         <div style={{ fontSize: '12px', color: 'var(--muted)' }}>Picos</div>
@@ -602,15 +606,15 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
                   </div>
                 </div>
               </div>
-              {(progressCounts.countries > 0 || progressCounts.peaks > 0 || progressCounts.experiences > 0) && (
+              {((enableCountries && progressCounts.countries > 0) || (enablePeaks && progressCounts.peaks > 0) || progressCounts.experiences > 0) && (
                 <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--line)', display: 'flex', justifyContent: 'space-around', gap: '8px' }}>
-                  {progressCounts.countries > 0 && (
+                  {enableCountries && progressCounts.countries > 0 && (
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--pine)' }}>{progressCounts.countries}/{totalCounts.countries}</div>
                       <div style={{ fontSize: '12px', color: 'var(--muted)' }}>Países</div>
                     </div>
                   )}
-                  {progressCounts.peaks > 0 && (
+                  {enablePeaks && progressCounts.peaks > 0 && (
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--pine)' }}>{progressCounts.peaks}/{totalCounts.peaks}</div>
                       <div style={{ fontSize: '12px', color: 'var(--muted)' }}>Picos</div>

@@ -17,6 +17,8 @@ export type UserProfile = {
   is_public: boolean;
   enable_regions?: boolean;
   enable_experiences?: boolean;
+  enable_peaks?: boolean;
+  enable_countries?: boolean;
   share_photos?: boolean;
   share_notes?: boolean;
   is_test?: boolean;
@@ -72,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, username, avatar_url, is_public, enable_regions, enable_experiences, share_photos, share_notes")
+        .select("id, username, avatar_url, is_public, enable_regions, enable_experiences, enable_peaks, enable_countries, share_photos, share_notes")
         .eq("id", s.user.id)
         .single();
 

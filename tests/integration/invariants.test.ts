@@ -236,4 +236,103 @@ describe("Project Critical Invariants (No Regressions)", () => {
       expect(content).toContain("p.is_test IS NOT TRUE");
     });
   });
+
+  describe("Mobile Scroll Locking & Photo Lightbox History Invariants", () => {
+    it("Invariant 9.1: feed-tab.tsx must push #lightbox state and listen to popstate to close lightbox without leaving feed", () => {
+      const feedPath = path.join(rootDir, "components/feed-tab.tsx");
+      const content = fs.readFileSync(feedPath, "utf-8");
+
+      expect(content).toContain('window.history.pushState({ feedLightbox: true }, "", "#lightbox")');
+      expect(content).toContain('window.addEventListener("popstate", handleCloseOnNavigation)');
+      expect(content).toContain('window.addEventListener("hashchange", handleCloseOnNavigation)');
+      expect(content).toContain("closeLightbox");
+    });
+
+    it("Invariant 9.2: Both feed-tab.tsx and summit-tracker.tsx must lock documentElement and body scroll when viewing photos", () => {
+      const feedPath = path.join(rootDir, "components/feed-tab.tsx");
+      const feedContent = fs.readFileSync(feedPath, "utf-8");
+      expect(feedContent).toContain('document.documentElement.style.overflow = "hidden"');
+      expect(feedContent).toContain('document.body.style.overflow = "hidden"');
+
+      const trackerPath = path.join(rootDir, "components/summit-tracker.tsx");
+      const trackerContent = fs.readFileSync(trackerPath, "utf-8");
+      expect(trackerContent).toContain('document.documentElement.style.overflow = "hidden"');
+      expect(trackerContent).toContain('document.body.style.overflow = "hidden"');
+    });
+
+    it("Invariant 9.3: summit-tracker.tsx must lock background scroll on mobile when viewing a record", () => {
+      const trackerPath = path.join(rootDir, "components/summit-tracker.tsx");
+      const content = fs.readFileSync(trackerPath, "utf-8");
+
+      expect(content).toContain("isMobile && !!selected");
+      expect(content).toContain("isScrollLocked");
+    });
+
+    it("Invariant 9.4: globals.css must contain overscroll-behavior and disable pointer-events on background elements on mobile", () => {
+      const cssPath = path.join(rootDir, "app/globals.css");
+      const content = fs.readFileSync(cssPath, "utf-8");
+
+      expect(content).toContain("overscroll-behavior: contain");
+      expect(content).toContain("touch-action: none");
+      expect(content).toMatch(/main\.panel-open\s+\.map-wrapper/);
+      expect(content).toMatch(/pointer-events:\s*none/);
+    });
+
+    it("Invariant 9.5: globals.css must hide country summit pins at zoom levels 0 through 5 and by default in mode-countries", () => {
+      const cssPath = path.join(rootDir, "app/globals.css");
+      const content = fs.readFileSync(cssPath, "utf-8");
+
+      expect(content).toContain('.mode-countries .summit-pin:not(.summit-pin--experience)');
+      expect(content).toContain('.mode-countries .map[data-zoom="0"] .summit-pin:not(.summit-pin--experience)');
+      expect(content).toContain('.mode-countries .map[data-zoom="5"] .summit-pin:not(.summit-pin--experience)');
+      expect(content).toContain('.map[data-zoom="0"] .summit-pin:not(.summit-pin--experience)');
+    });
+  });
+
+  describe("Modality Preferences & Visibility Invariants", () => {
+    it("Invariant 10.1: profile-settings.tsx must include toggles for both peaks and countries and prevent disabling both", () => {
+      const settingsPath = path.join(rootDir, "components/profile-settings.tsx");
+      const content = fs.readFileSync(settingsPath, "utf-8");
+
+      expect(content).toContain("enablePeaks");
+      expect(content).toContain("enableCountries");
+      expect(content).toContain("!enablePeaks && !enableCountries");
+    });
+
+    it("Invariant 10.2: summit-tracker.tsx must guard mode-selector with hasBothModes", () => {
+      const trackerPath = path.join(rootDir, "components/summit-tracker.tsx");
+      const content = fs.readFileSync(trackerPath, "utf-8");
+
+      expect(content).toContain("hasBothModes && (");
+      expect(content).toContain("canShowPeaks");
+      expect(content).toContain("canShowCountries");
+    });
+
+    it("Invariant 10.3: ranking-tab.tsx must guard mode-selector with hasBothModes", () => {
+      const rankingPath = path.join(rootDir, "components/ranking-tab.tsx");
+      const content = fs.readFileSync(rankingPath, "utf-8");
+
+      expect(content).toContain("hasBothModes && (");
+      expect(content).toContain("enablePeaks");
+      expect(content).toContain("enableCountries");
+    });
+
+    it("Invariant 10.4: feed-tab.tsx must filter out posts of disabled modalities", () => {
+      const feedPath = path.join(rootDir, "components/feed-tab.tsx");
+      const content = fs.readFileSync(feedPath, "utf-8");
+
+      expect(content).toContain("visibleFeedItems");
+      expect(content).toContain("!enablePeaks && isPeak");
+      expect(content).toContain("!enableCountries && isCountry");
+    });
+
+    it("Invariant 10.5: migration 024 must exist and add enable_peaks and enable_countries to profiles", () => {
+      const migrationPath = path.join(rootDir, "supabase/migrations/024_add_modalities_to_profiles.sql");
+      expect(fs.existsSync(migrationPath)).toBe(true);
+      const content = fs.readFileSync(migrationPath, "utf-8");
+      expect(content).toContain("enable_peaks BOOLEAN DEFAULT true");
+      expect(content).toContain("enable_countries BOOLEAN DEFAULT true");
+    });
+  });
 });
+
