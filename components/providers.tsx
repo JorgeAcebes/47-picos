@@ -3,9 +3,15 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { useState } from "react";
-import { AuthProvider } from "./auth-context";
+import { AuthProvider, type UserProfile } from "./auth-context";
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({
+  children,
+  initialProfile = null,
+}: {
+  children: React.ReactNode;
+  initialProfile?: UserProfile | null;
+}) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -20,7 +26,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
+      <AuthProvider initialProfile={initialProfile}>
         {children}
       </AuthProvider>
       <ReactQueryDevtools initialIsOpen={false} />

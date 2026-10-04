@@ -62,6 +62,7 @@ type Props = {
   diffOnlyTarget?: Set<string>;
   diffBoth?: Set<string>;
   activeId?: string;
+  panelOpen?: boolean;
 };
 
 function FitSpain() {
@@ -85,6 +86,28 @@ function FitSpain() {
       { padding: [12, 12] },
     );
   }, [map]);
+  return null;
+}
+
+// Calls invalidateSize() repeatedly during the CSS panel transition (300ms)
+// so Leaflet always knows the real container dimensions.
+function MapInvalidator({ panelOpen }: { panelOpen?: boolean }) {
+  const map = useMap();
+  useEffect(() => {
+    const TRANSITION_MS = 350; // slightly longer than the 0.3s CSS transition
+    const start = performance.now();
+    let rafId: number;
+
+    function tick(now: number) {
+      map.invalidateSize({ animate: false });
+      if (now - start < TRANSITION_MS) {
+        rafId = requestAnimationFrame(tick);
+      }
+    }
+
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [map, panelOpen]);
   return null;
 }
 
@@ -120,7 +143,7 @@ function MapZoomListener() {
 // ── Stable marker list (never changes) ────
 const peakEntries = Object.values(peakByCode);
 
-export const SpainMap = memo(function SpainMap({ completed, wishlist, onInformation, onComplete, diffMode, diffOnlyViewer, diffOnlyTarget, diffBoth, activeId }: Props) {
+export const SpainMap = memo(function SpainMap({ completed, wishlist, onInformation, onComplete, diffMode, diffOnlyViewer, diffOnlyTarget, diffBoth, activeId, panelOpen }: Props) {
   const [geo, setGeo] = useState<FeatureCollection | null>(_geoCache);
   const [searchedId, setSearchedId] = useState<string | null>(null);
   const scanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -420,7 +443,8 @@ export const SpainMap = memo(function SpainMap({ completed, wishlist, onInformat
         maxBoundsViscosity={1.0}
       >
         <FitSpain />
-      <MapZoomListener />
+        <MapInvalidator panelOpen={panelOpen} />
+        <MapZoomListener />
       <SweepOverlay searchedId={searchedId} layerRefs={layerRefs} />
       <MapSearchControl 
         items={searchItems} 

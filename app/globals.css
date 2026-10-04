@@ -2599,8 +2599,8 @@ textarea:focus {
   }
 
   .info-panel {
-    top: 56px;
-    padding: 28px 20px;
+    top: 0;
+    padding: 37px 20px 28px;
     width: 100vw;
   }
 
@@ -3724,8 +3724,8 @@ textarea:focus {
   }
 
   .info-panel {
-    top: 56px;
-    padding: 28px 20px;
+    top: 0;
+    padding: 37px 20px 28px;
     width: 100vw;
   }
 

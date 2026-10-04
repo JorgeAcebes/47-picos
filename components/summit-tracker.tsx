@@ -8,10 +8,13 @@ import {
   ChangeEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
+
+const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 import { peaks, type Peak } from "@/data/peaks";
 import { countries, type Country } from "@/data/countries";
 import {
@@ -157,9 +160,9 @@ function countryToItem(country: Country): SelectedItem {
     id: country.id,
     label: country.continent,
     title: country.name,
-    subtitle: country.capital,
-    detail: country.continent,
-    note: `${country.name} · ${country.capital}`,
+    subtitle: "",
+    detail: "",
+    note: "",
   };
 }
 
@@ -568,6 +571,62 @@ const cachedHiddenItemsByUser: Record<string, HiddenItem[]> = {};
 let cachedTrackerLastFetched: Record<string, number> = {};
 const TRACKER_CACHE_TTL = 60 * 1000;
 
+function getStoredUserId(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const raw = localStorage.getItem("app_user_profile");
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (p?.id) return p.id;
+    }
+    const sessionRaw = localStorage.getItem("app_user_session");
+    if (sessionRaw) {
+      const s = JSON.parse(sessionRaw);
+      if (s?.user?.id) return s.user.id;
+    }
+  } catch { /* ignore */ }
+  return undefined;
+}
+
+function getStoredTrackerData<T>(key: string, userId: string): T | null {
+  if (typeof window === "undefined" || !userId) return null;
+  try {
+    const raw = localStorage.getItem(`app_tracker_${key}_${userId}`);
+    if (raw) return JSON.parse(raw) as T;
+  } catch { /* ignore */ }
+  return null;
+}
+
+function setStoredTrackerData(key: string, userId: string, data: any) {
+  if (typeof window === "undefined" || !userId) return;
+  try {
+    localStorage.setItem(`app_tracker_${key}_${userId}`, JSON.stringify(data));
+  } catch { /* ignore */ }
+}
+
+function getInitialTrackerList<T>(key: string, userId?: string, memoryCache?: Record<string, T[]>): T[] {
+  const effectiveUserId = userId || getStoredUserId();
+  if (!effectiveUserId) return [];
+  if (memoryCache && memoryCache[effectiveUserId] && memoryCache[effectiveUserId].length > 0) return memoryCache[effectiveUserId];
+  const stored = getStoredTrackerData<T[]>(key, effectiveUserId);
+  if (stored && Array.isArray(stored)) {
+    if (memoryCache) memoryCache[effectiveUserId] = stored;
+    return stored;
+  }
+  return [];
+}
+
+function areRecordsEqual(a: any[] | null | undefined, b: any[] | null | undefined): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (a.length !== b.length) return false;
+  try {
+    return JSON.stringify(a) === JSON.stringify(b);
+  } catch {
+    return false;
+  }
+}
+
 export function SummitTracker({
   mode: initialModeProp,
   targetProfile,
@@ -577,7 +636,7 @@ export function SummitTracker({
   initialExperiencesMode = false,
 }: Props) {
   const router = useRouter();
-  const { session, profile: authProfile, refreshProfile } = useAuth();
+  const { session, profile: authProfile, refreshProfile, loading: authLoading } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [myProfile, setMyProfile] = useState<{
     username: string;
@@ -635,9 +694,9 @@ export function SummitTracker({
     setMyProfile(authProfile);
   }, [authProfile]);
 
-  const targetId = targetProfile ? targetProfile.id : session?.user.id;
-  const [ascents, setAscents] = useState<Ascent[]>(() => (targetId && cachedAscentsByUser[targetId]) ? cachedAscentsByUser[targetId] : []);
-  const [photos, setPhotos] = useState<SummitPhoto[]>(() => (targetId && cachedPhotosByUser[targetId]) ? cachedPhotosByUser[targetId] : []);
+  const targetId = targetProfile ? targetProfile.id : (session?.user.id || authProfile?.id);
+  const [ascents, setAscents] = useState<Ascent[]>(() => getInitialTrackerList<Ascent>("ascents", targetId, cachedAscentsByUser));
+  const [photos, setPhotos] = useState<SummitPhoto[]>(() => getInitialTrackerList<SummitPhoto>("photos", targetId, cachedPhotosByUser));
   const [selected, setSelected] = useState<SelectedItem | null>(null);
   const panelPushedRef = useRef(false);
   const recordOpenedFromPanelRef = useRef(false);
@@ -709,17 +768,59 @@ export function SummitTracker({
 
   // Experience features
   const [experienceRecords, setExperienceRecords] = useState<ExperienceRecord[]>(
-    () => (targetId && cachedExperienceRecordsByUser[targetId]) ? cachedExperienceRecordsByUser[targetId] : []
+    () => getInitialTrackerList<ExperienceRecord>("exp_records", targetId, cachedExperienceRecordsByUser)
   );
   const [customExperiences, setCustomExperiences] = useState<any[]>(
-    () => (targetId && cachedCustomExperiencesByUser[targetId]) ? cachedCustomExperiencesByUser[targetId] : []
+    () => getInitialTrackerList<any>("custom_exp", targetId, cachedCustomExperiencesByUser)
   );
   const [customCategories, setCustomCategories] = useState<any[]>(
-    () => (targetId && cachedCustomCategoriesByUser[targetId]) ? cachedCustomCategoriesByUser[targetId] : []
+    () => getInitialTrackerList<any>("custom_cat", targetId, cachedCustomCategoriesByUser)
   );
   const [hiddenItems, setHiddenItems] = useState<HiddenItem[]>(
-    () => (targetId && cachedHiddenItemsByUser[targetId]) ? cachedHiddenItemsByUser[targetId] : []
+    () => getInitialTrackerList<HiddenItem>("hidden_items", targetId, cachedHiddenItemsByUser)
   );
+
+  useEffect(() => {
+    if (targetId) {
+      cachedAscentsByUser[targetId] = ascents;
+      setStoredTrackerData("ascents", targetId, ascents);
+    }
+  }, [ascents, targetId]);
+
+  useEffect(() => {
+    if (targetId) {
+      cachedExperienceRecordsByUser[targetId] = experienceRecords;
+      setStoredTrackerData("exp_records", targetId, experienceRecords);
+    }
+  }, [experienceRecords, targetId]);
+
+  useEffect(() => {
+    if (targetId) {
+      cachedPhotosByUser[targetId] = photos;
+      setStoredTrackerData("photos", targetId, photos);
+    }
+  }, [photos, targetId]);
+
+  useEffect(() => {
+    if (targetId) {
+      cachedCustomExperiencesByUser[targetId] = customExperiences;
+      setStoredTrackerData("custom_exp", targetId, customExperiences);
+    }
+  }, [customExperiences, targetId]);
+
+  useEffect(() => {
+    if (targetId) {
+      cachedCustomCategoriesByUser[targetId] = customCategories;
+      setStoredTrackerData("custom_cat", targetId, customCategories);
+    }
+  }, [customCategories, targetId]);
+
+  useEffect(() => {
+    if (targetId) {
+      cachedHiddenItemsByUser[targetId] = hiddenItems;
+      setStoredTrackerData("hidden_items", targetId, hiddenItems);
+    }
+  }, [hiddenItems, targetId]);
   const [editingCustomCategory, setEditingCustomCategory] = useState<any>(null); // null, 'new', or existing category object
   const [editingCustomExp, setEditingCustomExp] = useState<any>(null); // null, 'new', or existing custom experience
   const [confirmAction, setConfirmAction] = useState<{
@@ -1190,8 +1291,8 @@ export function SummitTracker({
     [modeAscents],
   );
 
-  // Restore selection on load
-  useEffect(() => {
+  // Restore selection on load synchronously before paint
+  useIsomorphicLayoutEffect(() => {
     const hash = window.location.hash;
     const targetHash = panelIdToOpen ? `#panel=${panelIdToOpen}` : hash;
     if (targetHash.startsWith("#panel=")) {
@@ -1441,11 +1542,12 @@ export function SummitTracker({
   /* ── Load progress ────────────────────── */
   useEffect(() => {
     async function loadProgress() {
-      const targetId = targetProfile ? targetProfile.id : session?.user.id;
+      const targetId = targetProfile ? targetProfile.id : (session?.user.id || authProfile?.id || getStoredUserId());
       if (!supabase || !targetId) {
-        if (!targetProfile) {
+        if (!targetProfile && !authLoading && !session && !getStoredUserId()) {
           setAscents([]);
           setPhotos([]);
+          setExperienceRecords([]);
         }
         return;
       }
@@ -1498,28 +1600,52 @@ export function SummitTracker({
         supabase!.from("hidden_items").select("*").eq("user_id", targetId),
       ]);
       if (ascentResult.data) {
-        setAscents(ascentResult.data as Ascent[]);
-        cachedAscentsByUser[targetId] = ascentResult.data as Ascent[];
+        const nextData = ascentResult.data as Ascent[];
+        if (!areRecordsEqual(cachedAscentsByUser[targetId], nextData)) {
+          setAscents(nextData);
+        }
+        cachedAscentsByUser[targetId] = nextData;
+        setStoredTrackerData("ascents", targetId, nextData);
       }
       if (photoResult.data) {
-        setPhotos(photoResult.data as SummitPhoto[]);
-        cachedPhotosByUser[targetId] = photoResult.data as SummitPhoto[];
+        const nextData = photoResult.data as SummitPhoto[];
+        if (!areRecordsEqual(cachedPhotosByUser[targetId], nextData)) {
+          setPhotos(nextData);
+        }
+        cachedPhotosByUser[targetId] = nextData;
+        setStoredTrackerData("photos", targetId, nextData);
       }
       if (expResult.data) {
-        setExperienceRecords(expResult.data as ExperienceRecord[]);
-        cachedExperienceRecordsByUser[targetId] = expResult.data as ExperienceRecord[];
+        const nextData = expResult.data as ExperienceRecord[];
+        if (!areRecordsEqual(cachedExperienceRecordsByUser[targetId], nextData)) {
+          setExperienceRecords(nextData);
+        }
+        cachedExperienceRecordsByUser[targetId] = nextData;
+        setStoredTrackerData("exp_records", targetId, nextData);
       }
       if (customExpResult.data) {
-        setCustomExperiences(customExpResult.data);
-        cachedCustomExperiencesByUser[targetId] = customExpResult.data;
+        const nextData = customExpResult.data;
+        if (!areRecordsEqual(cachedCustomExperiencesByUser[targetId], nextData)) {
+          setCustomExperiences(nextData);
+        }
+        cachedCustomExperiencesByUser[targetId] = nextData;
+        setStoredTrackerData("custom_exp", targetId, nextData);
       }
       if (customCatResult.data) {
-        setCustomCategories(customCatResult.data);
-        cachedCustomCategoriesByUser[targetId] = customCatResult.data;
+        const nextData = customCatResult.data;
+        if (!areRecordsEqual(cachedCustomCategoriesByUser[targetId], nextData)) {
+          setCustomCategories(nextData);
+        }
+        cachedCustomCategoriesByUser[targetId] = nextData;
+        setStoredTrackerData("custom_cat", targetId, nextData);
       }
       if (hiddenItemsResult.data) {
-        setHiddenItems(hiddenItemsResult.data as HiddenItem[]);
-        cachedHiddenItemsByUser[targetId] = hiddenItemsResult.data as HiddenItem[];
+        const nextData = hiddenItemsResult.data as HiddenItem[];
+        if (!areRecordsEqual(cachedHiddenItemsByUser[targetId], nextData)) {
+          setHiddenItems(nextData);
+        }
+        cachedHiddenItemsByUser[targetId] = nextData;
+        setStoredTrackerData("hidden_items", targetId, nextData);
       }
       cachedTrackerLastFetched[targetId] = Date.now();
 
@@ -1541,11 +1667,11 @@ export function SummitTracker({
           .from("ascents")
           .select("summit_id, achieved_on, end_date, notes, is_wishlist, link, link_name")
           .eq("user_id", session.user.id);
-        if (myData) setMyAscents(myData as Ascent[]);
+        if (myData && !areRecordsEqual(myAscents, myData)) setMyAscents(myData as Ascent[]);
       }
     }
     loadProgress();
-  }, [session, profileOpen, isReadOnly, targetProfile]);
+  }, [session, profileOpen, isReadOnly, targetProfile, authLoading, authProfile?.id]);
 
   /* ── Derived state ────────────────────── */
   // Completed set for SpainMap (province codes)
@@ -3652,7 +3778,7 @@ export function SummitTracker({
           >
             Ranking
           </Link>
-          {session ? (
+          {(myProfile || session) ? (
             <button
               className="account-button"
               aria-label="Mi Perfil"
@@ -3675,6 +3801,8 @@ export function SummitTracker({
                 </span>
               )}
             </button>
+          ) : !mounted ? (
+            <div className="account-button-placeholder" style={{ width: 38, height: 38, borderRadius: "50%" }} />
           ) : (
             <button
               className="button button--outline"
@@ -3727,7 +3855,7 @@ export function SummitTracker({
             >
               Explorar el mapa
             </a>
-            {!session && !targetProfile && (
+            {mounted && !session && !targetProfile && (
               <button
                 className="button button--white"
                 style={{
@@ -3746,32 +3874,32 @@ export function SummitTracker({
             )}
           </div>
         </div>
-        <aside className="hero-stat">
-          <span className="mountain-art">{isPeaks ? "△" : "◉"}</span>
-          <strong>
-            {achievedCount}
-            <small> / {totalCount}</small>
+        <aside className="hero-stat" suppressHydrationWarning>
+          <span className="mountain-art" suppressHydrationWarning>{isPeaks ? "△" : "◉"}</span>
+          <strong suppressHydrationWarning>
+            <span suppressHydrationWarning>{achievedCount}</span>
+            <small suppressHydrationWarning> / {totalCount}</small>
           </strong>
-          <span>{modeUnit}</span>
+          <span suppressHydrationWarning>{modeUnit}</span>
           <div className="progress">
-            <span style={{ width: `${completion}%` }} />
+            <span style={{ width: `${completion}%` }} suppressHydrationWarning />
           </div>
-          <b>{completion}% de tu reto</b>
+          <b suppressHydrationWarning>{completion}% de tu reto</b>
         </aside>
 
         {/* ── Mobile stat card ───────────── */}
-        <div className="hero-stat-mobile">
-          <div className="hero-stat-mobile__numbers">
-            <strong>{achievedCount}</strong>
+        <div className="hero-stat-mobile" suppressHydrationWarning>
+          <div className="hero-stat-mobile__numbers" suppressHydrationWarning>
+            <strong suppressHydrationWarning>{achievedCount}</strong>
             <span className="hero-stat-mobile__sep"> / </span>
-            <span className="hero-stat-mobile__total">{totalCount}</span>
+            <span className="hero-stat-mobile__total" suppressHydrationWarning>{totalCount}</span>
           </div>
-          <div className="hero-stat-mobile__right">
-            <span className="hero-stat-mobile__label">{modeUnit}</span>
+          <div className="hero-stat-mobile__right" suppressHydrationWarning>
+            <span className="hero-stat-mobile__label" suppressHydrationWarning>{modeUnit}</span>
             <div className="progress hero-stat-mobile__progress">
-              <span style={{ width: `${completion}%` }} />
+              <span style={{ width: `${completion}%` }} suppressHydrationWarning />
             </div>
-            <b className="hero-stat-mobile__pct">{completion}%</b>
+            <b className="hero-stat-mobile__pct" suppressHydrationWarning>{completion}%</b>
           </div>
         </div>
       </section>
@@ -3962,6 +4090,7 @@ export function SummitTracker({
               diffOnlyTarget={diffPeakOnlyTarget}
               diffBoth={diffPeakBoth}
               activeId={selected?.id}
+              panelOpen={!!selected}
             />
           ) : (
             <>
@@ -3994,6 +4123,7 @@ export function SummitTracker({
                 onCancelSelectingLocation={handleCancelSelectingLocationForExp}
                 onExperienceClick={handleExperienceClick}
                 onAddExperience={!isReadOnly ? () => setExpSelectorOpen(true) : undefined}
+                panelOpen={!!selected}
               />
             </>
           )}
@@ -4398,7 +4528,7 @@ export function SummitTracker({
                     </span>
                     <span className="item-info">
                       <span className="item-province">
-                        {isPeaks ? item.label : item.detail}
+                        {isPeaks ? item.label : isExp ? item.detail : item.label}
                       </span>
                       <br />
                       <span className="item-name">{item.title}</span>
@@ -5019,22 +5149,24 @@ export function SummitTracker({
                 </>
               ) : (
                 <>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginTop: 19,
-                    }}
-                  >
-                    <div className="country-capital" style={{ marginTop: 0 }}>
-                      {selected.subtitle}
+                  {selected.subtitle && (
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginTop: 19,
+                      }}
+                    >
+                      <div className="country-capital" style={{ marginTop: 0 }}>
+                        {selected.subtitle}
+                      </div>
                     </div>
-                  </div>
-                  <p className="range">{selected.detail}</p>
+                  )}
+                  {selected.detail && <p className="range">{selected.detail}</p>}
                 </>
               )}
-              <p>{selected.note}</p>
+              {selected.note && <p>{selected.note}</p>}
             </>
           )}
 

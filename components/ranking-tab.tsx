@@ -59,11 +59,16 @@ export function RankingTab({
   const [loading, setLoading] = useState(() => !globalRankingCache[initialCacheKey]);
   
   const hasPendingRequests = usePendingRequests();
+  const [mounted, setMounted] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [mapLink, setMapLink] = useState("/");
   const [totalUsersCount, setTotalUsersCount] = useState<number>(() => cachedTotalUsersCount || 0);
   const [showCollectiveMap, setShowCollectiveMap] = useState(false);
   const [authOpen, setAuthOpen] = useState<"login" | "register" | false>(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!enablePeaks && mode === "peaks") {
@@ -249,7 +254,7 @@ export function RankingTab({
             ) : null}
           </Link>
           <Link href="/ranking" className="topbar-nav-link topbar-nav-link--ranking" style={{ fontWeight: 'bold', color: 'var(--purple)' }}>Ranking</Link>
-          {session ? (
+          {(myProfile || session) ? (
             <button
               className="account-button"
               aria-label="Mi Perfil"
@@ -269,6 +274,8 @@ export function RankingTab({
                 </span>
               )}
             </button>
+          ) : !mounted ? (
+            <div className="account-button-placeholder" style={{ width: 38, height: 38, borderRadius: "50%" }} />
           ) : (
             <button className="button button--outline" onClick={() => setAuthOpen("login")}>
               Entrar

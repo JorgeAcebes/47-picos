@@ -13,11 +13,25 @@ export const metadata: Metadata = {
   },
 };
 
+import { cookies } from "next/headers";
+import type { UserProfile } from "@/components/auth-context";
+
 export const viewport: Viewport = {
   themeColor: "#245f52",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  let initialProfile: UserProfile | null = null;
+  try {
+    const cookieStore = await cookies();
+    const rawProfile = cookieStore.get("app_user_profile")?.value;
+    if (rawProfile) {
+      initialProfile = JSON.parse(decodeURIComponent(rawProfile));
+    }
+  } catch {
+    // Ignore cookie read error (e.g. during static build)
+  }
+
   return (
     <html lang="es">
       <head>
@@ -29,7 +43,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
       <body>
-        <Providers>
+        <Providers initialProfile={initialProfile}>
           {children}
         </Providers>
         <script
