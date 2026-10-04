@@ -130,6 +130,7 @@ type Props = {
   onCancelSelectingLocation?: () => void;
   onExperienceClick?: (record: any) => void;
   onAddExperience?: () => void;
+  panelOpen?: boolean;
 };
 
 function FitWorld() {
@@ -165,6 +166,28 @@ function FitWorld() {
       ], { padding: [0, 0] });
     }
   }, [map]);
+  return null;
+}
+
+// Calls invalidateSize() repeatedly during the CSS panel transition (300ms)
+// so Leaflet always knows the real container dimensions.
+function MapInvalidator({ panelOpen }: { panelOpen?: boolean }) {
+  const map = useMap();
+  useEffect(() => {
+    const TRANSITION_MS = 350; // slightly longer than the 0.3s CSS transition
+    const start = performance.now();
+    let rafId: number;
+
+    function tick(now: number) {
+      map.invalidateSize({ animate: false });
+      if (now - start < TRANSITION_MS) {
+        rafId = requestAnimationFrame(tick);
+      }
+    }
+
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [map, panelOpen]);
   return null;
 }
 
@@ -269,7 +292,7 @@ function getLargestPolygonBounds(feature: any) {
 
 import { getIconComponent } from "./icons";
 
-export const WorldMap = memo(function WorldMap({ completed, wishlist, onInformation, onRegionInformation, onComplete, diffMode, diffOnlyViewer, diffOnlyTarget, diffBoth, regionsMode, completedRegions, activeId, experiencesMode, experienceRecords, selectingLocation, onMapClick, onCancelSelectingLocation, onExperienceClick, onAddExperience }: Props) {
+export const WorldMap = memo(function WorldMap({ completed, wishlist, onInformation, onRegionInformation, onComplete, diffMode, diffOnlyViewer, diffOnlyTarget, diffBoth, regionsMode, completedRegions, activeId, experiencesMode, experienceRecords, selectingLocation, onMapClick, onCancelSelectingLocation, onExperienceClick, onAddExperience, panelOpen }: Props) {
   const [geo, setGeo] = useState<FeatureCollection | null>(_worldGeoCache);
   const [regionsGeo, setRegionsGeo] = useState<FeatureCollection | null>(_regionsGeoCache);
   const [searchedId, setSearchedId] = useState<string | null>(null);
@@ -734,6 +757,7 @@ export const WorldMap = memo(function WorldMap({ completed, wishlist, onInformat
       maxBoundsViscosity={0.5}
     >
       <FitWorld />
+      <MapInvalidator panelOpen={panelOpen} />
       <MapZoomListener />
       <MapClickListener onMapClick={onMapClick} selectingLocation={selectingLocation} />
       <SweepOverlay searchedId={searchedId} layerRefs={layerRefs} regionLayerRefs={regionLayerRefs} />

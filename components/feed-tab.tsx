@@ -588,6 +588,15 @@ function FeedItemCard({ item, session: _session, onAuthRequired: _onAuthRequired
   );
 }
 
+function getStoredFeedItems(): any[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem("app_cached_feed_items");
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  return null;
+}
+
 let globalCachedFeedItems: any[] | null = null;
 let globalFeedLastFetched = 0;
 let isFetchingFeed = false;
@@ -597,8 +606,8 @@ export function FeedTab({ session, isActive = true, onAuthRequired }: { session:
   const { profile: myProfile } = useAuth();
   const enablePeaks = !myProfile || myProfile.enable_peaks !== false;
   const enableCountries = !myProfile || myProfile.enable_countries !== false;
-  const [loading, setLoading] = useState(() => !globalCachedFeedItems || globalCachedFeedItems.length === 0);
-  const [feedItems, setFeedItems] = useState<any[]>(() => globalCachedFeedItems || []);
+  const [feedItems, setFeedItems] = useState<any[]>(() => globalCachedFeedItems || getStoredFeedItems() || []);
+  const [loading, setLoading] = useState(() => (!globalCachedFeedItems && !getStoredFeedItems()) || (globalCachedFeedItems ? globalCachedFeedItems.length === 0 : false));
 
   useEffect(() => {
     if (!isActive) return;
@@ -818,6 +827,11 @@ export function FeedTab({ session, isActive = true, onAuthRequired }: { session:
 
       globalCachedFeedItems = combined;
       globalFeedLastFetched = Date.now();
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.setItem("app_cached_feed_items", JSON.stringify(combined.slice(0, 50)));
+        } catch { /* ignore */ }
+      }
       setFeedItems(combined);
       setLoading(false);
       isFetchingFeed = false;

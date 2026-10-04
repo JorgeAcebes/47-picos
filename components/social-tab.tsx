@@ -35,6 +35,15 @@ let cachedConnectionsLastFetched = 0;
 let isFetchingSocial = false;
 const SOCIAL_CACHE_TTL = 60 * 1000;
 
+function getStoredSocialData<T>(key: string, userId: string): T | null {
+  if (typeof window === "undefined" || !userId) return null;
+  try {
+    const raw = localStorage.getItem(`app_social_${key}_${userId}`);
+    if (raw) return JSON.parse(raw) as T;
+  } catch { /* ignore */ }
+  return null;
+}
+
 export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: string) => void, isActive?: boolean }) {
   const { session, profile: myProfile, refreshProfile } = useAuth();
   const enablePeaks = !myProfile || myProfile.enable_peaks !== false;
@@ -42,11 +51,17 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
   const [authOpen, setAuthOpen] = useState<"login" | "register" | false>(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [mapLink, setMapLink] = useState("/");
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Profile[]>([]);
 
-  const isCurrentCache = Boolean(session?.user.id && cachedDataUserId === session.user.id);
+  const userId = session?.user.id || myProfile?.id;
+  const isCurrentCache = Boolean(userId && cachedDataUserId === userId);
 
   const [recommended, setRecommended] = useState<Profile[]>(() => isCurrentCache ? cachedRecommended : []);
   const [followers, setFollowers] = useState<Profile[]>(() => isCurrentCache ? cachedFollowers : []);
@@ -54,8 +69,22 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
   const [activeTab, setActiveTab] = useState<'feed' | 'discover' | 'followers' | 'following'>('feed');
   const [announcements, setAnnouncements] = useState<any[]>([]);
   
-  const [progressCounts, setProgressCounts] = useState(() => isCurrentCache ? cachedProgressCounts : { countries: 0, peaks: 0, experiences: 0 });
-  const [totalCounts, setTotalCounts] = useState(() => isCurrentCache ? cachedTotalCounts : { countries: countries.length, peaks: 47, experiences: defaultExperiencesCount });
+  const [progressCounts, setProgressCounts] = useState(() => {
+    if (isCurrentCache) return cachedProgressCounts;
+    if (userId) {
+      const stored = getStoredSocialData<typeof cachedProgressCounts>("progress", userId);
+      if (stored) return stored;
+    }
+    return cachedProgressCounts;
+  });
+  const [totalCounts, setTotalCounts] = useState(() => {
+    if (isCurrentCache) return cachedTotalCounts;
+    if (userId) {
+      const stored = getStoredSocialData<typeof cachedTotalCounts>("totals", userId);
+      if (stored) return stored;
+    }
+    return cachedTotalCounts;
+  });
   
   // A mapping of profile id to connection status
   const [connections, setConnections] = useState<Record<string, ConnectionStatus>>(() => isCurrentCache ? cachedConnections : {});
@@ -278,6 +307,12 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
       cachedProgressCounts = newProgress;
       cachedTotalCounts = newTotals;
       cachedDataUserId = session.user.id;
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(`app_social_progress_${session.user.id}`, JSON.stringify(newProgress));
+          localStorage.setItem(`app_social_totals_${session.user.id}`, JSON.stringify(newTotals));
+        } catch { /* ignore */ }
+      }
     }
 
     Promise.allSettled([
@@ -492,7 +527,7 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
             ) : null}
           </Link>
           <Link href="/ranking" prefetch={true} className="topbar-nav-link topbar-nav-link--ranking">Ranking</Link>
-          {session ? (
+          {(myProfile || session) ? (
             <button
               className="account-button"
               aria-label="Mi Perfil"
@@ -512,6 +547,8 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
                 </span>
               )}
             </button>
+          ) : !mounted ? (
+            <div className="account-button-placeholder" style={{ width: 38, height: 38, borderRadius: "50%" }} />
           ) : (
             <button className="button button--outline" onClick={() => setAuthOpen("login")}>
               Entrar
