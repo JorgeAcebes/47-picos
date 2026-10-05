@@ -6216,7 +6216,7 @@ export function SummitTracker({
                 Texto del enlace
                 <input
                   type="text"
-                  placeholder="Ej: Vídeo de la ruta"
+                  placeholder="Ej: Track de la ruta"
                   value={linkName || ""}
                   onChange={(e) => setLinkName(e.target.value)}
                   disabled={!link}
