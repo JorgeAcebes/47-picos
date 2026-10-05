@@ -24,7 +24,7 @@ export const peaks: Peak[] = [
   { id: "caceres", code: "10", province: "Cáceres", name: "Calvitero (El Torreón)", altitude: 2399.0, range: "Sierra de Béjar", coordinates: [40.292, -5.741], note: "El punto más alto de Extremadura." },
   { id: "cadiz", code: "11", province: "Cádiz", name: "Pico del Pinar (El Torreón)", altitude: 1648.0, range: "Sierra del Pinar", coordinates: [36.77, -5.43], note: "Dentro del Parque Natural Sierra de Grazalema." },
   { id: "castellon", code: "12", province: "Castellón", name: "Peñagolosa", altitude: 1815.1, range: "Macizo del Penyagolosa", coordinates: [40.24, -0.35], note: "Una de las montañas más emblemáticas valencianas." },
-  { id: "ciudad-real", code: "13", province: "Ciudad Real", name: "Amor Oeste", altitude: 1375.0, range: "Montes de Toledo", coordinates: [39.574, -4.151], note: "Techo de Ciudad Real, ~200 m al oeste del Pico Amor (toledano)." },
+  { id: "ciudad-real", code: "13", province: "Ciudad Real", name: "Amor Oeste", altitude: 1375.0, range: "Montes de Toledo", coordinates: [39.574, -4.151], note: "Techo de Ciudad Real, a unos 200 metros del Pico Amor (toledano)." },
   { id: "cordoba", code: "14", province: "Córdoba", name: "La Tiñosa", altitude: 1567.5, range: "Sierras Subbéticas", coordinates: [37.36, -4.28], note: "Techo de Córdoba, cerca de Priego." },
   { id: "coruna", code: "15", province: "La Coruña", name: "Pico Pilar", altitude: 802.9, range: "Montes del Bocelo", coordinates: [42.98, -8.02], note: "El techo de la provincia de A Coruña." },
   { id: "cuenca", code: "16", province: "Cuenca", name: "Mogorrita", altitude: 1864.0, range: "Serranía de Cuenca", coordinates: [40.27, -1.91], note: "Cerca del nacimiento del río Tajo." },
