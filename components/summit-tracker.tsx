@@ -1178,18 +1178,18 @@ export function SummitTracker({
         ? peaks.map(peakToItem)
         : isExp
           ? dynamicCategories.flatMap((cat) =>
-              cat.experiences.map((exp) => ({
-                id: exp.id,
-                title: exp.name,
-                subtitle: "",
-                label: "",
-                detail: cat.name,
-                note: "",
-                iconName: cat.iconName,
-                subItems: exp.subItems,
-                itemType: 'experience' as const,
-              })),
-            )
+            cat.experiences.map((exp) => ({
+              id: exp.id,
+              title: exp.name,
+              subtitle: "",
+              label: "",
+              detail: cat.name,
+              note: "",
+              iconName: cat.iconName,
+              subItems: exp.subItems,
+              itemType: 'experience' as const,
+            })),
+          )
           : countries.map(countryToItem),
     [isPeaks, isExp, dynamicCategories],
   );
@@ -1887,10 +1887,10 @@ export function SummitTracker({
   }, [selected, ascents, experienceRecords]);
   const selectedPhotos = selected
     ? photos.filter(
-        (p) =>
-          p.summit_id === selected.id ||
-          p.summit_id.startsWith(selected.id + "::"),
-      )
+      (p) =>
+        p.summit_id === selected.id ||
+        p.summit_id.startsWith(selected.id + "::"),
+    )
     : [];
   const completion = Math.round((achievedCount / totalCount) * 100);
 
@@ -4008,10 +4008,10 @@ export function SummitTracker({
                   </button>
                 )}
               {!isPeaks && canShowCountries && (mounted && myProfile?.enable_regions) && (
-                  <button
-                    className={`diff-toggle${regionsMode ? " diff-toggle--active" : ""}`}
-                    onClick={() => setRegionsMode(!regionsMode)}
-                    title="Ver divisiones territoriales"
+                <button
+                  className={`diff-toggle${regionsMode ? " diff-toggle--active" : ""}`}
+                  onClick={() => setRegionsMode(!regionsMode)}
+                  title="Ver divisiones territoriales"
                 >
                   <svg
                     className="diff-toggle-icon"
@@ -4111,11 +4111,11 @@ export function SummitTracker({
                 experienceRecords={
                   experiencesMode
                     ? experienceRecords.map((r) => {
-                        const cat = dynamicCategories.find((c) =>
-                          c.experiences.some((e) => e.id === r.experience_id),
-                        );
-                        return { ...r, icon_name: cat?.iconName || "telescope" };
-                      })
+                      const cat = dynamicCategories.find((c) =>
+                        c.experiences.some((e) => e.id === r.experience_id),
+                      );
+                      return { ...r, icon_name: cat?.iconName || "telescope" };
+                    })
                     : []
                 }
                 selectingLocation={!!selectingLocationForExp}
@@ -4684,7 +4684,7 @@ export function SummitTracker({
             <a
               href={
                 isPeaks
-                  ? "https://es.wikipedia.org/wiki/Anexo:Puntos_m%C3%A1s_altos_de_las_provincias_de_Espa%C3%B1a"
+                  ? "https://es.wikipedia.org/wiki/Anexo:Monta%C3%B1as_m%C3%A1s_altas_y_prominentes_de_las_provincias_espa%C3%B1olas"
                   : "https://es.wikipedia.org/wiki/Anexo:Pa%C3%ADses"
               }
               target="_blank"
@@ -5173,395 +5173,395 @@ export function SummitTracker({
           {!(
             ((selected as any)?.itemType === 'experience')
           ) && (
-            <>
-              {selectedAscents.length > 1 && (
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    background: "rgba(92, 155, 125, 0.1)",
-                    borderRadius: "20px",
-                    padding: "3px",
-                    position: "relative",
-                    marginBottom: "16px",
-                    cursor: "pointer",
-                    userSelect: "none",
-                    width: "fit-content",
-                  }}
-                  onClick={() =>
-                    setAscentsSortOrder((o) => (o === "asc" ? "desc" : "asc"))
-                  }
-                >
+              <>
+                {selectedAscents.length > 1 && (
                   <div
                     style={{
-                      position: "absolute",
-                      top: 3,
-                      bottom: 3,
-                      left: ascentsSortOrder === "asc" ? 3 : "50%",
-                      right: ascentsSortOrder === "asc" ? "50%" : 3,
-                      background: "var(--pine)",
-                      borderRadius: "18px",
-                      transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-                    }}
-                  />
-                  <span
-                    style={{
-                      position: "relative",
-                      zIndex: 1,
-                      padding: "4px 12px",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      color:
-                        ascentsSortOrder === "asc" ? "white" : "var(--pine)",
-                      transition: "color 0.2s ease",
-                      flex: 1,
-                      whiteSpace: "nowrap",
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    Más antiguo
-                  </span>
-                  <span
-                    style={{
+                      background: "rgba(92, 155, 125, 0.1)",
+                      borderRadius: "20px",
+                      padding: "3px",
                       position: "relative",
-                      zIndex: 1,
-                      padding: "4px 12px",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      color:
-                        ascentsSortOrder === "desc" ? "white" : "var(--pine)",
-                      transition: "color 0.2s ease",
-                      flex: 1,
-                      whiteSpace: "nowrap",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
+                      marginBottom: "16px",
+                      cursor: "pointer",
+                      userSelect: "none",
+                      width: "fit-content",
                     }}
+                    onClick={() =>
+                      setAscentsSortOrder((o) => (o === "asc" ? "desc" : "asc"))
+                    }
                   >
-                    Más reciente
-                  </span>
-                </div>
-              )}
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 3,
+                        bottom: 3,
+                        left: ascentsSortOrder === "asc" ? 3 : "50%",
+                        right: ascentsSortOrder === "asc" ? "50%" : 3,
+                        background: "var(--pine)",
+                        borderRadius: "18px",
+                        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                      }}
+                    />
+                    <span
+                      style={{
+                        position: "relative",
+                        zIndex: 1,
+                        padding: "4px 12px",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        color:
+                          ascentsSortOrder === "asc" ? "white" : "var(--pine)",
+                        transition: "color 0.2s ease",
+                        flex: 1,
+                        whiteSpace: "nowrap",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      Más antiguo
+                    </span>
+                    <span
+                      style={{
+                        position: "relative",
+                        zIndex: 1,
+                        padding: "4px 12px",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        color:
+                          ascentsSortOrder === "desc" ? "white" : "var(--pine)",
+                        transition: "color 0.2s ease",
+                        flex: 1,
+                        whiteSpace: "nowrap",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      Más reciente
+                    </span>
+                  </div>
+                )}
 
-              {selectedAscents.length > 0 ? (
-                selectedAscents.map((ascent) => {
-                  const ascentPhotos = selectedPhotos.filter(
-                    (p) => p.taken_on === ascent.achieved_on,
-                  );
-                  return (
-                    <div key={ascent.achieved_on} className="completed-card">
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "flex-start",
-                          gap: "8px",
-                        }}
-                      >
-                        <b style={{ marginTop: "6px" }}>
-                          {formatDate(ascent.achieved_on)}
-                          {ascent.end_date &&
-                            ` - ${formatDate(ascent.end_date)}`}
-                        </b>
+                {selectedAscents.length > 0 ? (
+                  selectedAscents.map((ascent) => {
+                    const ascentPhotos = selectedPhotos.filter(
+                      (p) => p.taken_on === ascent.achieved_on,
+                    );
+                    return (
+                      <div key={ascent.achieved_on} className="completed-card">
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "flex-start",
+                            gap: "8px",
+                          }}
+                        >
+                          <b style={{ marginTop: "6px" }}>
+                            {formatDate(ascent.achieved_on)}
+                            {ascent.end_date &&
+                              ` - ${formatDate(ascent.end_date)}`}
+                          </b>
 
-                        {!isReadOnly && (
+                          {!isReadOnly && (
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "4px",
+                              }}
+                            >
+                              <button
+                                title="Compartir registro"
+                                className="button button--quiet button--small"
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  width: "32px",
+                                  height: "32px",
+                                  flexShrink: 0,
+                                  padding: 0,
+                                  margin: 0,
+                                }}
+                                onClick={() =>
+                                  handleShareRecord(selected, ascent, ascentPhotos)
+                                }
+                              >
+                                <IconShare
+                                  style={{ width: 14, height: 14 }}
+                                  strokeWidth={1.5}
+                                />
+                              </button>
+                              <button
+                                title="Editar registro"
+                                className="button button--quiet button--small"
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  width: "32px",
+                                  height: "32px",
+                                  flexShrink: 0,
+                                  padding: 0,
+                                  margin: 0,
+                                }}
+                                onClick={() => openRecord(selected, ascent)}
+                              >
+                                <IconEdit
+                                  style={{ width: 14, height: 14 }}
+                                  strokeWidth={1.5}
+                                />
+                              </button>
+                              <label
+                                title="Añadir fotos a esta fecha"
+                                className="button button--quiet button--small"
+                                onClick={(e) => {
+                                  if (ascentPhotos.length >= 4) {
+                                    e.preventDefault();
+                                    setNotice(
+                                      "Máximo 4 fotos por registro. Ya has alcanzado el límite.",
+                                    );
+                                    setTimeout(() => setNotice(""), 4000);
+                                  }
+                                }}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  width: "32px",
+                                  height: "32px",
+                                  flexShrink: 0,
+                                  padding: 0,
+                                  margin: 0,
+                                  cursor:
+                                    ascentPhotos.length >= 4
+                                      ? "not-allowed"
+                                      : "pointer",
+                                  opacity: ascentPhotos.length >= 4 ? 0.5 : 1,
+                                }}
+                              >
+                                <IconCamera
+                                  style={{ width: 14, height: 14 }}
+                                  strokeWidth={1.5}
+                                />
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  multiple
+                                  onChange={(e) =>
+                                    handleAddPhotosToDate(e, ascent)
+                                  }
+                                  style={{ display: "none" }}
+                                  disabled={ascentPhotos.length >= 4}
+                                />
+                              </label>
+                            </div>
+                          )}
+                        </div>
+                        {ascent.location_name && (
                           <div
                             style={{
+                              marginTop: "8px",
+                              fontSize: "13px",
+                              fontWeight: 500,
                               display: "flex",
-                              alignItems: "center",
-                              gap: "4px",
+                              alignItems: "flex-start",
+                              gap: 4,
                             }}
                           >
-                            <button
-                              title="Compartir registro"
-                              className="button button--quiet button--small"
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
                               style={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                width: "32px",
-                                height: "32px",
+                                width: 14,
+                                height: 14,
                                 flexShrink: 0,
-                                padding: 0,
-                                margin: 0,
-                              }}
-                              onClick={() =>
-                                handleShareRecord(selected, ascent, ascentPhotos)
-                              }
-                            >
-                              <IconShare
-                                style={{ width: 14, height: 14 }}
-                                strokeWidth={1.5}
-                              />
-                            </button>
-                            <button
-                              title="Editar registro"
-                              className="button button--quiet button--small"
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                width: "32px",
-                                height: "32px",
-                                flexShrink: 0,
-                                padding: 0,
-                                margin: 0,
-                              }}
-                              onClick={() => openRecord(selected, ascent)}
-                            >
-                              <IconEdit
-                                style={{ width: 14, height: 14 }}
-                                strokeWidth={1.5}
-                              />
-                            </button>
-                            <label
-                              title="Añadir fotos a esta fecha"
-                              className="button button--quiet button--small"
-                              onClick={(e) => {
-                                if (ascentPhotos.length >= 4) {
-                                  e.preventDefault();
-                                  setNotice(
-                                    "Máximo 4 fotos por registro. Ya has alcanzado el límite.",
-                                  );
-                                  setTimeout(() => setNotice(""), 4000);
-                                }
-                              }}
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                width: "32px",
-                                height: "32px",
-                                flexShrink: 0,
-                                padding: 0,
-                                margin: 0,
-                                cursor:
-                                  ascentPhotos.length >= 4
-                                    ? "not-allowed"
-                                    : "pointer",
-                                opacity: ascentPhotos.length >= 4 ? 0.5 : 1,
+                                marginTop: 2,
                               }}
                             >
-                              <IconCamera
-                                style={{ width: 14, height: 14 }}
-                                strokeWidth={1.5}
-                              />
-                              <input
-                                type="file"
-                                accept="image/*"
-                                multiple
-                                onChange={(e) =>
-                                  handleAddPhotosToDate(e, ascent)
-                                }
-                                style={{ display: "none" }}
-                                disabled={ascentPhotos.length >= 4}
-                              />
-                            </label>
+                              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                              <circle cx="12" cy="10" r="3" />
+                            </svg>
+                            {ascent.location_name}
+                          </div>
+                        )}
+                        {ascent.notes && (
+                          <p style={{ marginTop: "4px" }}>
+                            &ldquo;{ascent.notes}&rdquo;
+                          </p>
+                        )}
+                        {renderRecordLink(ascent.link, (ascent as any).link_name)}
+
+                        {ascentPhotos.length > 0 && (
+                          <div
+                            className="photo-section"
+                            style={{ marginTop: 16 }}
+                          >
+                            <div className="photo-grid">
+                              {ascentPhotos.map((photo) => {
+                                const isSelected = selectedPhotosForEdit.includes(
+                                  photo.id,
+                                );
+                                return (
+                                  <figure
+                                    key={photo.id}
+                                    className={isSelected ? "selected" : ""}
+                                    onClick={() => handlePhotoClick(photo)}
+                                  >
+                                    {!isReadOnly && (
+                                      <button
+                                        type="button"
+                                        className={`photo-select-circle ${isSelected ? "active" : ""}`}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          togglePhotoSelection(photo.id);
+                                        }}
+                                        aria-label="Seleccionar foto"
+                                      >
+                                        {isSelected && <IconCheck />}
+                                      </button>
+                                    )}
+                                    <img
+                                      src={photo.public_url}
+                                      alt={`Foto en ${selected.title}`}
+                                      loading="lazy"
+                                    />
+                                    <figcaption>
+                                      {photo.caption
+                                        ? photo.caption
+                                        : formatDate(photo.taken_on)}
+                                    </figcaption>
+                                  </figure>
+                                );
+                              })}
+                            </div>
                           </div>
                         )}
                       </div>
-                      {ascent.location_name && (
-                        <div
-                          style={{
-                            marginTop: "8px",
-                            fontSize: "13px",
-                            fontWeight: 500,
-                            display: "flex",
-                            alignItems: "flex-start",
-                            gap: 4,
-                          }}
-                        >
-                          <svg
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            style={{
-                              width: 14,
-                              height: 14,
-                              flexShrink: 0,
-                              marginTop: 2,
-                            }}
-                          >
-                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                            <circle cx="12" cy="10" r="3" />
-                          </svg>
-                          {ascent.location_name}
-                        </div>
-                      )}
-                      {ascent.notes && (
-                        <p style={{ marginTop: "4px" }}>
-                          &ldquo;{ascent.notes}&rdquo;
-                        </p>
-                      )}
-                      {renderRecordLink(ascent.link, (ascent as any).link_name)}
+                    );
+                  })
+                ) : hasWishlist && !((selected as any)?.itemType === 'experience') ? (
+                  <div
+                    className="pending-card"
+                    style={{
+                      background: "var(--amber-bg)",
+                      color: "#a67c29",
+                      borderColor: "#ecd9a5",
+                    }}
+                  >
+                    ★ {isReadOnly ? "En su lista de deseos" : "En tu lista de deseos"}
+                  </div>
+                ) : (
+                  <div className="pending-card">
+                    {isPeaks
+                      ? isReadOnly
+                        ? "Aún no ha registrado esta cima."
+                        : "Aún no has registrado esta cima."
+                      : ((selected as any)?.itemType === 'experience')
+                        ? isReadOnly
+                          ? "Aún no ha vivido esta experiencia."
+                          : "Aún no has vivido esta experiencia."
+                        : isReadOnly
+                          ? "Aún no ha registrado este país."
+                          : "Aún no has registrado este país."}
+                  </div>
+                )}
 
-                      {ascentPhotos.length > 0 && (
-                        <div
-                          className="photo-section"
-                          style={{ marginTop: 16 }}
-                        >
-                          <div className="photo-grid">
-                            {ascentPhotos.map((photo) => {
-                              const isSelected = selectedPhotosForEdit.includes(
-                                photo.id,
-                              );
-                              return (
-                                <figure
-                                  key={photo.id}
-                                  className={isSelected ? "selected" : ""}
-                                  onClick={() => handlePhotoClick(photo)}
+                {/* Other photos that don't match any registered date */}
+                {(() => {
+                  const registeredDates = new Set(
+                    selectedAscents.map((a) => a.achieved_on),
+                  );
+                  const otherPhotos = selectedPhotos.filter(
+                    (p) => !registeredDates.has(p.taken_on),
+                  );
+                  if (otherPhotos.length === 0) return null;
+                  return (
+                    <div className="photo-section" style={{ marginTop: 24 }}>
+                      <h3>
+                        Otras fotos <small>{otherPhotos.length}</small>
+                      </h3>
+                      <div className="photo-grid">
+                        {otherPhotos.map((photo) => {
+                          const isSelected = selectedPhotosForEdit.includes(
+                            photo.id,
+                          );
+                          return (
+                            <figure
+                              key={photo.id}
+                              className={isSelected ? "selected" : ""}
+                              onClick={() => handlePhotoClick(photo)}
+                            >
+                              {!isReadOnly && (
+                                <button
+                                  type="button"
+                                  className={`photo-select-circle ${isSelected ? "active" : ""}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    togglePhotoSelection(photo.id);
+                                  }}
+                                  aria-label="Seleccionar foto"
                                 >
-                                  {!isReadOnly && (
-                                    <button
-                                      type="button"
-                                      className={`photo-select-circle ${isSelected ? "active" : ""}`}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        togglePhotoSelection(photo.id);
-                                      }}
-                                      aria-label="Seleccionar foto"
-                                    >
-                                      {isSelected && <IconCheck />}
-                                    </button>
-                                  )}
-                                  <img
-                                    src={photo.public_url}
-                                    alt={`Foto en ${selected.title}`}
-                                    loading="lazy"
-                                  />
-                                  <figcaption>
-                                    {photo.caption
-                                      ? photo.caption
-                                      : formatDate(photo.taken_on)}
-                                  </figcaption>
-                                </figure>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
+                                  {isSelected && <IconCheck />}
+                                </button>
+                              )}
+                              <img
+                                src={photo.public_url}
+                                alt={`Foto en ${selected.title}`}
+                                loading="lazy"
+                              />
+                              <figcaption>
+                                {photo.caption
+                                  ? photo.caption
+                                  : formatDate(photo.taken_on)}
+                              </figcaption>
+                            </figure>
+                          );
+                        })}
+                      </div>
                     </div>
                   );
-                })
-              ) : hasWishlist && !((selected as any)?.itemType === 'experience') ? (
-                <div
-                  className="pending-card"
-                  style={{
-                    background: "var(--amber-bg)",
-                    color: "#a67c29",
-                    borderColor: "#ecd9a5",
-                  }}
-                >
-                  ★ {isReadOnly ? "En su lista de deseos" : "En tu lista de deseos"}
-                </div>
-              ) : (
-                <div className="pending-card">
-                  {isPeaks
-                    ? isReadOnly
-                      ? "Aún no ha registrado esta cima."
-                      : "Aún no has registrado esta cima."
-                    : ((selected as any)?.itemType === 'experience')
-                      ? isReadOnly
-                        ? "Aún no ha vivido esta experiencia."
-                        : "Aún no has vivido esta experiencia."
-                      : isReadOnly
-                        ? "Aún no ha registrado este país."
-                        : "Aún no has registrado este país."}
-                </div>
-              )}
+                })()}
 
-              {/* Other photos that don't match any registered date */}
-              {(() => {
-                const registeredDates = new Set(
-                  selectedAscents.map((a) => a.achieved_on),
-                );
-                const otherPhotos = selectedPhotos.filter(
-                  (p) => !registeredDates.has(p.taken_on),
-                );
-                if (otherPhotos.length === 0) return null;
-                return (
-                  <div className="photo-section" style={{ marginTop: 24 }}>
-                    <h3>
-                      Otras fotos <small>{otherPhotos.length}</small>
-                    </h3>
-                    <div className="photo-grid">
-                      {otherPhotos.map((photo) => {
-                        const isSelected = selectedPhotosForEdit.includes(
-                          photo.id,
-                        );
-                        return (
-                          <figure
-                            key={photo.id}
-                            className={isSelected ? "selected" : ""}
-                            onClick={() => handlePhotoClick(photo)}
-                          >
-                            {!isReadOnly && (
-                              <button
-                                type="button"
-                                className={`photo-select-circle ${isSelected ? "active" : ""}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  togglePhotoSelection(photo.id);
-                                }}
-                                aria-label="Seleccionar foto"
-                              >
-                                {isSelected && <IconCheck />}
-                              </button>
-                            )}
-                            <img
-                              src={photo.public_url}
-                              alt={`Foto en ${selected.title}`}
-                              loading="lazy"
-                            />
-                            <figcaption>
-                              {photo.caption
-                                ? photo.caption
-                                : formatDate(photo.taken_on)}
-                            </figcaption>
-                          </figure>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })()}
-
-              <div className="panel-actions">
-                {!isReadOnly && (
-                  <button
-                    className={`button ${isPeaks ? "button--green" : "button--purple"} button--wide`}
-                    onClick={() => openRecord(selected)}
-                  >
-                    {selectedAscents.length > 0
-                      ? "Registrar otra fecha"
-                      : isPeaks
-                        ? "Marcar como completado"
-                        : ((selected as any)?.itemType === 'experience')
-                          ? "Registrar la experiencia"
-                          : "Marcar como visitado"}
-                  </button>
-                )}
-                {(!selectedAscents.length || hasWishlist) &&
-                  !isReadOnly &&
-                  !((selected as any)?.itemType === 'experience') && (
+                <div className="panel-actions">
+                  {!isReadOnly && (
                     <button
-                      className="button button--quiet button--wide"
-                      style={{ marginTop: 8 }}
-                      onClick={() => saveWishlist()}
+                      className={`button ${isPeaks ? "button--green" : "button--purple"} button--wide`}
+                      onClick={() => openRecord(selected)}
                     >
-                      {hasWishlist
-                        ? "Quitar de mi lista de deseos"
-                        : "Añadir a mi lista de deseos"}
+                      {selectedAscents.length > 0
+                        ? "Registrar otra fecha"
+                        : isPeaks
+                          ? "Marcar como completado"
+                          : ((selected as any)?.itemType === 'experience')
+                            ? "Registrar la experiencia"
+                            : "Marcar como visitado"}
                     </button>
                   )}
-              </div>
-            </>
-          )}
+                  {(!selectedAscents.length || hasWishlist) &&
+                    !isReadOnly &&
+                    !((selected as any)?.itemType === 'experience') && (
+                      <button
+                        className="button button--quiet button--wide"
+                        style={{ marginTop: 8 }}
+                        onClick={() => saveWishlist()}
+                      >
+                        {hasWishlist
+                          ? "Quitar de mi lista de deseos"
+                          : "Añadir a mi lista de deseos"}
+                      </button>
+                    )}
+                </div>
+              </>
+            )}
 
           {(((selected as any)?.itemType === 'experience')) && (
             <>
@@ -5677,7 +5677,7 @@ export function SummitTracker({
             </button>
             <span className="eyebrow">
               {isPeaks ? "REGISTRAR ASCENSIÓN" : ((selected as any)?.itemType === 'experience') ? "REGISTRAR EXPERIENCIA"
-                  : "REGISTRAR VISITA"}
+                : "REGISTRAR VISITA"}
             </span>
             <div
               style={{
@@ -5688,10 +5688,10 @@ export function SummitTracker({
               }}
             >
               {(((selected as any)?.itemType === 'experience')) && selected.iconName && (
-                  <span style={{ color: "var(--foreground)" }}>
-                    {getIconComponent(selected.iconName, 26)}
-                  </span>
-                )}
+                <span style={{ color: "var(--foreground)" }}>
+                  {getIconComponent(selected.iconName, 26)}
+                </span>
+              )}
               <h2 style={{ margin: 0, fontSize: "1.35rem", lineHeight: "1.2" }}>
                 {selected.title}
               </h2>
@@ -7213,17 +7213,17 @@ export function SummitTracker({
                         borderRadius: 10,
                         border:
                           (editingCustomCategory.icon_name || "star") ===
-                          iconValue
+                            iconValue
                             ? "2px solid var(--pine)"
                             : "1px solid var(--border)",
                         background:
                           (editingCustomCategory.icon_name || "star") ===
-                          iconValue
+                            iconValue
                             ? "var(--surface)"
                             : "var(--background)",
                         color:
                           (editingCustomCategory.icon_name || "star") ===
-                          iconValue
+                            iconValue
                             ? "var(--pine)"
                             : "var(--foreground)",
                         cursor: "pointer",
@@ -7480,13 +7480,13 @@ export function SummitTracker({
                         editingCustomExp.sub_items_input !== undefined
                           ? editingCustomExp.sub_items_input
                           : editingCustomExp.subItems ||
-                              editingCustomExp.sub_items
+                            editingCustomExp.sub_items
                             ? (
-                                editingCustomExp.subItems ||
-                                editingCustomExp.sub_items
-                              )
-                                .map((s: any) => s.name)
-                                .join("\n")
+                              editingCustomExp.subItems ||
+                              editingCustomExp.sub_items
+                            )
+                              .map((s: any) => s.name)
+                              .join("\n")
                             : "";
                       const hasMiniExperiences =
                         editingCustomExp.has_sub_items !== undefined
@@ -7515,17 +7515,17 @@ export function SummitTracker({
                         editingCustomExp.has_sub_items !== undefined
                           ? editingCustomExp.has_sub_items
                           : (editingCustomExp.sub_items_input !== undefined
-                              ? editingCustomExp.sub_items_input
-                              : editingCustomExp.subItems ||
-                                  editingCustomExp.sub_items
-                                ? (
-                                    editingCustomExp.subItems ||
-                                    editingCustomExp.sub_items
-                                  )
-                                    .map((s: any) => s.name)
-                                    .join("\n")
-                                : ""
-                            ).length > 0
+                            ? editingCustomExp.sub_items_input
+                            : editingCustomExp.subItems ||
+                              editingCustomExp.sub_items
+                              ? (
+                                editingCustomExp.subItems ||
+                                editingCustomExp.sub_items
+                              )
+                                .map((s: any) => s.name)
+                                .join("\n")
+                              : ""
+                          ).length > 0
                       )
                         ? "var(--pine)"
                         : "#71717a",
@@ -7543,17 +7543,17 @@ export function SummitTracker({
                           editingCustomExp.has_sub_items !== undefined
                             ? editingCustomExp.has_sub_items
                             : (editingCustomExp.sub_items_input !== undefined
-                                ? editingCustomExp.sub_items_input
-                                : editingCustomExp.subItems ||
-                                    editingCustomExp.sub_items
-                                  ? (
-                                      editingCustomExp.subItems ||
-                                      editingCustomExp.sub_items
-                                    )
-                                      .map((s: any) => s.name)
-                                      .join("\n")
-                                  : ""
-                              ).length > 0
+                              ? editingCustomExp.sub_items_input
+                              : editingCustomExp.subItems ||
+                                editingCustomExp.sub_items
+                                ? (
+                                  editingCustomExp.subItems ||
+                                  editingCustomExp.sub_items
+                                )
+                                  .map((s: any) => s.name)
+                                  .join("\n")
+                                : ""
+                            ).length > 0
                         )
                           ? 22
                           : 2,
@@ -7574,11 +7574,11 @@ export function SummitTracker({
                       ? editingCustomExp.sub_items_input
                       : editingCustomExp.subItems || editingCustomExp.sub_items
                         ? (
-                            editingCustomExp.subItems ||
-                            editingCustomExp.sub_items
-                          )
-                            .map((s: any) => s.name)
-                            .join("\n")
+                          editingCustomExp.subItems ||
+                          editingCustomExp.sub_items
+                        )
+                          .map((s: any) => s.name)
+                          .join("\n")
                         : "";
                   const hasMiniExperiences =
                     editingCustomExp.has_sub_items !== undefined
