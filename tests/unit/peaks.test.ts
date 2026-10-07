@@ -55,4 +55,12 @@ describe("Peaks Dataset Integrity (52 techos provinciales)", () => {
       expect(lng).toBeLessThanOrEqual(5.0);
     }
   });
+
+  it("should have correct summit coordinates for Cantabria (Torre Blanca)", () => {
+    const cantabriaPeak = peaks.find((p) => p.id === "cantabria");
+    expect(cantabriaPeak).toBeDefined();
+    expect(cantabriaPeak?.name).toBe("Torre Blanca");
+    expect(cantabriaPeak?.coordinates[0]).toBeCloseTo(43.1727, 3);
+    expect(cantabriaPeak?.coordinates[1]).toBeCloseTo(-4.8516, 3);
+  });
 });

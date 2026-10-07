@@ -42,7 +42,7 @@ Lookup table for all 52 provincial high points (47 unique mountains) in Spain, C
 | `36` | Pontevedra | Pico Faro | 1180.7 | Serra do Faro | `[42.60, -8.03]` | - |
 | `37` | Salamanca | Canchal de la Ceja | 2427.4 | Sierra de Béjar | `[40.33, -5.68]` | - |
 | `38` | Santa Cruz de Tenerife | Teide | 3718.0 | Tenerife | `[28.27, -16.64]` | - |
-| `39` | Cantabria | Torre Blanca | 2618.5 | Picos de Europa | `[43.09, -4.82]` | - |
+| `39` | Cantabria | Torre Blanca | 2618.5 | Picos de Europa | `[43.1727, -4.8516]` | - |
 | `40` | Segovia | Peñalara | 2428.4 | Sierra de Guadarrama | `[40.85, -3.95]` | `penalara` (with Madrid) |
 | `41` | Sevilla | Pico del Terril | 1129.0 | Sierra del Tablón | `[36.999, -5.173]` | - |
 | `42` | Soria | Moncayo | 2314.3 | Sistema Ibérico | `[41.79, -1.84]` | `moncayo` (with Zaragoza) |

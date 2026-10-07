@@ -50,7 +50,7 @@ export const peaks: Peak[] = [
   { id: "pontevedra", code: "36", province: "Pontevedra", name: "Pico Faro", altitude: 1180.7, range: "Serra do Faro", coordinates: [42.60, -8.03], note: "El punto más alto de Pontevedra." },
   { id: "salamanca", code: "37", province: "Salamanca", name: "Canchal de la Ceja", altitude: 2427.4, range: "Sierra de Béjar", coordinates: [40.3061, -5.7214], note: "Cumbre del macizo de Gredos." },
   { id: "santa-cruz-tenerife", code: "38", province: "Santa Cruz de Tenerife", name: "Teide", altitude: 3718.0, range: "Tenerife", coordinates: [28.27, -16.64], note: "El punto más alto de España." },
-  { id: "cantabria", code: "39", province: "Cantabria", name: "Torre Blanca", altitude: 2618.5, range: "Picos de Europa", coordinates: [43.09, -4.82], note: "Cumbre más alta de Cantabria." },
+  { id: "cantabria", code: "39", province: "Cantabria", name: "Torre Blanca", altitude: 2618.5, range: "Picos de Europa", coordinates: [43.1727, -4.8516], note: "Cumbre más alta de Cantabria." },
   { id: "penalara", code: "40", province: "Segovia", name: "Peñalara", altitude: 2428.4, range: "Sierra de Guadarrama", coordinates: [40.85, -3.95], note: "Cumbre compartida con Madrid." },
   { id: "sevilla", code: "41", province: "Sevilla", name: "Pico del Terril", altitude: 1129.0, range: "Sierra del Tablón", coordinates: [36.999, -5.173], note: "El punto culminante de la provincia." },
   { id: "moncayo", code: "42", province: "Soria", name: "Moncayo", altitude: 2314.3, range: "Sistema Ibérico", coordinates: [41.79, -1.84], note: "Cumbre compartida con Zaragoza." },
