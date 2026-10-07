@@ -5,7 +5,7 @@ import { useAuth } from "./auth-context";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow, format } from "date-fns";
-import { Link as LinkIcon, Video, Camera, Briefcase, MapPin, Share2 } from "lucide-react";
+import { Link as LinkIcon, Video, Camera, Briefcase, MapPin, Footprints, Share2 } from "lucide-react";
 import { es } from "date-fns/locale";
 import { countries } from "@/data/countries";
 import { peaks } from "@/data/peaks";
@@ -60,6 +60,87 @@ function formatDateSafe(dateVal: string | undefined | null): string {
   } catch {
     return '';
   }
+}
+
+function renderFeedLink(link?: string | null, linkName?: string | null) {
+  if (!link) return null;
+  let Icon = LinkIcon;
+  const urlStr = link.toLowerCase();
+  if (urlStr.includes("youtube.com") || urlStr.includes("youtu.be"))
+    Icon = Video;
+  else if (urlStr.includes("instagram.com")) Icon = Camera;
+  else if (urlStr.includes("linkedin.com")) Icon = Briefcase;
+  else if (
+    urlStr.includes("strava.com") ||
+    urlStr.includes("wikiloc.com") ||
+    urlStr.includes("komoot.com") ||
+    urlStr.includes("alltrails.com") ||
+    urlStr.includes("garmin.com") ||
+    urlStr.includes("outdooractive.com") ||
+    urlStr.includes("relive.cc") ||
+    urlStr.includes("fatmap.com") ||
+    urlStr.includes("trailforks.com")
+  )
+    Icon = Footprints;
+  else if (
+    urlStr.includes("google.com/maps") ||
+    urlStr.includes("maps.google.") ||
+    urlStr.includes("maps.apple.com") ||
+    urlStr.includes("openstreetmap.org")
+  )
+    Icon = MapPin;
+
+  const displayName =
+    linkName ||
+    (urlStr.includes("youtube.com") || urlStr.includes("youtu.be")
+      ? "Vídeo en YouTube"
+      : urlStr.includes("instagram.com")
+        ? "Publicación en Instagram"
+        : urlStr.includes("linkedin.com")
+          ? "Publicación en LinkedIn"
+          : urlStr.includes("google.com/maps") || urlStr.includes("maps.google.") || urlStr.includes("maps.apple.com") || urlStr.includes("openstreetmap.org")
+            ? "Ver en mapa"
+            : urlStr.includes("wikiloc.com")
+              ? "Ruta en Wikiloc"
+              : urlStr.includes("strava.com")
+                ? "Actividad en Strava"
+                : urlStr.includes("komoot.com")
+                  ? "Ruta en Komoot"
+                  : urlStr.includes("alltrails.com")
+                    ? "Ruta en AllTrails"
+                    : urlStr.includes("garmin.com")
+                      ? "Actividad en Garmin"
+                      : "Enlace adjunto");
+
+  const href =
+    link.startsWith("http://") || link.startsWith("https://")
+      ? link
+      : `https://${link}`;
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        fontSize: "13px",
+        color: "var(--pine)",
+        textDecoration: "none",
+        fontWeight: 500,
+        padding: "4px 10px",
+        backgroundColor: "rgba(35, 78, 82, 0.05)",
+        borderRadius: 16,
+        border: "1px solid rgba(35, 78, 82, 0.1)",
+        width: "fit-content",
+      }}
+    >
+      <Icon size={14} />
+      <span style={{ textDecoration: "underline" }}>{displayName}</span>
+    </a>
+  );
 }
 
 function FeedItemCard({ item, session: _session, onAuthRequired: _onAuthRequired }: { item: any, session?: Session | null, onAuthRequired?: () => void }) {
@@ -355,70 +436,19 @@ function FeedItemCard({ item, session: _session, onAuthRequired: _onAuthRequired
             {item.notes}
           </p>
         )}
-        {item.link &&
-          (() => {
-            let Icon = LinkIcon;
-            const urlStr = item.link.toLowerCase();
-            if (urlStr.includes("youtube.com") || urlStr.includes("youtu.be"))
-              Icon = Video;
-            else if (urlStr.includes("instagram.com")) Icon = Camera;
-            else if (urlStr.includes("linkedin.com")) Icon = Briefcase;
-            else if (
-              urlStr.includes("google.com/maps") ||
-              urlStr.includes("wikiloc.com") ||
-              urlStr.includes("komoot.com") ||
-              urlStr.includes("strava.com")
-            )
-              Icon = MapPin;
-
-            const displayName =
-              item.link_name ||
-              (urlStr.includes("youtube.com") || urlStr.includes("youtu.be")
-                ? "Vídeo en YouTube"
-                : urlStr.includes("instagram.com")
-                  ? "Publicación en Instagram"
-                  : urlStr.includes("linkedin.com")
-                    ? "Publicación en LinkedIn"
-                    : urlStr.includes("google.com/maps")
-                      ? "Ver en Google Maps"
-                      : urlStr.includes("wikiloc.com")
-                        ? "Ruta en Wikiloc"
-                        : urlStr.includes("strava.com")
-                          ? "Actividad en Strava"
-                          : urlStr.includes("komoot.com")
-                            ? "Ruta en Komoot"
-                            : "Enlace adjunto");
-
-            const href =
-              item.link.startsWith("http://") || item.link.startsWith("https://")
-                ? item.link
-                : `https://${item.link}`;
-
-            return (
-              <a
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  marginTop: 8,
-                  fontSize: "14px",
-                  color: "var(--pine)",
-                  textDecoration: "none",
-                  fontWeight: 500,
-                  padding: "4px 10px",
-                  backgroundColor: "rgba(35, 78, 82, 0.05)",
-                  borderRadius: 16,
-                  border: "1px solid rgba(35, 78, 82, 0.1)",
-                }}
-              >
-                <Icon size={14} />
-                {displayName}
-              </a>
-            );
-          })()}
+        {(item.link || item.link_2) && (
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 8,
+              marginTop: 8,
+            }}
+          >
+            {renderFeedLink(item.link, item.link_name)}
+            {renderFeedLink(item.link_2, item.link_name_2)}
+          </div>
+        )}
 
       </div>
 
@@ -634,7 +664,7 @@ export function FeedTab({ session, isActive = true, onAuthRequired }: { session:
       // Fetch ascents
       const { data: ascData, error: ascErr } = await supabase
         .from("ascents")
-        .select("id, user_id, summit_id, created_at, achieved_on, end_date, notes, link, link_name, profiles!ascents_user_id_profiles_fkey(username, avatar_url, is_public, is_test)")
+        .select("id, user_id, summit_id, created_at, achieved_on, end_date, notes, link, link_name, link_2, link_name_2, profiles!ascents_user_id_profiles_fkey(username, avatar_url, is_public, is_test)")
         .eq('is_wishlist', false)
         .or('summit_id.not.ilike.country-%,achieved_on.gt.1900-01-01')
         .order("created_at", { ascending: false })
@@ -661,7 +691,7 @@ export function FeedTab({ session, isActive = true, onAuthRequired }: { session:
       // Fetch experiences
       const { data: expData, error: expErr } = await supabase
         .from("experience_records")
-        .select("id, user_id, experience_id, sub_item_id, created_at, achieved_on, notes, link, link_name, location_name, profiles!experience_records_user_id_profiles_fkey(username, avatar_url, is_public, is_test)")
+        .select("id, user_id, experience_id, sub_item_id, created_at, achieved_on, notes, link, link_name, link_2, link_name_2, location_name, profiles!experience_records_user_id_profiles_fkey(username, avatar_url, is_public, is_test)")
         .eq('is_wishlist', false)
         .order("created_at", { ascending: false })
         .limit(limit);

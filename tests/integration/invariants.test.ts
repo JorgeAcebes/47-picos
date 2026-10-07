@@ -206,6 +206,40 @@ describe("Project Critical Invariants (No Regressions)", () => {
       expect(content).toContain("renderRecordLink");
       expect(content).toContain("{renderRecordLink(ascent.link, (ascent as any).link_name)}");
     });
+
+    it("Invariant 7.2: summit-tracker.tsx must support a second link with subtle display and persistence", () => {
+      const trackerPath = path.join(rootDir, "components/summit-tracker.tsx");
+      const content = fs.readFileSync(trackerPath, "utf-8");
+
+      expect(content).toContain("link_2");
+      expect(content).toContain("link_name_2");
+      expect(content).toContain("showSecondLink");
+      expect(content).toContain("renderRecordLink((ascent as any).link_2, (ascent as any).link_name_2)");
+    });
+
+    it("Invariant 7.3: feed-tab.tsx must select and render the second link in activity cards", () => {
+      const feedPath = path.join(rootDir, "components/feed-tab.tsx");
+      const content = fs.readFileSync(feedPath, "utf-8");
+
+      expect(content).toContain("link_2");
+      expect(content).toContain("link_name_2");
+      expect(content).toContain("renderFeedLink(item.link_2, item.link_name_2)");
+    });
+
+    it("Invariant 7.4: Footprints icon must be assigned for hiking/running links and placeholder for second link must guide user", () => {
+      const trackerPath = path.join(rootDir, "components/summit-tracker.tsx");
+      const trackerContent = fs.readFileSync(trackerPath, "utf-8");
+      expect(trackerContent).toContain("Footprints");
+      expect(trackerContent).toMatch(/strava\.com[\s\S]*?Icon\s*=\s*Footprints/);
+      expect(trackerContent).toMatch(/wikiloc\.com[\s\S]*?Icon\s*=\s*Footprints/);
+      expect(trackerContent).toContain('placeholder="Ej: Restaurante favorito"');
+
+      const feedPath = path.join(rootDir, "components/feed-tab.tsx");
+      const feedContent = fs.readFileSync(feedPath, "utf-8");
+      expect(feedContent).toContain("Footprints");
+      expect(feedContent).toMatch(/strava\.com[\s\S]*?Icon\s*=\s*Footprints/);
+      expect(feedContent).toMatch(/wikiloc\.com[\s\S]*?Icon\s*=\s*Footprints/);
+    });
   });
 
   describe("Test Profile Stealth & Isolation Invariants", () => {

@@ -96,8 +96,10 @@ Este documento reúne todas las reglas no negociables de la aplicación. Cualqui
 
 ## 7. Enlaces en Registros y Feed (`components/summit-tracker.tsx`, `components/feed-tab.tsx`)
 
-1. **Visibilidad de Enlaces en Tarjetas de Registro**: Cuando un ascenso, visita a país o experiencia cuenta con hipervínculo (`link`), debe renderizarse con su botón/insignia interactiva (`renderRecordLink`) tanto en el feed social como en las tarjetas de registro del panel lateral (`.completed-card`).
+1. **Visibilidad de Enlaces en Tarjetas de Registro**: Cuando un ascenso, visita a país o experiencia cuenta con hipervínculo (`link` o `link_2`), debe renderizarse con su botón/insignia interactiva (`renderRecordLink` o `renderFeedLink`) tanto en el feed social como en las tarjetas de registro del panel lateral (`.completed-card`).
 2. **Protocolo Seguro**: Todo hipervínculo debe normalizarse garantizando prefijo `http://` o `https://` para evitar rutas relativas involuntarias al navegar externamente.
+3. **Segundo Enlace y Experiencia Sutil**: Los registros permiten hasta 2 enlaces (`link`, `link_2`). La opción para añadir un segundo enlace solo aparece de manera sutil cuando el texto del primer enlace ha sido cumplimentado. Ambos se visualizan de forma limpia y responsiva como insignias paralelas en el feed y en el panel de detalle.
+4. **Icono Dinámico de Senderismo/Running (`Footprints`)**: Enlaces a plataformas de actividades al aire libre, rutas y running (Strava, Wikiloc, Komoot, AllTrails, Garmin, Outdooractive, Relive, etc.) muestran automáticamente el icono `Footprints` tanto en el panel de detalle como en el feed social, diferenciándose de mapas generales (`MapPin`) o redes sociales. El placeholder de segundo enlace sugiere `"Ej: Restaurante favorito"`.
 
 ---
 

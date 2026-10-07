@@ -38,10 +38,12 @@ import {
   Briefcase,
   Video,
   RotateCcw,
+  Footprints,
 } from "lucide-react";
 import { usePendingRequests } from "./use-pending-requests";
 import { compressImage } from "@/lib/image-utils";
 import { lockScroll, unlockScroll } from "@/lib/scroll-lock";
+import { MarqueeText } from "./marquee-text";
 
 const SpainMap = dynamic(
   () => import("./spain-map").then((module) => module.SpainMap),
@@ -78,6 +80,8 @@ type Ascent = {
   sub_item_id?: string | null;
   link?: string | null;
   link_name?: string | null;
+  link_2?: string | null;
+  link_name_2?: string | null;
 };
 export type SelectedItem = {
   id: string;
@@ -120,6 +124,8 @@ export type ExperienceRecord = {
   notes?: string;
   link?: string;
   link_name?: string;
+  link_2?: string;
+  link_name_2?: string;
   is_wishlist: boolean;
   location_name?: string | null;
   created_at: string;
@@ -204,10 +210,22 @@ function renderRecordLink(link?: string | null, linkName?: string | null) {
   else if (urlStr.includes("instagram.com")) Icon = Camera;
   else if (urlStr.includes("linkedin.com")) Icon = Briefcase;
   else if (
-    urlStr.includes("google.com/maps") ||
+    urlStr.includes("strava.com") ||
     urlStr.includes("wikiloc.com") ||
     urlStr.includes("komoot.com") ||
-    urlStr.includes("strava.com")
+    urlStr.includes("alltrails.com") ||
+    urlStr.includes("garmin.com") ||
+    urlStr.includes("outdooractive.com") ||
+    urlStr.includes("relive.cc") ||
+    urlStr.includes("fatmap.com") ||
+    urlStr.includes("trailforks.com")
+  )
+    Icon = Footprints;
+  else if (
+    urlStr.includes("google.com/maps") ||
+    urlStr.includes("maps.google.") ||
+    urlStr.includes("maps.apple.com") ||
+    urlStr.includes("openstreetmap.org")
   )
     Icon = MapPin;
 
@@ -219,15 +237,19 @@ function renderRecordLink(link?: string | null, linkName?: string | null) {
         ? "Publicación en Instagram"
         : urlStr.includes("linkedin.com")
           ? "Publicación en LinkedIn"
-          : urlStr.includes("google.com/maps")
-            ? "Ver en Google Maps"
+          : urlStr.includes("google.com/maps") || urlStr.includes("maps.google.") || urlStr.includes("maps.apple.com") || urlStr.includes("openstreetmap.org")
+            ? "Ver en mapa"
             : urlStr.includes("wikiloc.com")
               ? "Ruta en Wikiloc"
               : urlStr.includes("strava.com")
                 ? "Actividad en Strava"
                 : urlStr.includes("komoot.com")
                   ? "Ruta en Komoot"
-                  : "Enlace adjunto");
+                  : urlStr.includes("alltrails.com")
+                    ? "Ruta en AllTrails"
+                    : urlStr.includes("garmin.com")
+                      ? "Actividad en Garmin"
+                      : "Enlace adjunto");
 
   const href =
     link.startsWith("http://") || link.startsWith("https://")
@@ -243,7 +265,6 @@ function renderRecordLink(link?: string | null, linkName?: string | null) {
         display: "inline-flex",
         alignItems: "center",
         gap: 6,
-        marginTop: 8,
         fontSize: "13px",
         color: "var(--pine)",
         textDecoration: "none",
@@ -747,6 +768,9 @@ export function SummitTracker({
   const [notes, setNotes] = useState("");
   const [link, setLink] = useState("");
   const [linkName, setLinkName] = useState("");
+  const [link2, setLink2] = useState("");
+  const [linkName2, setLinkName2] = useState("");
+  const [showSecondLink, setShowSecondLink] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [listFilter, setListFilter] = useState<string>("all");
@@ -1575,7 +1599,7 @@ export function SummitTracker({
       ] = await Promise.all([
         supabase!
           .from("ascents")
-          .select("summit_id, achieved_on, end_date, notes, is_wishlist, link, link_name")
+          .select("summit_id, achieved_on, end_date, notes, is_wishlist, link, link_name, link_2, link_name_2")
           .eq("user_id", targetId)
           .order("achieved_on", { ascending: false }),
         supabase!
@@ -1665,7 +1689,7 @@ export function SummitTracker({
       if (isReadOnly && session) {
         const { data: myData } = await supabase!
           .from("ascents")
-          .select("summit_id, achieved_on, end_date, notes, is_wishlist, link, link_name")
+          .select("summit_id, achieved_on, end_date, notes, is_wishlist, link, link_name, link_2, link_name_2")
           .eq("user_id", session.user.id);
         if (myData && !areRecordsEqual(myAscents, myData)) setMyAscents(myData as Ascent[]);
       }
@@ -1845,6 +1869,8 @@ export function SummitTracker({
         sub_item_id: r.sub_item_id,
         link: r.link || null,
         link_name: r.link_name || null,
+        link_2: (r as any).link_2 || null,
+        link_name_2: (r as any).link_name_2 || null,
       })),
     ];
 
@@ -2138,6 +2164,11 @@ export function SummitTracker({
       shareText += `\n${linkLabel}${ascent.link}`;
     }
 
+    if ((ascent as any).link_2) {
+      const linkLabel2 = (ascent as any).link_name_2 ? `${(ascent as any).link_name_2}: ` : "";
+      shareText += `\n${linkLabel2}${(ascent as any).link_2}`;
+    }
+
     shareText += `\n\n${profileUrl}`;
 
     // Download photos as File objects for sharing
@@ -2235,6 +2266,9 @@ export function SummitTracker({
         setNotes("");
         setLink("");
         setLinkName("");
+        setLink2("");
+        setLinkName2("");
+        setShowSecondLink(false);
         setFiles([]);
       } else {
         setSelected(item);
@@ -2267,6 +2301,12 @@ export function SummitTracker({
           setNotes(ascentToEdit.notes ?? "");
           setLink((ascentToEdit as any).link ?? "");
           setLinkName((ascentToEdit as any).link_name ?? "");
+          const hasSecondLink = Boolean(
+            (ascentToEdit as any).link_2 || (ascentToEdit as any).link_name_2
+          );
+          setLink2((ascentToEdit as any).link_2 ?? "");
+          setLinkName2((ascentToEdit as any).link_name_2 ?? "");
+          setShowSecondLink(hasSecondLink);
         } else {
           // Si no es ascentToEdit pero setSelectedLatLng ya se configuró (ej. click en mapa), no lo borramos.
           setEditingExpRecordId(null);
@@ -2283,6 +2323,9 @@ export function SummitTracker({
           setNotes("");
           setLink("");
           setLinkName("");
+          setLink2("");
+          setLinkName2("");
+          setShowSecondLink(false);
           // locationName is already set by handleMapClickForExp if coming from there
         }
         setFiles([]);
@@ -2470,6 +2513,8 @@ export function SummitTracker({
             notes: notes || null,
             link: link || null,
             link_name: linkName || null,
+            link_2: link2 || null,
+            link_name_2: linkName2 || null,
             lat: selectedLatLng?.lat,
             lng: selectedLatLng?.lng,
             location_name: locationName || null,
@@ -2485,6 +2530,8 @@ export function SummitTracker({
           notes: notes || null,
           link: link || null,
           link_name: linkName || null,
+          link_2: link2 || null,
+          link_name_2: linkName2 || null,
           lat: selectedLatLng?.lat,
           lng: selectedLatLng?.lng,
           location_name: locationName || null,
@@ -2501,6 +2548,8 @@ export function SummitTracker({
           notes: notes || null,
           link: link || null,
           link_name: linkName || null,
+          link_2: link2 || null,
+          link_name_2: linkName2 || null,
           is_wishlist: false,
         },
         { onConflict: "user_id,summit_id,achieved_on" },
@@ -2582,6 +2631,10 @@ export function SummitTracker({
             achieved_on: finalDate,
             end_date: finalEndDate,
             notes: notes || null,
+            link: link || null,
+            link_name: linkName || null,
+            link_2: link2 || null,
+            link_name_2: linkName2 || null,
             is_wishlist: false,
           },
           ...withoutThisAscentOrWishlist,
@@ -3035,6 +3088,12 @@ export function SummitTracker({
         setEditingCustomExp(null);
       }
     } else {
+      if (typeof editingCustomExp.id === "string" && editingCustomExp.id.startsWith("exp-")) {
+        setNotice("Las experiencias predefinidas no se pueden modificar.");
+        setSaving(false);
+        setEditingCustomExp(null);
+        return;
+      }
       const updates: any = { name: editingCustomExp.name.trim() };
       if (subItems !== undefined) updates.sub_items = subItems;
 
@@ -3561,7 +3620,19 @@ export function SummitTracker({
         {ascent.notes && (
           <p style={{ marginTop: "4px" }}>&ldquo;{ascent.notes}&rdquo;</p>
         )}
-        {renderRecordLink(ascent.link, (ascent as any).link_name)}
+        {(ascent.link || (ascent as any).link_2) && (
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 8,
+              marginTop: 8,
+            }}
+          >
+            {renderRecordLink(ascent.link, (ascent as any).link_name)}
+            {renderRecordLink((ascent as any).link_2, (ascent as any).link_name_2)}
+          </div>
+        )}
 
         {ascentPhotos.length > 0 && (
           <div className="photo-section" style={{ marginTop: 16 }}>
@@ -4489,12 +4560,19 @@ export function SummitTracker({
               return (
                 <div
                   key={`${item.id}-${index}`}
-                  style={{ position: "relative" }}
+                  style={{ position: "relative", overflow: "hidden" }}
                 >
                   <button
                     className={itemClass}
                     onClick={() => openInformation(item)}
-                    style={{ width: "100%", height: "100%" }}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      paddingRight:
+                        isExp && isEditingExperiences
+                          ? (isCustomExp ? "64px" : "38px")
+                          : undefined,
+                    }}
                   >
                     <span
                       style={{
@@ -4527,63 +4605,91 @@ export function SummitTracker({
                       )}
                     </span>
                     <span className="item-info">
-                      <span className="item-province">
-                        {isPeaks ? item.label : isExp ? item.detail : item.label}
-                      </span>
-                      <br />
-                      <span className="item-name">{item.title}</span>
+                      {isExp ? (
+                        <>
+                          <MarqueeText
+                            text={item.detail || ""}
+                            className="item-province"
+                            active={isEditingExperiences}
+                          />
+                          <MarqueeText
+                            text={item.title}
+                            className="item-name"
+                            active={isEditingExperiences}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <span className="item-province">
+                            {isPeaks ? item.label : item.label}
+                          </span>
+                          <br />
+                          <span className="item-name">{item.title}</span>
+                        </>
+                      )}
                     </span>
                     <span className="item-alt">{item.subtitle}</span>
                   </button>
                   {isExp && (
-                    <>
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        right: "8px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        zIndex: 10,
+                        pointerEvents: isEditingExperiences ? "auto" : "none",
+                      }}
+                    >
+                      {isCustomExp && (
+                        <button
+                          className={`edit-action-btn ${isEditingExperiences ? "is-active" : ""}`}
+                          title="Editar experiencia"
+                          style={{
+                            background: "var(--pine)",
+                            color: "white",
+                            width: "22px",
+                            height: "22px",
+                            minWidth: "22px",
+                            minHeight: "22px",
+                            borderRadius: "50%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            border: "none",
+                            cursor: "pointer",
+                            padding: 0,
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingCustomExp(
+                              customExperiences.find((c) => c.id === item.id) || {
+                                id: item.id,
+                                name: item.title,
+                                subItems: item.subItems,
+                              },
+                            );
+                          }}
+                        >
+                          <IconEdit
+                            style={{ width: 14, height: 14 }}
+                            strokeWidth={2.5}
+                          />
+                        </button>
+                      )}
                       <button
                         className={`edit-action-btn ${isEditingExperiences ? "is-active" : ""}`}
-                        title="Editar experiencia"
+                        title={isCustomExp ? "Eliminar experiencia" : "Ocultar experiencia"}
                         style={{
-                          position: "absolute",
-                          top: "4px",
-                          right: "24px",
-                          background: "var(--pine)",
-                          color: "white",
-                          width: "16px",
-                          height: "16px",
-                          borderRadius: "50%",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          border: "none",
-                          cursor: "pointer",
-                          padding: 0,
-                          zIndex: 10,
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingCustomExp(
-                            customExperiences.find((c) => c.id === item.id) || {
-                              id: item.id,
-                              name: item.title,
-                              subItems: item.subItems,
-                            },
-                          );
-                        }}
-                      >
-                        <IconEdit
-                          style={{ width: 10, height: 10 }}
-                          strokeWidth={2.5}
-                        />
-                      </button>
-                      <button
-                        className={`edit-action-btn ${isEditingExperiences ? "is-active" : ""}`}
-                        title="Ocultar experiencia"
-                        style={{
-                          position: "absolute",
-                          top: "4px",
-                          right: "4px",
                           background: "#e74c3c",
                           color: "white",
-                          width: "16px",
-                          height: "16px",
+                          width: "22px",
+                          height: "22px",
+                          minWidth: "22px",
+                          minHeight: "22px",
                           borderRadius: "50%",
                           display: "flex",
                           alignItems: "center",
@@ -4591,20 +4697,23 @@ export function SummitTracker({
                           border: "none",
                           cursor: "pointer",
                           padding: 0,
-                          zIndex: 10,
                         }}
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleHideItem(item.id, "experience");
+                          if (isCustomExp) {
+                            handleDeleteCustomExperience(item.id);
+                          } else {
+                            handleHideItem(item.id, "experience");
+                          }
                         }}
                       >
                         <svg
-                          width="10"
-                          height="10"
+                          width="14"
+                          height="14"
                           viewBox="0 0 24 24"
                           fill="none"
                           stroke="currentColor"
-                          strokeWidth="3"
+                          strokeWidth="2.5"
                           strokeLinecap="round"
                           strokeLinejoin="round"
                         >
@@ -4612,7 +4721,7 @@ export function SummitTracker({
                           <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
                       </button>
-                    </>
+                    </div>
                   )}
                 </div>
               );
@@ -5398,7 +5507,19 @@ export function SummitTracker({
                           &ldquo;{ascent.notes}&rdquo;
                         </p>
                       )}
-                      {renderRecordLink(ascent.link, (ascent as any).link_name)}
+                      {(ascent.link || (ascent as any).link_2) && (
+                        <div
+                          style={{
+                            display: "flex",
+                            flexWrap: "wrap",
+                            gap: 8,
+                            marginTop: 8,
+                          }}
+                        >
+                          {renderRecordLink(ascent.link, (ascent as any).link_name)}
+                          {renderRecordLink((ascent as any).link_2, (ascent as any).link_name_2)}
+                        </div>
+                      )}
 
                       {ascentPhotos.length > 0 && (
                         <div
@@ -6010,7 +6131,7 @@ export function SummitTracker({
               )}
             </div>
 
-            <div className="field-label" style={{ marginBottom: 18 }}>
+            <div className="field-label" style={{ marginBottom: 13 }}>
               <span>Añadir fotos</span>
               <label className="file-dropzone">
                 <IconCamera />
@@ -6173,7 +6294,7 @@ export function SummitTracker({
               </p>
             )}
 
-            <label className="field-label" style={{ marginBottom: 16 }}>
+            <label className="field-label" style={{ marginBottom: 12 }}>
               Notas
               <textarea
                 placeholder={
@@ -6185,7 +6306,7 @@ export function SummitTracker({
                 onChange={(e) => {
                   setNotes(e.target.value);
                 }}
-                rows={3}
+                rows={2}
               />
             </label>
 
@@ -6194,7 +6315,7 @@ export function SummitTracker({
                 display: "grid",
                 gridTemplateColumns: "1fr 1fr",
                 gap: "12px",
-                marginBottom: 16,
+                marginBottom: Boolean(linkName && linkName.trim()) && !showSecondLink && !link2 && !linkName2 ? 8 : 16,
               }}
             >
               <label className="field-label">
@@ -6205,7 +6326,12 @@ export function SummitTracker({
                   value={link || ""}
                   onChange={(e) => {
                     setLink(e.target.value);
-                    if (!e.target.value) setLinkName("");
+                    if (!e.target.value) {
+                      setLinkName("");
+                      setLink2("");
+                      setLinkName2("");
+                      setShowSecondLink(false);
+                    }
                   }}
                 />
               </label>
@@ -6218,12 +6344,108 @@ export function SummitTracker({
                   type="text"
                   placeholder="Ej: Vídeo de la ruta"
                   value={linkName || ""}
-                  onChange={(e) => setLinkName(e.target.value)}
+                  onChange={(e) => {
+                    setLinkName(e.target.value);
+                    if (!e.target.value && !link2 && !linkName2) {
+                      setShowSecondLink(false);
+                    }
+                  }}
                   disabled={!link}
                   title={!link ? "Añade un enlace primero" : ""}
                 />
               </label>
             </div>
+
+            {/* Opción sutil para añadir un segundo enlace: solo visible cuando el texto del primero se ha introducido */}
+            {Boolean(linkName && linkName.trim()) && !showSecondLink && !link2 && !linkName2 && (
+              <div style={{ marginTop: -4, marginBottom: 16 }}>
+                <button
+                  type="button"
+                  onClick={() => setShowSecondLink(true)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: "2px 0",
+                    fontSize: "13px",
+                    color: "var(--pine, #234e52)",
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontWeight: 500,
+                    opacity: 0.85,
+                  }}
+                >
+                  <span style={{ fontSize: "14px", fontWeight: 600 }}>+</span>
+                  <span style={{ textDecoration: "underline", textUnderlineOffset: 2 }}>
+                    Añadir un segundo enlace
+                  </span>
+                </button>
+              </div>
+            )}
+
+            {(showSecondLink || Boolean(link2 || linkName2)) && (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "12px",
+                  marginBottom: 16,
+                  paddingTop: 8,
+                  marginTop: -4,
+                  borderTop: "1px dashed rgba(35, 78, 82, 0.15)",
+                }}
+              >
+                <label className="field-label">
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span>Segundo enlace</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLink2("");
+                        setLinkName2("");
+                        setShowSecondLink(false);
+                      }}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        fontSize: "11px",
+                        color: "var(--danger, #a34f3d)",
+                        cursor: "pointer",
+                        fontWeight: 400,
+                      }}
+                      title="Quitar segundo enlace"
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                  <input
+                    type="url"
+                    placeholder="https://..."
+                    value={link2 || ""}
+                    onChange={(e) => {
+                      setLink2(e.target.value);
+                      if (!e.target.value) setLinkName2("");
+                    }}
+                  />
+                </label>
+                <label
+                  className="field-label"
+                  style={{ opacity: !link2 ? 0.5 : 1 }}
+                >
+                  Texto del segundo enlace
+                  <input
+                    type="text"
+                    placeholder="Ej: Restaurante favorito"
+                    value={linkName2 || ""}
+                    onChange={(e) => setLinkName2(e.target.value)}
+                    disabled={!link2}
+                    title={!link2 ? "Añade un enlace primero" : ""}
+                  />
+                </label>
+              </div>
+            )}
 
             <button
               className={`button ${isPeaks ? "button--green" : "button--purple"} button--wide`}
@@ -7702,7 +7924,14 @@ export function SummitTracker({
                   style={{ color: "var(--danger, #a34f3d)" }}
                   disabled={saving}
                   onClick={() => {
-                    handleHideItem(editingCustomExp.id, "experience");
+                    const isCustom = customExperiences.some(
+                      (c) => c.id === editingCustomExp.id,
+                    );
+                    if (isCustom) {
+                      handleDeleteCustomExperience(editingCustomExp.id);
+                    } else {
+                      handleHideItem(editingCustomExp.id, "experience");
+                    }
                     setEditingCustomExp(null);
                   }}
                 >

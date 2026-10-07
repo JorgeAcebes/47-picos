@@ -1967,10 +1967,51 @@ textarea:focus {
 /* ── Record dialog ──────────────────────── */
 .record-dialog {
   max-width: 455px;
+  max-height: calc(100vh - 36px);
+  max-height: calc(100dvh - 36px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 28px 32px 22px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(35, 78, 82, 0.2) transparent;
+}
+
+.record-dialog .icon-button {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  z-index: 10;
+}
+
+.record-dialog h2 {
+  margin-bottom: 4px;
+}
+
+.record-dialog>p {
+  margin-bottom: 12px;
 }
 
 .record-dialog .field-label {
-  margin-bottom: 14px;
+  margin-bottom: 11px;
+}
+
+.record-dialog .file-dropzone {
+  padding: 12px 14px;
+  gap: 4px;
+}
+
+.record-dialog .file-dropzone svg {
+  width: 20px;
+  height: 20px;
+}
+
+.record-dialog .file-dropzone-text {
+  font-size: 12px;
+}
+
+.record-dialog textarea {
+  min-height: 50px;
+  padding: 8px 10px;
 }
 
 .field-label textarea {
@@ -2178,6 +2219,7 @@ textarea:focus {
   text-align: left;
   transition: border-color var(--transition), background var(--transition);
   cursor: pointer;
+  overflow: hidden;
 }
 
 .peak-list-item:hover {
@@ -2212,6 +2254,8 @@ textarea:focus {
 
 .peak-list-item .item-info {
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
   text-align: left;
 }
 
@@ -2282,6 +2326,63 @@ textarea:focus {
   transform: scale(1);
   pointer-events: auto;
   transition: opacity 0.2s ease-out, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Ticker / Marquee for overflowing experience titles */
+.marquee-text-container {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  position: relative;
+}
+
+.peak-list-item .item-name.marquee-text-container {
+  display: block;
+  -webkit-line-clamp: unset;
+  -webkit-box-orient: unset;
+}
+
+.marquee-text-track {
+  display: inline-block;
+  white-space: nowrap;
+  will-change: transform;
+}
+
+/* When overflowing and not animated, truncate with ellipsis */
+.marquee-text-track.is-overflowing:not(.is-active) {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* When active or hovered on the card item, expand track and animate */
+.marquee-text-track.is-overflowing.is-active,
+.peak-list-item:hover .marquee-text-track.is-overflowing {
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
+  animation: marquee-scroll var(--marquee-duration, 6s) ease-in-out infinite;
+}
+
+@keyframes marquee-scroll {
+  0%, 15% {
+    transform: translateX(0);
+  }
+  45%, 65% {
+    transform: translateX(var(--marquee-dist, 0px));
+  }
+  95%, 100% {
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-text-track.is-overflowing.is-active,
+  .peak-list-item:hover .marquee-text-track.is-overflowing {
+    animation: none !important;
+    transform: none !important;
+  }
 }
 
 .list-filter-pill {
