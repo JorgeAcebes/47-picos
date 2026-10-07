@@ -68,7 +68,16 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
                   window.location.replace('https://atlas-log.vercel.app' + window.location.pathname + window.location.search + window.location.hash);
                 } else if ('serviceWorker' in navigator) {
                   window.addEventListener('load', function() {
-                    navigator.serviceWorker.register('/sw.js');
+                    navigator.serviceWorker.register('/sw.js').then(function(reg) {
+                      reg.update();
+                    });
+                  });
+                  var refreshing = false;
+                  navigator.serviceWorker.addEventListener('controllerchange', function() {
+                    if (!refreshing) {
+                      refreshing = true;
+                      window.location.reload();
+                    }
                   });
                 }
               }

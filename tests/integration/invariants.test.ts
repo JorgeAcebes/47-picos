@@ -440,6 +440,13 @@ describe("Project Critical Invariants (No Regressions)", () => {
       expect(content).toContain("if (experiencesMode) setExperiencesMode(false)");
       expect(content).toContain("if (regionsMode) setRegionsMode(false)");
     });
+
+    it("Invariant 11.4: globals.css must style mountain-art with 160px for both countries and experiences modes", () => {
+      const globalsCssPath = path.join(rootDir, "app/globals.css");
+      const content = fs.readFileSync(globalsCssPath, "utf-8");
+
+      expect(content).toMatch(/\.mode-countries\s+\.mountain-art,\s*\r?\n\s*\.mode-experiences\s+\.mountain-art\s*\{[^}]*font-size:\s*160px;/);
+    });
   });
 });
 

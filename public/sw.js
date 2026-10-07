@@ -1,8 +1,8 @@
-const CACHE_NAME = 'atlas-cache-v2';
+const CACHE_NAME = 'atlas-cache-v3';
 
 // Recursos estáticos iniciales a cachear durante instalación (Stale-While-Revalidate)
+// NO precacheamos '/' para que el HTML nunca quede congelado
 const PRECACHE_URLS = [
-  '/',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',

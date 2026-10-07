@@ -2831,9 +2831,13 @@ textarea:focus {
   border-left-color: #b8a5d0;
 }
 
+.mode-countries .mountain-art,
+.mode-experiences .mountain-art {
+  font-size: 160px;
+}
+
 .mode-countries .mountain-art {
   color: #d0c4e0;
-  font-size: 160px;
 }
 
 .mode-countries .progress span {
