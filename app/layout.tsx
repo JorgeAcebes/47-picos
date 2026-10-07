@@ -50,22 +50,29 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
           dangerouslySetInnerHTML={{
             __html: `
               if (typeof window !== 'undefined') {
+                var isStandalone = window.matchMedia('(display-mode: standalone)').matches || ('standalone' in navigator && navigator.standalone);
+
                 if (window.location.hostname === '196-paises.vercel.app') {
-                  if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                      for (var i = 0; i < registrations.length; i++) {
-                        registrations[i].unregister();
-                      }
-                    });
+                  if (isStandalone) {
+                    // Si el usuario lo tiene instalado como PWA, permanece en este origen para evitar la barra verde "fuera de alcance"
+                    if ('serviceWorker' in navigator) {
+                      window.addEventListener('load', function() {
+                        navigator.serviceWorker.register('/sw.js').then(function(reg) {
+                          reg.update();
+                        });
+                      });
+                      var refreshingStandalone = false;
+                      navigator.serviceWorker.addEventListener('controllerchange', function() {
+                        if (!refreshingStandalone) {
+                          refreshingStandalone = true;
+                          window.location.reload();
+                        }
+                      });
+                    }
+                  } else {
+                    // Si entra desde navegador web normal, redirige limpiamente al nuevo dominio
+                    window.location.replace('https://atlas-log.vercel.app' + window.location.pathname + window.location.search + window.location.hash);
                   }
-                  if ('caches' in window) {
-                    caches.keys().then(function(names) {
-                      for (var i = 0; i < names.length; i++) {
-                        caches.delete(names[i]);
-                      }
-                    });
-                  }
-                  window.location.replace('https://atlas-log.vercel.app' + window.location.pathname + window.location.search + window.location.hash);
                 } else if ('serviceWorker' in navigator) {
                   window.addEventListener('load', function() {
                     navigator.serviceWorker.register('/sw.js').then(function(reg) {
