@@ -6,14 +6,14 @@ Aplicación web social y cartográfica para registrar el recorrido por los 196 p
 
 ## Características Principales
 
-- 🗺️ **Cartografía Interactiva**: Mapas mundiales y de España con renderizado fluido mediante Leaflet y capas vectoriales TopoJSON/GeoJSON optimizadas.
-- 🏔️ **Techos Provinciales de España**: Seguimiento detallado de las 52 demarcaciones provinciales y sus 47 cumbres físicas únicas.
-- 🌍 **196 Países del Mundo**: Marcado visual de territorios visitados, estadísticas de progreso y división por regiones.
-- ✨ **Experiencias y Aventuras**: Registro de hitos y retos temáticos con seguimiento de sub-ítems.
-- 📸 **Fotografías y Recuerdos**: Subida múltiple y compresión optimizada en cliente de fotografías para cada actividad.
-- 👥 **Capa Social y Feed**: Publicación en tiempo real de ascensiones, países y experiencias con enlaces a rutas (Strava, Wikiloc, etc.) y notas de viaje.
-- 🏆 **Rankings**: Tablas de clasificación globales y de usuarios seguidos, tanto para cumbres como para países.
-- 📱 **Soporte PWA**: Instalable directamente en dispositivos móviles como aplicación web progresiva.
+- **Cartografía Interactiva**: Mapas mundiales y de España con renderizado fluido mediante Leaflet y capas vectoriales TopoJSON/GeoJSON optimizadas.
+- **Techos Provinciales de España**: Seguimiento detallado de las 52 demarcaciones provinciales y sus 47 cumbres físicas únicas.
+- **196 Países del Mundo**: Marcado visual de territorios visitados, estadísticas de progreso y división por regiones.
+- **Experiencias y Aventuras**: Registro de hitos y retos temáticos con seguimiento de sub-ítems.
+- **Fotografías y Recuerdos**: Subida múltiple y compresión optimizada en cliente de fotografías para cada actividad.
+- **Capa Social y Feed**: Publicación en tiempo real de ascensiones, países y experiencias con enlaces a rutas (Strava, Wikiloc, etc.) y notas de viaje.
+- **Rankings**: Tablas de clasificación globales y de usuarios seguidos, tanto para cumbres como para países.
+- **Soporte PWA**: Instalable directamente en dispositivos móviles como aplicación web progresiva.
 
 ---
 
