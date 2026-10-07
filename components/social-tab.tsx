@@ -500,7 +500,7 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
   return (
     <main>
       <header className="topbar">
-        <Link className="brand" href={mapLink}>
+        <Link className="brand" href={mapLink} title="Atlas" aria-label="Atlas">
           <IconLogo className="brand-icon" style={{ filter: 'brightness(0)' }} />
         </Link>
         <nav>
@@ -719,8 +719,8 @@ export function SocialTab({ onNavigate, isActive = true }: { onNavigate?: (tab: 
                       try {
                         if (navigator.share) {
                           await navigator.share({
-                            title: '196 Países',
-                            text: '¡Únete a 196 Países y registra cada uno de los países que visitas!',
+                            title: 'Atlas',
+                            text: '¡Únete a Atlas y registra tus viajes y ascensiones!',
                             url: window.location.origin
                           });
                         } else {

@@ -239,7 +239,7 @@ export function AuthDialog({ onClose, initialTab = "register" }: { onClose: () =
         className="auth-dialog"
         role="dialog"
         aria-modal="true"
-        aria-label="Acceso a 47 Picos"
+        aria-label="Acceso a Atlas"
         style={{ overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" }}
       >
         <button className="icon-button" aria-label="Cerrar" onClick={onClose}>

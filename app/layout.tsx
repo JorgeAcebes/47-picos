@@ -3,13 +3,13 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 
 export const metadata: Metadata = {
-  title: "196 Países · Márcalo en tu mapa",
-  description: "Registra cada país del mundo que has visitado.",
+  title: "Atlas · Márcalo en tu mapa",
+  description: "Registra cada país del mundo que has visitado, los techos provinciales y tus aventuras.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "196 Países",
+    title: "Atlas",
   },
 };
 

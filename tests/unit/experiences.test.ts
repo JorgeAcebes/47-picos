@@ -45,4 +45,76 @@ describe("Predefined Experiences Dataset Integrity", () => {
       }
     }
   });
+
+  it("should ensure all predefined experience IDs start with 'exp-' prefix", () => {
+    for (const cat of predefinedCategories) {
+      for (const exp of cat.experiences) {
+        expect(exp.id.startsWith("exp-")).toBe(true);
+      }
+    }
+  });
 });
+
+describe("Experience Modification Safety & Action Buttons Invariants", () => {
+  it("should guard summit-tracker.tsx so only custom experiences can show the edit button", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const trackerContent = fs.readFileSync(
+      path.resolve(__dirname, "../../components/summit-tracker.tsx"),
+      "utf-8"
+    );
+
+    // Edit button must be conditioned on isCustomExp
+    expect(trackerContent).toMatch(
+      /\{isCustomExp\s*&&\s*\(\s*<button[\s\S]*?title="Editar experiencia"/
+    );
+
+    // Guard in handleSaveCustomExperience against predefined experiences starting with exp-
+    expect(trackerContent).toMatch(
+      /if\s*\(\s*typeof\s+editingCustomExp\.id\s*===\s*"string"\s*&&\s*editingCustomExp\.id\.startsWith\("exp-"\)\s*\)/
+    );
+  });
+
+  it("should enforce 22px dimensions and 14px icons for experience action buttons", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const trackerContent = fs.readFileSync(
+      path.resolve(__dirname, "../../components/summit-tracker.tsx"),
+      "utf-8"
+    );
+
+    // Buttons should have width and height 22px
+    expect(trackerContent).toContain('width: "22px"');
+    expect(trackerContent).toContain('height: "22px"');
+
+    // SVGs should have width and height 14px
+    expect(trackerContent).toContain('width: 14, height: 14');
+    expect(trackerContent).toContain('width="14"');
+    expect(trackerContent).toContain('height="14"');
+  });
+
+  it("should include MarqueeText and overflow containment to prevent card blowout", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const trackerContent = fs.readFileSync(
+      path.resolve(__dirname, "../../components/summit-tracker.tsx"),
+      "utf-8"
+    );
+    const globalsCss = fs.readFileSync(
+      path.resolve(__dirname, "../../app/globals.css"),
+      "utf-8"
+    );
+
+    // Tracker uses MarqueeText for experience details and titles
+    expect(trackerContent).toContain("<MarqueeText");
+    expect(trackerContent).toContain("paddingRight:");
+    expect(trackerContent).toMatch(/isCustomExp\s*\?\s*"64px"\s*:\s*"38px"/);
+
+    // globals.css defines marquee keyframes and container overflow: hidden
+    expect(globalsCss).toContain(".marquee-text-container");
+    expect(globalsCss).toContain("@keyframes marquee-scroll");
+    expect(globalsCss).toContain(".peak-list-item .item-info");
+    expect(globalsCss).toMatch(/\.peak-list-item\s*\{[^}]*overflow:\s*hidden/);
+  });
+});
+
