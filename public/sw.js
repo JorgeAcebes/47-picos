@@ -1,4 +1,4 @@
-const CACHE_NAME = '52-picos-cache-v1';
+const CACHE_NAME = 'atlas-cache-v2';
 
 // Recursos estáticos iniciales a cachear durante instalación (Stale-While-Revalidate)
 const PRECACHE_URLS = [
