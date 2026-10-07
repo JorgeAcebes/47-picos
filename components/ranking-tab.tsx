@@ -231,7 +231,7 @@ export function RankingTab({
     <main className={`ranking-theme ${mode === "countries" ? "mode-countries" : ""}`} style={{ backgroundColor: "var(--bg-color)" }}>
       {/* ── Standard Topbar ────────────────── */}
       <header className="topbar">
-        <Link className="brand" href={mapLink}>
+        <Link className="brand" href={mapLink} title="Atlas" aria-label="Atlas">
           <IconLogo className="brand-icon" style={{ filter: 'brightness(0)' }} />
         </Link>
         <nav>

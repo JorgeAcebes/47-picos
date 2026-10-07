@@ -1,5 +1,5 @@
 /* ───────────────────────────────────────────
-   52 Picos · Hoja de estilos principal
+   Atlas · Hoja de estilos principal
    Paleta: verde bosque / crema / arena
    Tipografías: Playfair Display · DM Sans · DM Mono
    ─────────────────────────────────────────── */
@@ -2082,6 +2082,20 @@ textarea:focus {
   inset: 0;
   opacity: 0;
   cursor: pointer;
+}
+
+.file-dropzone.file-dropzone--disabled,
+.file-dropzone:has(input:disabled) {
+  opacity: 0.45 !important;
+  cursor: not-allowed !important;
+  border-color: var(--muted) !important;
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+
+.file-dropzone.file-dropzone--disabled input[type="file"],
+.file-dropzone:has(input:disabled) input[type="file"] {
+  cursor: not-allowed !important;
+  pointer-events: none;
 }
 
 .show-on-mobile {

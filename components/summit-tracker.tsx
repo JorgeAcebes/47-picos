@@ -789,6 +789,9 @@ export function SummitTracker({
   const [selectedPhotosForEdit, setSelectedPhotosForEdit] = useState<string[]>(
     [],
   );
+  const [deletedRecordPhotoIds, setDeletedRecordPhotoIds] = useState<string[]>(
+    [],
+  );
 
   // Experience features
   const [experienceRecords, setExperienceRecords] = useState<ExperienceRecord[]>(
@@ -1219,9 +1222,7 @@ export function SummitTracker({
   );
 
   const totalCount = isPeaks ? 47 : allItems.length;
-  const modeLabel = isPeaks ? "47 PICOS" : "196 PAÍSES";
-  const modeLabelShort = isPeaks ? "47" : "196";
-  const modeLabelBold = isPeaks ? "PICOS" : "PAÍSES";
+  const appBrandName = "Atlas";
   const modeUnit = isPeaks
     ? "cimas conquistadas"
     : isExp
@@ -1939,12 +1940,21 @@ export function SummitTracker({
     const nextFiles = Array.from(event.target.files ?? []);
     if (!supabase || !session || !selected) return;
 
+    const expectedSummitId = ascent.sub_item_id
+      ? `${selected.id}::${ascent.sub_item_id}`
+      : selected.id;
+
     const existingPhotos = selectedPhotos.filter(
-      (p) => p.taken_on === ascent.achieved_on,
+      (p) =>
+        p.taken_on === ascent.achieved_on &&
+        (p.summit_id === expectedSummitId || p.summit_id === selected.id),
     );
     if (existingPhotos.length + nextFiles.length > 4) {
+      const remainingSlots = Math.max(0, 4 - existingPhotos.length);
       setNotice(
-        `Máximo 4 fotos por registro. Ya tienes ${existingPhotos.length} en este registro.`,
+        remainingSlots > 0
+          ? `Máximo 4 fotos por registro. Solo puedes añadir ${remainingSlots} foto${remainingSlots !== 1 ? "s" : ""} más (ya tienes ${existingPhotos.length}).`
+          : `Máximo 4 fotos por registro. Ya has alcanzado el límite de 4 fotos.`,
       );
       event.target.value = "";
       return;
@@ -1959,11 +1969,14 @@ export function SummitTracker({
       }
     }
 
+    const remainingSlots = Math.max(0, 4 - existingPhotos.length);
+    const filesToUpload = nextFiles.slice(0, remainingSlots);
+
     setSaving(true);
     setNotice("Subiendo fotos...");
 
     const uploaded: SummitPhoto[] = [];
-    for (const file of nextFiles) {
+    for (const file of filesToUpload) {
       if (!file.type.startsWith("image/")) continue;
       const compressedBlob = await compressImage(file);
       const path = `${session.user.id}/${selected.id}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
@@ -2270,6 +2283,7 @@ export function SummitTracker({
         setLinkName2("");
         setShowSecondLink(false);
         setFiles([]);
+        setDeletedRecordPhotoIds([]);
       } else {
         setSelected(item);
         if (ascentToEdit) {
@@ -2329,6 +2343,7 @@ export function SummitTracker({
           // locationName is already set by handleMapClickForExp if coming from there
         }
         setFiles([]);
+        setDeletedRecordPhotoIds([]);
       }
       setNotice("");
     },
@@ -2349,6 +2364,48 @@ export function SummitTracker({
     [openRecord],
   );
 
+  const currentRecordSummitId = selected
+    ? selected.sub_item_id
+      ? `${selected.id}::${selected.sub_item_id}`
+      : selected.id
+    : "";
+
+  const currentRecordDate = isDateUnknown
+    ? "1900-01-01"
+    : (climbDate?.toISOString().slice(0, 10) ?? new Date().toISOString().slice(0, 10));
+
+  const existingRecordPhotos = useMemo(() => {
+    if (!selected) return [];
+    return photos.filter((p) => {
+      const matchesSummit =
+        p.summit_id === currentRecordSummitId ||
+        (!selected.sub_item_id && p.summit_id === selected.id) ||
+        (selected.itemType === 'experience' && selected.sub_item_id && (p.summit_id === currentRecordSummitId || p.summit_id === selected.id));
+      if (!matchesSummit) return false;
+      if (deletedRecordPhotoIds.includes(p.id)) return false;
+
+      if (originalAchievedOn) {
+        if (p.taken_on === originalAchievedOn) return true;
+        if (currentRecordDate && currentRecordDate !== originalAchievedOn && p.taken_on === currentRecordDate) {
+          return true;
+        }
+        return false;
+      }
+
+      return p.taken_on === currentRecordDate;
+    });
+  }, [photos, selected, currentRecordSummitId, deletedRecordPhotoIds, originalAchievedOn, currentRecordDate]);
+
+  const galleryPhotosToAdd = useMemo(() => {
+    return selectedPhotosForEdit
+      .map((id) => photos.find((p) => p.id === id))
+      .filter((p): p is SummitPhoto => !!p && !existingRecordPhotos.some((ep) => ep.id === p.id));
+  }, [selectedPhotosForEdit, photos, existingRecordPhotos]);
+
+  const totalModalPhotos =
+    existingRecordPhotos.length + galleryPhotosToAdd.length + files.length;
+  const isPhotoLimitReached = totalModalPhotos >= 4;
+
   function onFilesChanged(event: ChangeEvent<HTMLInputElement>) {
     const nextFiles = Array.from(event.target.files ?? []);
 
@@ -2361,15 +2418,28 @@ export function SummitTracker({
       }
     }
 
-    if (files.length + selectedPhotosForEdit.length + nextFiles.length > 4) {
-      setNotice(`Máximo 4 fotos por registro. Selecciona menos imágenes.`);
+    const currentTotal =
+      existingRecordPhotos.length +
+      galleryPhotosToAdd.length +
+      files.length;
+
+    if (currentTotal + nextFiles.length > 4) {
+      const remainingSlots = Math.max(0, 4 - currentTotal);
+      setNotice(
+        remainingSlots > 0
+          ? `Máximo 4 fotos por registro. Solo puedes añadir ${remainingSlots} foto${remainingSlots !== 1 ? "s" : ""} más.`
+          : `Máximo 4 fotos por registro. Ya has alcanzado el límite de 4 fotos.`,
+      );
       event.target.value = "";
       return;
     }
 
-    setFiles((prev) => [...prev, ...nextFiles]);
-    if (!isDateUnknown && !isDateModified && nextFiles[0]?.lastModified) {
-      setClimbDate(new Date(nextFiles[0].lastModified));
+    const remainingSlots = Math.max(0, 4 - currentTotal);
+    const filesToAdd = nextFiles.slice(0, remainingSlots);
+
+    setFiles((prev) => [...prev, ...filesToAdd]);
+    if (!isDateUnknown && !isDateModified && filesToAdd[0]?.lastModified) {
+      setClimbDate(new Date(filesToAdd[0].lastModified));
     }
   }
 
@@ -2484,7 +2554,8 @@ export function SummitTracker({
         });
       setPhotos((prev) =>
         prev.map((p) =>
-          p.summit_id === expectedSummitId && p.taken_on === originalAchievedOn
+          (p.summit_id === expectedSummitId || p.summit_id === selected.id) &&
+          p.taken_on === originalAchievedOn
             ? { ...p, taken_on: finalDate }
             : p,
         ),
@@ -2574,8 +2645,47 @@ export function SummitTracker({
       setSaving(false);
       return;
     }
+
+    const totalCountToSave =
+      existingRecordPhotos.length +
+      galleryPhotosToAdd.length +
+      files.length;
+    if (totalCountToSave > 4) {
+      setNotice(
+        `No puede haber más de 4 fotos en un registro (actualmente hay ${totalCountToSave}). Elimina fotos antes de guardar.`,
+      );
+      setSaving(false);
+      return;
+    }
+
+    if (deletedRecordPhotoIds.length > 0) {
+      const toDelete = photos.filter((p) =>
+        deletedRecordPhotoIds.includes(p.id),
+      );
+      const storagePaths = toDelete
+        .map((p) => p.storage_path)
+        .filter(Boolean);
+      if (storagePaths.length > 0) {
+        await supabase.storage.from("summit-photos").remove(storagePaths);
+      }
+      await supabase
+        .from("summit_photos")
+        .delete()
+        .in("id", deletedRecordPhotoIds)
+        .eq("user_id", session.user.id);
+      setPhotos((prev) =>
+        prev.filter((p) => !deletedRecordPhotoIds.includes(p.id)),
+      );
+      setDeletedRecordPhotoIds([]);
+    }
+
+    const availableSlots = Math.max(
+      0,
+      4 - (existingRecordPhotos.length + galleryPhotosToAdd.length),
+    );
+    const filesToUpload = files.slice(0, availableSlots);
     const uploaded: SummitPhoto[] = [];
-    for (const file of files) {
+    for (const file of filesToUpload) {
       if (!file.type.startsWith("image/")) continue;
       const compressedBlob = await compressImage(file);
       const path = `${session.user.id}/${selected.id}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
@@ -2643,22 +2753,29 @@ export function SummitTracker({
     }
 
     if (uploaded.length) setPhotos((previous) => [...uploaded, ...previous]);
-    if (selectedPhotosForEdit.length > 0) {
+    if (galleryPhotosToAdd.length > 0) {
+      const galleryIds = galleryPhotosToAdd.map((p) => p.id);
       await supabase
         .from("summit_photos")
-        .update({ taken_on: finalDate })
-        .in("id", selectedPhotosForEdit)
+        .update({
+          taken_on: finalDate,
+          summit_id: expectedSummitId,
+        })
+        .in("id", galleryIds)
         .eq("user_id", session.user.id);
       setPhotos((prev) =>
         prev.map((p) =>
-          selectedPhotosForEdit.includes(p.id)
-            ? { ...p, taken_on: finalDate }
+          galleryIds.includes(p.id)
+            ? { ...p, taken_on: finalDate, summit_id: expectedSummitId }
             : p,
         ),
       );
-      setSelectedPhotosForEdit([]);
+      setSelectedPhotosForEdit((prev) =>
+        prev.filter((id) => !galleryIds.includes(id)),
+      );
     }
     setFiles([]);
+    setDeletedRecordPhotoIds([]);
     setSaving(false);
     setRecordOpen(false);
     const isEdit = isExperience ? !!editingExpRecordId : !!originalAchievedOn;
@@ -3230,13 +3347,21 @@ export function SummitTracker({
   }
 
   async function handleAssignPhotosToRecord(targetDate: string) {
-    if (!session || selectedPhotosForEdit.length === 0) return;
+    if (!session || selectedPhotosForEdit.length === 0 || !selected) return;
+
+    const expectedSummitId = selected.sub_item_id
+      ? `${selected.id}::${selected.sub_item_id}`
+      : selected.id;
 
     const existingPhotosCount = photos.filter(
-      (p) => p.summit_id === selected?.id && p.taken_on === targetDate,
+      (p) =>
+        (p.summit_id === expectedSummitId || p.summit_id === selected?.id) &&
+        p.taken_on === targetDate,
     ).length;
     if (existingPhotosCount + selectedPhotosForEdit.length > 4) {
-      setNotice("No puede haber más de 4 fotos en total en un solo registro.");
+      setNotice(
+        `No puede haber más de 4 fotos en total en un solo registro (este registro ya tiene ${existingPhotosCount}).`,
+      );
       setTimeout(() => setNotice(""), 4000);
       return;
     }
@@ -3246,7 +3371,7 @@ export function SummitTracker({
 
     const { error } = await supabase!
       .from("summit_photos")
-      .update({ taken_on: targetDate })
+      .update({ taken_on: targetDate, summit_id: expectedSummitId })
       .in("id", selectedPhotosForEdit)
       .eq("user_id", session.user.id);
 
@@ -3256,7 +3381,7 @@ export function SummitTracker({
       setPhotos((prev) =>
         prev.map((p) =>
           selectedPhotosForEdit.includes(p.id)
-            ? { ...p, taken_on: targetDate }
+            ? { ...p, taken_on: targetDate, summit_id: expectedSummitId }
             : p,
         ),
       );
@@ -3269,6 +3394,17 @@ export function SummitTracker({
 
   async function handleChangeDate() {
     if (!lightboxPhoto || !lightboxNewDate || !supabase || !session) return;
+    const targetPhotosCount = photos.filter(
+      (p) =>
+        p.summit_id === lightboxPhoto.summit_id &&
+        p.taken_on === lightboxNewDate &&
+        p.id !== lightboxPhoto.id,
+    ).length;
+    if (targetPhotosCount >= 4) {
+      setNotice("La fecha seleccionada ya tiene el máximo de 4 fotos.");
+      setTimeout(() => setNotice(""), 4000);
+      return;
+    }
     setSaving(true);
     const { error } = await supabase
       .from("summit_photos")
@@ -3370,6 +3506,8 @@ export function SummitTracker({
     setPanelIdToOpen(null);
     setEditingExpRecordId(null);
     setSelectedLatLng(null);
+    setFiles([]);
+    setDeletedRecordPhotoIds([]);
     panelPushedRef.current = false;
     recordOpenedFromPanelRef.current = false;
     if (window.location.hash) {
@@ -3382,6 +3520,8 @@ export function SummitTracker({
   }, []);
 
   const handleCloseRecord = useCallback(() => {
+    setFiles([]);
+    setDeletedRecordPhotoIds([]);
     if (recordOpenedFromPanelRef.current) {
       setRecordOpen(false);
     } else {
@@ -3751,7 +3891,7 @@ export function SummitTracker({
           >
             <IconLogo className="brand-icon" />
             <span>
-              {modeLabelShort} <b>{modeLabelBold}</b>
+              <b>{appBrandName}</b>
             </span>
           </Link>
         ) : (
@@ -3767,7 +3907,7 @@ export function SummitTracker({
           >
             <IconLogo className="brand-icon" />
             <span>
-              {modeLabelShort} <b>{modeLabelBold}</b>
+              <b>{appBrandName}</b>
             </span>
           </a>
         )}
@@ -4788,7 +4928,7 @@ export function SummitTracker({
       <footer className="site-footer">
         <div className="footer-top">
           <div className="footer-left">
-            {isPeaks ? "47 Picos" : "196 Países"} · Datos{" "}
+            Atlas · Datos{" "}
             {isPeaks ? "de altitudes según " : "según "}
             <a
               href={
@@ -5817,10 +5957,15 @@ export function SummitTracker({
                 {selected.title}
               </h2>
             </div>
-            <p>
-              {((selected as any)?.itemType === 'experience') ? selected.subtitle
-                : `${selected.label} · ${selected.subtitle}`}
-            </p>
+            {((selected as any)?.itemType === 'experience') ? (
+              selected.subtitle ? <p>{selected.subtitle}</p> : null
+            ) : countries.some((c) => c.id === selected.id) ? null : (
+              <p>
+                {selected.subtitle
+                  ? `${selected.label} · ${selected.subtitle}`
+                  : selected.label}
+              </p>
+            )}
             {(((selected as any)?.itemType === 'experience')) && (
               <div style={{ marginBottom: 16, zIndex: 50 }}>
                 <div style={{ marginBottom: 8 }}>
@@ -6133,24 +6278,66 @@ export function SummitTracker({
 
             <div className="field-label" style={{ marginBottom: 13 }}>
               <span>Añadir fotos</span>
-              <label className="file-dropzone">
+              <label
+                className={`file-dropzone ${isPhotoLimitReached ? "file-dropzone--disabled" : ""}`}
+                style={
+                  isPhotoLimitReached
+                    ? {
+                        opacity: 0.45,
+                        cursor: "not-allowed",
+                        borderColor: "var(--muted)",
+                        background: "rgba(0, 0, 0, 0.04)",
+                      }
+                    : undefined
+                }
+                title={
+                  isPhotoLimitReached
+                    ? "Máximo 4 fotos por registro. Ya has alcanzado el límite."
+                    : undefined
+                }
+                onClick={(e) => {
+                  if (isPhotoLimitReached) {
+                    e.preventDefault();
+                  }
+                }}
+                onDragOver={(e) => {
+                  if (isPhotoLimitReached) {
+                    e.preventDefault();
+                  }
+                }}
+                onDrop={(e) => {
+                  if (isPhotoLimitReached) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }
+                }}
+              >
                 <IconCamera />
                 <span className="file-dropzone-text">
                   <span className="hide-on-mobile">
-                    Sube o arrastra tus fotos aquí
+                    {isPhotoLimitReached
+                      ? "Límite alcanzado (máx. 4 fotos)"
+                      : "Sube o arrastra tus fotos aquí"}
                   </span>
-                  <span className="show-on-mobile">Sube tus fotos aquí</span>
+                  <span className="show-on-mobile">
+                    {isPhotoLimitReached
+                      ? "Máx. 4 fotos alcanzado"
+                      : "Sube tus fotos aquí"}
+                  </span>
                 </span>
                 <input
                   type="file"
                   accept="image/*"
                   multiple
                   onChange={onFilesChanged}
+                  disabled={isPhotoLimitReached}
                 />
               </label>
             </div>
 
-            {(files.length > 0 || selectedPhotosForEdit.length > 0) && (
+            {(existingRecordPhotos.length > 0 ||
+              files.length > 0 ||
+              galleryPhotosToAdd.length > 0) && (
               <div
                 style={{
                   marginTop: "12px",
@@ -6160,6 +6347,50 @@ export function SummitTracker({
                   paddingBottom: "8px",
                 }}
               >
+                {existingRecordPhotos.map((photo) => (
+                  <div
+                    key={`existing-${photo.id}`}
+                    style={{ position: "relative", display: "inline-block" }}
+                  >
+                    <img
+                      src={photo.public_url}
+                      alt="preview guardada"
+                      style={{
+                        width: "48px",
+                        height: "48px",
+                        objectFit: "cover",
+                        borderRadius: "4px",
+                        border: "1px solid var(--border)",
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDeletedRecordPhotoIds((prev) => [...prev, photo.id])
+                      }
+                      title="Quitar foto del registro"
+                      style={{
+                        position: "absolute",
+                        top: "2px",
+                        right: "2px",
+                        background: "#e74c3c",
+                        color: "white",
+                        width: "16px",
+                        height: "16px",
+                        borderRadius: "50%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        border: "none",
+                        cursor: "pointer",
+                        padding: 0,
+                        zIndex: 10,
+                      }}
+                    >
+                      <IconClose style={{ width: 10, height: 10 }} />
+                    </button>
+                  </div>
+                ))}
                 {Array.from(files).map((file, i) => (
                   <div
                     key={`local-${i}`}
@@ -6177,6 +6408,7 @@ export function SummitTracker({
                       }}
                     />
                     <button
+                      type="button"
                       onClick={() =>
                         setFiles((prev) => prev.filter((_, idx) => idx !== i))
                       }
@@ -6199,98 +6431,74 @@ export function SummitTracker({
                         zIndex: 10,
                       }}
                     >
-                      <svg
-                        width="10"
-                        height="10"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
+                      <IconClose style={{ width: 10, height: 10 }} />
                     </button>
                   </div>
                 ))}
-                {selectedPhotosForEdit.map((id) => {
-                  const p = photos.find((x) => x.id === id);
-                  return p ? (
-                    <div
-                      key={id}
-                      style={{ position: "relative", display: "inline-block" }}
+                {galleryPhotosToAdd.map((p) => (
+                  <div
+                    key={`gallery-${p.id}`}
+                    style={{ position: "relative", display: "inline-block" }}
+                  >
+                    <img
+                      src={p.public_url}
+                      alt="preview galeria"
+                      style={{
+                        width: "48px",
+                        height: "48px",
+                        objectFit: "cover",
+                        borderRadius: "4px",
+                        border: "1px solid var(--border)",
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedPhotosForEdit((prev) =>
+                          prev.filter((x) => x !== p.id),
+                        )
+                      }
+                      title="Quitar imagen"
+                      style={{
+                        position: "absolute",
+                        top: "2px",
+                        right: "2px",
+                        background: "#e74c3c",
+                        color: "white",
+                        width: "16px",
+                        height: "16px",
+                        borderRadius: "50%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        border: "none",
+                        cursor: "pointer",
+                        padding: 0,
+                        zIndex: 10,
+                      }}
                     >
-                      <img
-                        src={p.public_url}
-                        alt="preview galeria"
-                        style={{
-                          width: "48px",
-                          height: "48px",
-                          objectFit: "cover",
-                          borderRadius: "4px",
-                          border: "1px solid var(--border)",
-                        }}
-                      />
-                      <button
-                        onClick={() =>
-                          setSelectedPhotosForEdit((prev) =>
-                            prev.filter((x) => x !== id),
-                          )
-                        }
-                        title="Quitar imagen"
-                        style={{
-                          position: "absolute",
-                          top: "2px",
-                          right: "2px",
-                          background: "#e74c3c",
-                          color: "white",
-                          width: "16px",
-                          height: "16px",
-                          borderRadius: "50%",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          border: "none",
-                          cursor: "pointer",
-                          padding: 0,
-                          zIndex: 10,
-                        }}
-                      >
-                        <svg
-                          width="10"
-                          height="10"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="3"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <line x1="18" y1="6" x2="6" y2="18"></line>
-                          <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                      </button>
-                    </div>
-                  ) : null;
-                })}
+                      <IconClose style={{ width: 10, height: 10 }} />
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
-            {(files.length > 0 || selectedPhotosForEdit.length > 0) && (
+            {totalModalPhotos > 0 && (
               <p
                 className="file-count"
                 style={{
                   marginTop: "4px",
-                  color: "var(--sage)",
+                  color: isPhotoLimitReached ? "var(--muted)" : "var(--sage)",
                   fontSize: "12px",
                 }}
               >
-                {files.length + selectedPhotosForEdit.length} foto
-                {files.length + selectedPhotosForEdit.length !== 1 ? "s" : ""}{" "}
-                preparada
-                {files.length + selectedPhotosForEdit.length !== 1 ? "s" : ""}{" "}
-                para adjuntar.
+                {totalModalPhotos} / 4 fotos en este registro
+                {files.length > 0 || galleryPhotosToAdd.length > 0
+                  ? ` (${files.length + galleryPhotosToAdd.length} nueva${
+                      files.length + galleryPhotosToAdd.length !== 1 ? "s" : ""
+                    } por guardar)`
+                  : ""}
+                .
               </p>
             )}
 
@@ -6391,9 +6599,6 @@ export function SummitTracker({
                   gridTemplateColumns: "1fr 1fr",
                   gap: "12px",
                   marginBottom: 16,
-                  paddingTop: 8,
-                  marginTop: -4,
-                  borderTop: "1px dashed rgba(35, 78, 82, 0.15)",
                 }}
               >
                 <label className="field-label">

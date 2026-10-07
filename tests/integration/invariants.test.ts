@@ -240,6 +240,19 @@ describe("Project Critical Invariants (No Regressions)", () => {
       expect(feedContent).toMatch(/strava\.com[\s\S]*?Icon\s*=\s*Footprints/);
       expect(feedContent).toMatch(/wikiloc\.com[\s\S]*?Icon\s*=\s*Footprints/);
     });
+
+    it("Invariant 7.5: Country record dialog must omit continent, dropzone must disable on 4 photos, and second link container must omit dashed border", () => {
+      const trackerPath = path.join(rootDir, "components/summit-tracker.tsx");
+      const trackerContent = fs.readFileSync(trackerPath, "utf-8");
+      expect(trackerContent).toMatch(/countries\.some\(\(c\)\s*=>\s*c\.id\s*===\s*selected\.id\)\s*\?\s*null\s*:/);
+      expect(trackerContent).toContain("isPhotoLimitReached");
+      expect(trackerContent).toContain("file-dropzone--disabled");
+      expect(trackerContent).not.toMatch(/borderTop:\s*"1px dashed/);
+
+      const globalsCssPath = path.join(rootDir, "app/globals.css");
+      const globalsCss = fs.readFileSync(globalsCssPath, "utf-8");
+      expect(globalsCss).toContain(".file-dropzone--disabled");
+    });
   });
 
   describe("Test Profile Stealth & Isolation Invariants", () => {

@@ -135,7 +135,7 @@ export function InstallPrompt() {
         </div>
 
         {/* Title */}
-        <h3 className="install-prompt-title">196 Países</h3>
+        <h3 className="install-prompt-title">Atlas</h3>
         <p className="install-prompt-subtitle">
           {isApple
             ? "Añade esta app a tu pantalla de inicio para una mejor experiencia."

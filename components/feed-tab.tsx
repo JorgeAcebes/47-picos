@@ -326,7 +326,7 @@ function FeedItemCard({ item, session: _session, onAuthRequired: _onAuthRequired
     const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
     const shareUrl = username && recordId ? `${baseUrl}${recordUrlWithHash}` : `${baseUrl}/social`;
 
-    const shareTitle = `${displayTitle} · ${username || '47 Picos'}`;
+    const shareTitle = `${displayTitle} · ${username || 'Atlas'}`;
     let shareText = `${username ? `@${username}` : 'Usuario'} ${title}: ${displayTitle}`;
     if (dateRangeStr) {
       shareText += ` (${dateRangeStr})`;

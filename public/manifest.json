@@ -1,6 +1,6 @@
 {
-  "name": "196 Países",
-  "short_name": "196 Países",
+  "name": "Atlas",
+  "short_name": "Atlas",
   "description": "El mapa para registrar cada país del mundo que has visitado y conquistar los 47 picos de España.",
   "start_url": "/",
   "display": "standalone",

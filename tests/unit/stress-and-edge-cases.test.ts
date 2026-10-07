@@ -195,6 +195,28 @@ describe("Stress Testing & Edge Cases: Verified Remediations", () => {
       expect(content).toContain("/api/geocoding?q=");
       expect(content).toContain("Array.isArray(data)");
     });
+
+    it("3.7 [Photo Limit Integrity]: Record modal accounts for existing photos and strictly caps uploads at 4", () => {
+      const trackerPath = path.join(rootDir, "components/summit-tracker.tsx");
+      const content = fs.readFileSync(trackerPath, "utf-8");
+
+      expect(content).toContain("existingRecordPhotos");
+      expect(content).toContain("galleryPhotosToAdd");
+      expect(content).toContain("totalModalPhotos");
+      expect(content).toMatch(/totalModalPhotos\s*>=\s*4/);
+      expect(content).toContain("deletedRecordPhotoIds");
+      expect(content).toContain("totalCountToSave > 4");
+      expect(content).toMatch(/Math\.max\(\s*0,\s*4\s*-\s*\(existingRecordPhotos\.length/);
+    });
+
+    it("3.8 [Photo Removal & Dropzone Reactivity]: Preview renders existing photos with deletion action", () => {
+      const trackerPath = path.join(rootDir, "components/summit-tracker.tsx");
+      const content = fs.readFileSync(trackerPath, "utf-8");
+
+      expect(content).toContain("setDeletedRecordPhotoIds");
+      expect(content).toContain("Quitar foto del registro");
+      expect(content).toContain("file-dropzone--disabled");
+    });
   });
 
   /* ─────────────────────────────────────────────────────────────
