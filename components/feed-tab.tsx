@@ -62,6 +62,20 @@ function formatDateSafe(dateVal: string | undefined | null): string {
   }
 }
 
+function isVideoLink(link?: string | null, linkName?: string | null) {
+  if (!link) return false;
+  const urlStr = link.toLowerCase();
+  const nameStr = (linkName || "").toLowerCase();
+  return (
+    urlStr.includes("youtube.com") ||
+    urlStr.includes("youtu.be") ||
+    urlStr.includes("vimeo.com") ||
+    urlStr.includes("tiktok.com") ||
+    nameStr.includes("vídeo") ||
+    nameStr.includes("video")
+  );
+}
+
 function renderFeedLink(link?: string | null, linkName?: string | null) {
   if (!link) return null;
   let Icon = LinkIcon;
@@ -442,7 +456,12 @@ function FeedItemCard({ item, session: _session, onAuthRequired: _onAuthRequired
               display: "flex",
               flexWrap: "wrap",
               gap: 8,
-              marginTop: 8,
+              marginTop:
+                Boolean(item.notes) &&
+                (isVideoLink(item.link, item.link_name) ||
+                 isVideoLink(item.link_2, item.link_name_2))
+                  ? 14
+                  : 8,
             }}
           >
             {renderFeedLink(item.link, item.link_name)}
@@ -453,7 +472,7 @@ function FeedItemCard({ item, session: _session, onAuthRequired: _onAuthRequired
       </div>
 
       {photos.length > 0 && (
-        <div style={{ position: 'relative', width: '100%', marginBottom: '16px' }}>
+        <div style={{ position: 'relative', width: '100%', marginBottom: 0 }}>
           {photos.length === 1 ? (
             <img 
               src={photos[0].public_url} 
@@ -461,10 +480,10 @@ function FeedItemCard({ item, session: _session, onAuthRequired: _onAuthRequired
               alt="Activity media" 
               className="feed-card-media" 
               loading="lazy"
-              style={{ width: '100%', height: '300px', objectFit: 'cover', cursor: 'pointer', borderRadius: '12px' }} 
+              style={{ width: '100%', height: '300px', objectFit: 'cover', cursor: 'pointer', display: 'block' }} 
             />
           ) : photos.length === 3 ? (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: '4px', borderRadius: '12px', overflow: 'hidden', height: '300px', width: '100%' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: '4px', overflow: 'hidden', height: '300px', width: '100%' }}>
               <div style={{ gridRow: '1 / span 2', gridColumn: '1', position: 'relative', width: '100%', height: '100%', minHeight: 0, minWidth: 0, overflow: 'hidden' }}>
                 <img 
                   src={photos[0].public_url} 
@@ -494,7 +513,7 @@ function FeedItemCard({ item, session: _session, onAuthRequired: _onAuthRequired
               </div>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', borderRadius: '12px', overflow: 'hidden', width: '100%' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', overflow: 'hidden', width: '100%' }}>
               {photos.slice(0, 4).map((photo: any, index: number) => {
                 const isLast = index === 3;
                 const hasMore = photos.length > 4;

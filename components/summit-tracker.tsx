@@ -39,6 +39,11 @@ import {
   Video,
   RotateCcw,
   Footprints,
+  Check,
+  Star,
+  Triangle,
+  Diamond,
+  X,
 } from "lucide-react";
 import { usePendingRequests } from "./use-pending-requests";
 import { compressImage } from "@/lib/image-utils";
@@ -199,6 +204,20 @@ function formatShortDate(date: string) {
     month: "short",
     year: "numeric",
   }).format(new Date(`${date}T12:00:00`));
+}
+
+function isVideoLink(link?: string | null, linkName?: string | null) {
+  if (!link) return false;
+  const urlStr = link.toLowerCase();
+  const nameStr = (linkName || "").toLowerCase();
+  return (
+    urlStr.includes("youtube.com") ||
+    urlStr.includes("youtu.be") ||
+    urlStr.includes("vimeo.com") ||
+    urlStr.includes("tiktok.com") ||
+    nameStr.includes("vídeo") ||
+    nameStr.includes("video")
+  );
 }
 
 function renderRecordLink(link?: string | null, linkName?: string | null) {
@@ -3766,7 +3785,12 @@ export function SummitTracker({
               display: "flex",
               flexWrap: "wrap",
               gap: 8,
-              marginTop: 8,
+              marginTop:
+                Boolean(ascent.notes) &&
+                (isVideoLink(ascent.link, (ascent as any).link_name) ||
+                 isVideoLink((ascent as any).link_2, (ascent as any).link_name_2))
+                  ? 14
+                  : 8,
             }}
           >
             {renderRecordLink(ascent.link, (ascent as any).link_name)}
@@ -4059,31 +4083,6 @@ export function SummitTracker({
             )}
           </h1>
           <p>{modeHeroSubtitle}</p>
-          <div className="hero-actions">
-            <a
-              className={`button ${isPeaks ? "button--green" : "button--purple"}`}
-              href="#mapa"
-            >
-              Explorar el mapa
-            </a>
-            {mounted && !session && !targetProfile && (
-              <button
-                className="button button--white"
-                style={{
-                  background: "rgba(255,255,255,0.7)",
-                  backdropFilter: "blur(10px)",
-                  border: "1px solid rgba(255,255,255,0.5)",
-                  color: "var(--pine)",
-                }}
-                onClick={() => {
-                  window.location.hash = "panel";
-                  setAuthOpen("register");
-                }}
-              >
-                Crear mi registro
-              </button>
-            )}
-          </div>
         </div>
         <aside className="hero-stat" suppressHydrationWarning>
           <span className="mountain-art" suppressHydrationWarning>{isPeaks ? "△" : "◉"}</span>
@@ -4263,19 +4262,25 @@ export function SummitTracker({
             {!diffMode && (
               <div className="map-legend">
                 <span>
-                  <i
-                    className="legend-pin"
-                    style={{ paddingBottom: isPeaks ? 4 : isExp ? 2 : 0 }}
-                  >
-                    {isPeaks ? "△" : "◇"}
+                  <i className="legend-pin">
+                    {isPeaks ? (
+                      <Triangle size={10} strokeWidth={2.2} />
+                    ) : (
+                      <Diamond size={10} strokeWidth={2.2} />
+                    )}
                   </i>{" "}
                   Pendiente
                 </span>
                 <span>
-                  <i className="legend-wishlist">★</i> Quiero ir
+                  <i className="legend-wishlist">
+                    <Star size={10} fill="currentColor" strokeWidth={1} />
+                  </i>{" "}
+                  Quiero ir
                 </span>
                 <span>
-                  <i className="legend-done">✓</i>{" "}
+                  <i className="legend-done">
+                    <Check size={11} strokeWidth={2.5} />
+                  </i>{" "}
                   {isPeaks ? "Completada" : "Visitado"}
                 </span>
               </div>
@@ -4676,15 +4681,13 @@ export function SummitTracker({
               if (effectiveDiffMode) {
                 if (diffItemOnlyViewer.has(item.id)) {
                   diffClass = " peak-list-item--diff-only-me";
-                  diffSymbol = "✓";
+                  diffSymbol = <Check size={11} strokeWidth={2.5} />;
                 } else if (diffItemOnlyTarget.has(item.id)) {
                   diffClass = " peak-list-item--diff-only-them";
-                  diffSymbol = (
-                    <span style={{ fontSize: 11, fontWeight: 700 }}>✗</span>
-                  );
+                  diffSymbol = <X size={11} strokeWidth={2.5} />;
                 } else if (diffItemBoth.has(item.id)) {
                   diffClass = " peak-list-item--diff-both";
-                  diffSymbol = "✓";
+                  diffSymbol = <Check size={11} strokeWidth={2.5} />;
                 } else {
                   diffClass = " peak-list-item--diff-none";
                 }
@@ -4726,21 +4729,22 @@ export function SummitTracker({
                         <span className="item-check">{diffSymbol}</span>
                       ) : done ? (
                         <i className="legend-done" style={{ margin: 0 }}>
-                          ✓
+                          <Check size={11} strokeWidth={2.5} />
                         </i>
                       ) : wish ? (
                         <i className="legend-wishlist" style={{ margin: 0 }}>
-                          ★
+                          <Star size={10} fill="currentColor" strokeWidth={1} />
                         </i>
                       ) : (
                         <i
                           className="legend-pin"
-                          style={{
-                            margin: 0,
-                            paddingBottom: isPeaks ? 4 : isExp ? 2 : 0,
-                          }}
+                          style={{ margin: 0 }}
                         >
-                          {isPeaks ? "△" : "◇"}
+                          {isPeaks ? (
+                            <Triangle size={10} strokeWidth={2.2} />
+                          ) : (
+                            <Diamond size={10} strokeWidth={2.2} />
+                          )}
                         </i>
                       )}
                     </span>
@@ -5647,7 +5651,24 @@ export function SummitTracker({
                             &ldquo;{ascent.notes}&rdquo;
                           </p>
                         )}
-                        {renderRecordLink(ascent.link, (ascent as any).link_name)}
+                        {(ascent.link || (ascent as any).link_2) && (
+                          <div
+                            style={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: 8,
+                              marginTop:
+                                Boolean(ascent.notes) &&
+                                (isVideoLink(ascent.link, (ascent as any).link_name) ||
+                                 isVideoLink((ascent as any).link_2, (ascent as any).link_name_2))
+                                  ? 14
+                                  : 8,
+                            }}
+                          >
+                            {renderRecordLink(ascent.link, (ascent as any).link_name)}
+                            {renderRecordLink((ascent as any).link_2, (ascent as any).link_name_2)}
+                          </div>
+                        )}
 
                         {ascentPhotos.length > 0 && (
                           <div
@@ -5704,9 +5725,14 @@ export function SummitTracker({
                       background: "var(--amber-bg)",
                       color: "#a67c29",
                       borderColor: "#ecd9a5",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
                     }}
                   >
-                    ★ {isReadOnly ? "En su lista de deseos" : "En tu lista de deseos"}
+                    <Star size={14} fill="currentColor" strokeWidth={1} />
+                    <span>{isReadOnly ? "En su lista de deseos" : "En tu lista de deseos"}</span>
                   </div>
                 ) : (
                   <div className="pending-card">
@@ -7029,11 +7055,18 @@ export function SummitTracker({
                 <button
                   key={ascent.achieved_on}
                   className="button button--outline button--wide"
-                  style={{ textAlign: "left", justifyContent: "flex-start" }}
+                  style={{
+                    textAlign: "left",
+                    justifyContent: "flex-start",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
                   onClick={() => handleAssignPhotosToRecord(ascent.achieved_on)}
                   disabled={saving}
                 >
-                  ✓ {formatDate(ascent.achieved_on)}
+                  <Check size={14} strokeWidth={2.5} />
+                  <span>{formatDate(ascent.achieved_on)}</span>
                 </button>
               ))}
               <button

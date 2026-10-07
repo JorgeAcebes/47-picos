@@ -253,6 +253,8 @@ function MapZoomListener() {
       const zoom = map.getZoom();
       const center = map.getCenter();
       sessionStorage.setItem("mapState_world", JSON.stringify({ zoom, center }));
+      const container = map.getContainer();
+      container.setAttribute("data-zoom", Math.max(0, Math.round(zoom || 0)).toString());
     },
   });
   useEffect(() => {
@@ -260,6 +262,76 @@ function MapZoomListener() {
     container.setAttribute("data-zoom", Math.max(0, Math.round(map.getZoom() || 0)).toString());
   }, [map]);
   return null;
+}
+
+function CountryMarkersLayer({
+  showCountryMarkers,
+  countriesWithCoords,
+  diffMode,
+  getDiffIcon,
+  completed,
+  wishlist,
+  icons,
+  selectingLocation,
+  onInformation,
+}: {
+  showCountryMarkers: boolean;
+  countriesWithCoords: Country[];
+  diffMode?: boolean;
+  getDiffIcon: (countryId: string) => L.DivIcon;
+  completed: Set<string>;
+  wishlist: Set<string>;
+  icons: { done: L.DivIcon; todo: L.DivIcon; wishlist: L.DivIcon };
+  selectingLocation?: boolean;
+  onInformation: (country: Country) => void;
+}) {
+  const map = useMap();
+  const [currentZoom, setCurrentZoom] = useState(() => {
+    try {
+      return map.getZoom() || 0;
+    } catch {
+      return 0;
+    }
+  });
+
+  useMapEvents({
+    zoom: () => {
+      setCurrentZoom(map.getZoom() || 0);
+    },
+    zoomend: () => {
+      setCurrentZoom(map.getZoom() || 0);
+    },
+  });
+
+  if (!showCountryMarkers || currentZoom < 6) {
+    return null;
+  }
+
+  return (
+    <>
+      {countriesWithCoords.map((c) => (
+        <Marker
+          key={c.id}
+          position={c.coordinates!}
+          icon={
+            diffMode
+              ? getDiffIcon(c.id)
+              : completed.has(c.id)
+                ? icons.done
+                : wishlist.has(c.id)
+                  ? icons.wishlist
+                  : icons.todo
+          }
+          eventHandlers={{
+            click: () => {
+              if (selectingLocation) return;
+              onInformation(c);
+            },
+          }}
+        />
+      ))}
+    </>
+  );
 }
 
 // ── Pre-filter countries with coordinates (stable list) ──
@@ -400,25 +472,25 @@ export const WorldMap = memo(function WorldMap({ completed, wishlist, onInformat
     () => ({
       done: L.divIcon({
         className: "",
-        html: '<span class="summit-pin summit-pin--done">✓</span>',
+        html: '<span class="summit-pin summit-pin--done"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>',
         iconSize: [28, 28],
         iconAnchor: [14, 14],
       }),
       todo: L.divIcon({
         className: "",
-        html: '<span class="summit-pin">◇</span>',
+        html: '<span class="summit-pin"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.7 10.3a2.41 2.41 0 0 0 0 3.41l7.59 7.59a2.41 2.41 0 0 0 3.41 0l7.59-7.59a2.41 2.41 0 0 0 0-3.41l-7.59-7.59a2.41 2.41 0 0 0-3.41 0Z"></path></svg></span>',
         iconSize: [28, 28],
         iconAnchor: [14, 14],
       }),
       wishlist: L.divIcon({
         className: "",
-        html: '<span class="summit-pin summit-pin--wishlist">★</span>',
+        html: '<span class="summit-pin summit-pin--wishlist"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></span>',
         iconSize: [28, 28],
         iconAnchor: [14, 14],
       }),
       diffOnlyMe: L.divIcon({
         className: "",
-        html: '<span class="summit-pin summit-pin--diff-only-me">✓</span>',
+        html: '<span class="summit-pin summit-pin--diff-only-me"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>',
         iconSize: [28, 28],
         iconAnchor: [14, 14],
       }),
@@ -430,13 +502,13 @@ export const WorldMap = memo(function WorldMap({ completed, wishlist, onInformat
       }),
       diffBoth: L.divIcon({
         className: "",
-        html: '<span class="summit-pin summit-pin--diff-both">⬟</span>',
+        html: '<span class="summit-pin summit-pin--diff-both"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.83 2.38a2 2 0 0 1 2.34 0l8 5.74a2 2 0 0 1 .73 2.25l-3.04 9.26a2 2 0 0 1-1.9 1.37H7.04a2 2 0 0 1-1.9-1.37L2.1 10.37a2 2 0 0 1 .73-2.25z"></path></svg></span>',
         iconSize: [28, 28],
         iconAnchor: [14, 14],
       }),
       diffNone: L.divIcon({
         className: "",
-        html: '<span class="summit-pin summit-pin--diff-none">◆</span>',
+        html: '<span class="summit-pin summit-pin--diff-none"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.7 10.3a2.41 2.41 0 0 0 0 3.41l7.59 7.59a2.41 2.41 0 0 0 3.41 0l7.59-7.59a2.41 2.41 0 0 0 0-3.41l-7.59-7.59a2.41 2.41 0 0 0-3.41 0Z"></path></svg></span>',
         iconSize: [28, 28],
         iconAnchor: [14, 14],
       }),
@@ -672,75 +744,47 @@ export const WorldMap = memo(function WorldMap({ completed, wishlist, onInformat
 
 
 
-  // ── Memoized markers ──
-  const markers = useMemo(
-    () => {
-      const showCountryMarkers = !regionsMode || diffMode;
-
-      let cMarkers: React.ReactNode[] = [];
-      if (showCountryMarkers) {
-        cMarkers = countriesWithCoords.map((c) => (
-        <Marker
-          key={c.id}
-          position={c.coordinates!}
-          icon={
-            diffMode
-              ? getDiffIcon(c.id)
-              : completed.has(c.id) ? icons.done : wishlist.has(c.id) ? icons.wishlist : icons.todo
-          }
-          eventHandlers={{
-            click: () => {
-              if (selectingLocation) return;
-              onInformation(c);
-            }
-          }}
-        />
-      ));
-      }
-
-      if (experiencesMode && experienceRecords) {
-        const expMarkers = experienceRecords.map((r, i) => {
-          let expIcon = expIconCache.get(r.icon_name);
-          if (!expIcon) {
-            const iconHtml = ReactDOMServer.renderToString(
-              <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                <span className="summit-pin summit-pin--experience summit-pin--done" style={{ display: 'inline-flex', justifyContent: 'center', alignItems: 'center', pointerEvents: 'none' }}>
-                  {getIconComponent(r.icon_name)}
-                </span>
-              </div>
-            );
-            expIcon = L.divIcon({
-              className: "experience-hitbox",
-              html: iconHtml,
-              iconSize: [36, 36],
-              iconAnchor: [18, 18],
-            });
-            expIconCache.set(r.icon_name, expIcon);
-          }
-          
-          return (
-            <Marker
-              key={`exp-${r.id || i}`}
-              position={[r.lat, r.lng]}
-              icon={expIcon}
-              zIndexOffset={1000}
-              eventHandlers={{
-                click: () => {
-                  if (experiencesModeRef.current && onExperienceClick) {
-                    onExperienceClick(r);
-                  }
-                },
-              }}
-            />
+  // ── Memoized experiences markers ──
+  const experiencesMarkers = useMemo(() => {
+    if (experiencesMode && experienceRecords) {
+      return experienceRecords.map((r, i) => {
+        let expIcon = expIconCache.get(r.icon_name);
+        if (!expIcon) {
+          const iconHtml = ReactDOMServer.renderToString(
+            <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+              <span className="summit-pin summit-pin--experience summit-pin--done" style={{ display: 'inline-flex', justifyContent: 'center', alignItems: 'center', pointerEvents: 'none' }}>
+                {getIconComponent(r.icon_name)}
+              </span>
+            </div>
           );
-        });
-        return [...cMarkers, ...expMarkers];
-      }
-
-      return cMarkers;
-    },
-    [completed, wishlist, diffMode, regionsMode, experiencesMode, experienceRecords, diffOnlyViewer, diffOnlyTarget, diffBoth, icons, onInformation, onExperienceClick, selectingLocation],
-  );
+          expIcon = L.divIcon({
+            className: "experience-hitbox",
+            html: iconHtml,
+            iconSize: [36, 36],
+            iconAnchor: [18, 18],
+          });
+          expIconCache.set(r.icon_name, expIcon);
+        }
+        
+        return (
+          <Marker
+            key={`exp-${r.id || i}`}
+            position={[r.lat, r.lng]}
+            icon={expIcon}
+            zIndexOffset={1000}
+            eventHandlers={{
+              click: () => {
+                if (experiencesModeRef.current && onExperienceClick) {
+                  onExperienceClick(r);
+                }
+              },
+            }}
+          />
+        );
+      });
+    }
+    return null;
+  }, [experiencesMode, experienceRecords, onExperienceClick]);
 
   return (
     <>
@@ -859,7 +903,18 @@ export const WorldMap = memo(function WorldMap({ completed, wishlist, onInformat
           interactive={!regionsMode} // Make non-interactive in regions mode so region tooltips work
         />
       )}
-      {markers}
+      <CountryMarkersLayer
+        showCountryMarkers={!regionsMode || Boolean(diffMode)}
+        countriesWithCoords={countriesWithCoords}
+        diffMode={diffMode}
+        getDiffIcon={getDiffIcon}
+        completed={completed}
+        wishlist={wishlist}
+        icons={icons}
+        selectingLocation={selectingLocation}
+        onInformation={onInformation}
+      />
+      {experiencesMarkers}
     </MapContainer>
     </>
   );
