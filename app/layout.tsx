@@ -49,10 +49,28 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js');
-                });
+              if (typeof window !== 'undefined') {
+                if (window.location.hostname === '196-paises.vercel.app') {
+                  if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                      for (var i = 0; i < registrations.length; i++) {
+                        registrations[i].unregister();
+                      }
+                    });
+                  }
+                  if ('caches' in window) {
+                    caches.keys().then(function(names) {
+                      for (var i = 0; i < names.length; i++) {
+                        caches.delete(names[i]);
+                      }
+                    });
+                  }
+                  window.location.replace('https://atlas-log.vercel.app' + window.location.pathname + window.location.search + window.location.hash);
+                } else if ('serviceWorker' in navigator) {
+                  window.addEventListener('load', function() {
+                    navigator.serviceWorker.register('/sw.js');
+                  });
+                }
               }
             `,
           }}

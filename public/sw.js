@@ -76,7 +76,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. Stale-While-Revalidate para todo lo demás (archivos estáticos de Next.js, imágenes de la app)
+  // 3. Network First con fallback a Cache para navegaciones HTML (evita páginas desactualizadas tras despliegues o cambios de dominio)
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match(event.request) || caches.match('/'))
+    );
+    return;
+  }
+
+  // 4. Stale-While-Revalidate para recursos estáticos (JS, CSS, imágenes)
   if (event.request.method === 'GET' && !url.pathname.startsWith('/api/')) {
     event.respondWith(
       caches.match(event.request).then((cachedResponse) => {
