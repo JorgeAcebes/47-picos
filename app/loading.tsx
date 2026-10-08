@@ -1,4 +1,24 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
 export default function Loading() {
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    // Solo mostrar la pantalla de carga completa si la navegación o carga
+    // realmente se prolonga más de 700ms (evita parpadeos en páginas ya cacheadas o transiciones rápidas)
+    const timer = setTimeout(() => {
+      setShow(true);
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!show) {
+    return null;
+  }
+
   return (
     <div
       style={{
@@ -11,6 +31,7 @@ export default function Loading() {
         color: "var(--muted, #62716b)",
         fontFamily: "'DM Sans', sans-serif",
         gap: "1.25rem",
+        animation: "fadeIn 0.2s ease-in",
       }}
     >
       <div
@@ -63,9 +84,14 @@ export default function Loading() {
                 opacity: 1;
               }
             }
+            @keyframes fadeIn {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
           `,
         }}
       />
     </div>
   );
 }
+

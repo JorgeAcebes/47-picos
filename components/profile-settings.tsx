@@ -184,12 +184,15 @@ export function ProfileSettings({
   }
 
   return (
-    <div
-      className="modal-backdrop"
-      onClick={onClose}
-      onWheel={(e) => e.stopPropagation()}
-      role="presentation"
-    >
+    <>
+      <div
+        className="modal-backdrop"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
+        onWheel={(e) => e.stopPropagation()}
+        role="presentation"
+      >
       <section
         className="auth-dialog"
         onClick={(e) => e.stopPropagation()}
@@ -641,6 +644,7 @@ export function ProfileSettings({
           </form>
         )}
       </section>
+      </div>
 
       {showDeleteModal && (
         <DeleteAccountModal
@@ -649,6 +653,6 @@ export function ProfileSettings({
           onClose={() => setShowDeleteModal(false)}
         />
       )}
-    </div>
+    </>
   );
 }

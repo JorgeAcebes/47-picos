@@ -484,6 +484,24 @@ describe("Project Critical Invariants (No Regressions)", () => {
       // Lightbox subtitle must only display title and not concatenate photo dates
       expect(content).not.toContain("formatShortDate(lightboxPhoto.taken_on)");
     });
+
+    it("Invariant 11.7: app/loading.tsx must implement a debounce delay threshold to avoid flashing on cached/instant navigations", () => {
+      const loadingPath = path.join(rootDir, "app/loading.tsx");
+      const content = fs.readFileSync(loadingPath, "utf-8");
+
+      expect(content).toContain('"use client"');
+      expect(content).toContain("setTimeout");
+      expect(content).toMatch(/700|800/);
+      expect(content).toContain("clearTimeout");
+    });
+
+    it("Invariant 11.8: components/delete-account-modal.tsx must isolate its dialog and input events from parent backdrop", () => {
+      const modalPath = path.join(rootDir, "components/delete-account-modal.tsx");
+      const content = fs.readFileSync(modalPath, "utf-8");
+
+      expect(content).toContain("e.stopPropagation()");
+      expect(content).toMatch(/id="delete-confirmation-input"[\s\S]*?onClick=\{\(e\)\s*=>\s*e\.stopPropagation\(\)\}/);
+    });
   });
 });
 

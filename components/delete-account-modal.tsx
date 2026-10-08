@@ -31,10 +31,20 @@ export function DeleteAccountModal({
     lockScroll();
     document.documentElement.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !isDeleting) {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+
     return () => {
       unlockScroll();
+      window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen]);
+  }, [isOpen, isDeleting, onClose]);
 
   if (!isOpen) return null;
 
@@ -96,7 +106,11 @@ export function DeleteAccountModal({
         backdropFilter: "blur(3px)",
       }}
       onClick={(e) => {
+        e.stopPropagation();
         if (e.target === e.currentTarget && !isDeleting) onClose();
+      }}
+      onMouseDown={(e) => {
+        e.stopPropagation();
       }}
     >
       <div
@@ -104,6 +118,9 @@ export function DeleteAccountModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="delete-account-title"
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
         style={{
           maxWidth: "480px",
           width: "100%",
@@ -252,6 +269,15 @@ export function DeleteAccountModal({
             disabled={isDeleting}
             value={confirmationInput}
             onChange={(e) => setConfirmationInput(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              if (e.key === "Enter" && isMatch && !isDeleting) {
+                e.preventDefault();
+                handleDelete();
+              }
+            }}
             placeholder={expectedText}
             autoComplete="off"
             spellCheck="false"
