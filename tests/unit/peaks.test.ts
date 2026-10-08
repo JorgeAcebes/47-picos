@@ -63,4 +63,21 @@ describe("Peaks Dataset Integrity (52 techos provinciales)", () => {
     expect(cantabriaPeak?.coordinates[0]).toBeCloseTo(43.1727, 3);
     expect(cantabriaPeak?.coordinates[1]).toBeCloseTo(-4.8516, 3);
   });
+
+  it("should have correct summit coordinates for Murcia (Pico Obispo)", () => {
+    const murciaPeak = peaks.find((p) => p.id === "murcia");
+    expect(murciaPeak).toBeDefined();
+    expect(murciaPeak?.name).toBe("Pico Obispo");
+    expect(murciaPeak?.coordinates[0]).toBeCloseTo(38.0636, 3);
+    expect(murciaPeak?.coordinates[1]).toBeCloseTo(-2.2652, 3);
+  });
+
+  it("should have correct summit coordinates for Albacete (Pico de La Atalaya / Las Cabras)", () => {
+    const albacetePeak = peaks.find((p) => p.id === "albacete");
+    expect(albacetePeak).toBeDefined();
+    expect(albacetePeak?.name).toContain("La Atalaya");
+    expect(albacetePeak?.coordinates[0]).toBeCloseTo(38.0606, 3);
+    expect(albacetePeak?.coordinates[1]).toBeCloseTo(-2.3914, 3);
+  });
 });
+

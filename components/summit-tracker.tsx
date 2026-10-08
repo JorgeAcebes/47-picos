@@ -197,15 +197,6 @@ function formatDate(date: string) {
   }).format(new Date(`${date}T12:00:00`));
 }
 
-function formatShortDate(date: string) {
-  if (date === "1900-01-01") return "Desconocida";
-  return new Intl.DateTimeFormat("es-ES", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(`${date}T12:00:00`));
-}
-
 function isVideoLink(link?: string | null, linkName?: string | null) {
   if (!link) return false;
   const urlStr = link.toLowerCase();
@@ -312,20 +303,20 @@ function IconLogo({ className }: { className?: string }) {
     >
       <path
         className="logo-mountain-1"
-        d="M12 52 L36 12 L48 32.75 Z"
+        d="M8 52 L32 12 L44 32 Z"
         fill="url(#logoGradGreen)"
       />
       <path
         className="logo-mountain-2"
-        d="M24 60 L44 26 L60 52 Z"
+        d="M20 60 L40.4 26 L56 52 Z"
         fill="url(#logoGradPurple)"
       />
       <defs>
-        <linearGradient id="logoGradGreen" x1="12" y1="12" x2="48" y2="52">
+        <linearGradient id="logoGradGreen" x1="8" y1="12" x2="44" y2="52">
           <stop stopColor="#5c9b7d" />
           <stop offset="1" stopColor="#245f52" />
         </linearGradient>
-        <linearGradient id="logoGradPurple" x1="24" y1="26" x2="60" y2="60">
+        <linearGradient id="logoGradPurple" x1="20" y1="26" x2="56" y2="60">
           <stop stopColor="#9570c7" />
           <stop offset="1" stopColor="#5b3a8c" />
         </linearGradient>
@@ -2001,7 +1992,7 @@ export function SummitTracker({
       const path = `${session.user.id}/${selected.id}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
       const upload = await supabase.storage
         .from("summit-photos")
-        .upload(path, compressedBlob, { contentType: "image/jpeg", upsert: false });
+        .upload(path, compressedBlob, { contentType: compressedBlob.type || "image/webp", upsert: false });
       if (upload.error) {
         setNotice(`Error al subir ${file.name}: ${upload.error.message}`);
         continue;
@@ -2710,7 +2701,7 @@ export function SummitTracker({
       const path = `${session.user.id}/${selected.id}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
       const upload = await supabase.storage
         .from("summit-photos")
-        .upload(path, compressedBlob, { contentType: "image/jpeg", upsert: false });
+        .upload(path, compressedBlob, { contentType: compressedBlob.type || "image/webp", upsert: false });
       if (upload.error) {
         setNotice(
           `Registro guardado, pero una foto no pudo subirse: ${upload.error.message}`,
@@ -4995,6 +4986,38 @@ export function SummitTracker({
             reservados. El uso de esta web es únicamente con fines de
             entretenimiento y seguimiento personal.
           </div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: "1rem",
+              marginTop: "0.75rem",
+              fontSize: "0.78rem",
+              flexWrap: "wrap",
+            }}
+          >
+            <a
+              href="/terminos"
+              style={{ color: "var(--muted)", textDecoration: "underline" }}
+            >
+              Términos y Condiciones
+            </a>
+            <span style={{ color: "var(--line)", opacity: 0.8 }}>•</span>
+            <a
+              href="/privacidad"
+              style={{ color: "var(--muted)", textDecoration: "underline" }}
+            >
+              Privacidad y Cookies
+            </a>
+            <span style={{ color: "var(--line)", opacity: 0.8 }}>•</span>
+            <a
+              href="mailto:atlas.maplog@gmail.com"
+              style={{ color: "var(--muted)", textDecoration: "underline" }}
+            >
+              Contacto
+            </a>
+          </div>
         </div>
       </footer>
 
@@ -5315,11 +5338,11 @@ export function SummitTracker({
                                                 alt="Foto de la experiencia"
                                                 loading="lazy"
                                               />
-                                              <figcaption>
-                                                {photo.caption
-                                                  ? photo.caption
-                                                  : formatDate(photo.taken_on)}
-                                              </figcaption>
+                                              {photo.caption && (
+                                                <figcaption>
+                                                  {photo.caption}
+                                                </figcaption>
+                                              )}
                                             </figure>
                                           );
                                         })}
@@ -5704,11 +5727,11 @@ export function SummitTracker({
                                       alt={`Foto en ${selected.title}`}
                                       loading="lazy"
                                     />
-                                    <figcaption>
-                                      {photo.caption
-                                        ? photo.caption
-                                        : formatDate(photo.taken_on)}
-                                    </figcaption>
+                                    {photo.caption && (
+                                      <figcaption>
+                                        {photo.caption}
+                                      </figcaption>
+                                    )}
                                   </figure>
                                 );
                               })}
@@ -5793,11 +5816,11 @@ export function SummitTracker({
                                 alt={`Foto en ${selected.title}`}
                                 loading="lazy"
                               />
-                              <figcaption>
-                                {photo.caption
-                                  ? photo.caption
-                                  : formatDate(photo.taken_on)}
-                              </figcaption>
+                              {photo.caption && (
+                                <figcaption>
+                                  {photo.caption}
+                                </figcaption>
+                              )}
                             </figure>
                           );
                         })}
@@ -5917,11 +5940,11 @@ export function SummitTracker({
                               alt={`Foto en ${selected.title}`}
                               loading="lazy"
                             />
-                            <figcaption>
-                              {photo.caption
-                                ? photo.caption
-                                : formatDate(photo.taken_on)}
-                            </figcaption>
+                            {photo.caption && (
+                              <figcaption>
+                                {photo.caption}
+                              </figcaption>
+                            )}
                           </figure>
                         );
                       })}
@@ -6874,18 +6897,6 @@ export function SummitTracker({
               )}
               <span style={{ opacity: lightboxPhoto.caption ? 0.7 : 1 }}>
                 {selected?.title}
-                {(() => {
-                  let dateStr = "";
-                  if (!lightboxPhoto.taken_on.startsWith("1900-01-01")) {
-                    const relatedAscent = ascents.find(
-                      (a) =>
-                        a.summit_id === selected?.id &&
-                        a.achieved_on === lightboxPhoto.taken_on,
-                    );
-                    dateStr = ` · ${formatShortDate(lightboxPhoto.taken_on)}${relatedAscent?.end_date ? ` - ${formatShortDate(relatedAscent.end_date)}` : ""}`;
-                  }
-                  return dateStr;
-                })()}
               </span>
             </span>
 

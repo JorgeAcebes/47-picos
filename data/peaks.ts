@@ -13,7 +13,7 @@ export type Peak = {
 // son techo compartido entre dos provincias.
 export const peaks: Peak[] = [
   { id: "gorbea", code: "01", province: "Álava", name: "Gorbea", altitude: 1482.5, range: "Macizo de Gorbeia", coordinates: [43.03, -2.78], note: "Cumbre compartida con Vizcaya." },
-  { id: "albacete", code: "02", province: "Albacete", name: "Pico de La Atalaya (Las Cabras)", altitude: 2083.0, range: "Sierra de las Cabras", coordinates: [38.45, -2.43], note: "Techo de la provincia manchega." },
+  { id: "albacete", code: "02", province: "Albacete", name: "Pico de La Atalaya (Las Cabras)", altitude: 2083.0, range: "Sierra de las Cabras", coordinates: [38.0606, -2.3914], note: "Techo de la provincia manchega." },
   { id: "alicante", code: "03", province: "Alicante", name: "Pico de Aitana", altitude: 1557.0, range: "Sierra de Aitana", coordinates: [38.66, -0.27], note: "La cima más alta de la provincia." },
   { id: "almeria", code: "04", province: "Almería", name: "Chullo", altitude: 2611.5, range: "Sierra Nevada", coordinates: [37.095, -3.000], note: "Cumbre limítrofe con Granada." },
   { id: "avila", code: "05", province: "Ávila", name: "Pico Almanzor", altitude: 2591.0, range: "Sierra de Gredos", coordinates: [40.24, -5.30], note: "El más alto del Sistema Central." },

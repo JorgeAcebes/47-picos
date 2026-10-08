@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState, useEffect } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { lockScroll, unlockScroll } from "@/lib/scroll-lock";
 
@@ -294,25 +295,56 @@ export function AuthDialog({ onClose, initialTab = "register" }: { onClose: () =
                 {showPassword ? <IconEyeOff /> : <IconEye />}
               </button>
             </div>
-            <div style={{ marginTop: "6px", textAlign: "right" }}>
-              <button
-                type="button"
-                onClick={() => setIsForgotPassword(true)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "var(--muted)",
-                  fontSize: "0.8rem",
-                  cursor: "pointer",
-                  padding: 0,
-                  textDecoration: "underline"
-                }}
-              >
-                He olvidado la contraseña
-              </button>
-            </div>
+            {!isRegister && (
+              <div style={{ marginTop: "6px", textAlign: "right" }}>
+                <button
+                  type="button"
+                  onClick={() => setIsForgotPassword(true)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "var(--muted)",
+                    fontSize: "0.8rem",
+                    cursor: "pointer",
+                    padding: 0,
+                    textDecoration: "underline"
+                  }}
+                >
+                  He olvidado la contraseña
+                </button>
+              </div>
+            )}
           </label>
           {message && <p className="form-message">{message}</p>}
+          {isRegister && (
+            <p
+              style={{
+                fontSize: "0.78rem",
+                lineHeight: 1.4,
+                color: "var(--muted)",
+                margin: "0.5rem 0 0.75rem",
+                textAlign: "center",
+              }}
+            >
+              Al registrarte aceptas los{" "}
+              <Link
+                href="/terminos"
+                target="_blank"
+                style={{ color: "var(--pine)", textDecoration: "underline" }}
+              >
+                Términos y Condiciones
+              </Link>{" "}
+              y la{" "}
+              <Link
+                href="/privacidad"
+                target="_blank"
+                style={{ color: "var(--pine)", textDecoration: "underline" }}
+              >
+                Política de Privacidad
+              </Link>
+              .
+            </p>
+          )}
           <button className="button button--green button--wide" disabled={busy}>
             {busy
               ? "Un momento…"

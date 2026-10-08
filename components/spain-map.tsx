@@ -187,25 +187,25 @@ export const SpainMap = memo(function SpainMap({ completed, wishlist, onInformat
     () => ({
       done: L.divIcon({
         className: "",
-        html: '<span class="summit-pin summit-pin--done">✓</span>',
+        html: '<span class="summit-pin summit-pin--done"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>',
         iconSize: [28, 28],
         iconAnchor: [14, 14],
       }),
       todo: L.divIcon({
         className: "",
-        html: '<span class="summit-pin">△</span>',
+        html: '<span class="summit-pin"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 4a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path></svg></span>',
         iconSize: [28, 28],
         iconAnchor: [14, 14],
       }),
       wishlist: L.divIcon({
         className: "",
-        html: '<span class="summit-pin summit-pin--wishlist">★</span>',
+        html: '<span class="summit-pin summit-pin--wishlist"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></span>',
         iconSize: [28, 28],
         iconAnchor: [14, 14],
       }),
       diffOnlyMe: L.divIcon({
         className: "",
-        html: '<span class="summit-pin summit-pin--diff-only-me">✓</span>',
+        html: '<span class="summit-pin summit-pin--diff-only-me"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>',
         iconSize: [28, 28],
         iconAnchor: [14, 14],
       }),
@@ -217,13 +217,13 @@ export const SpainMap = memo(function SpainMap({ completed, wishlist, onInformat
       }),
       diffBoth: L.divIcon({
         className: "",
-        html: '<span class="summit-pin summit-pin--diff-both">⬟</span>',
+        html: '<span class="summit-pin summit-pin--diff-both"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.83 2.38a2 2 0 0 1 2.34 0l8 5.74a2 2 0 0 1 .73 2.25l-3.04 9.26a2 2 0 0 1-1.9 1.37H7.04a2 2 0 0 1-1.9-1.37L2.1 10.37a2 2 0 0 1 .73-2.25z"></path></svg></span>',
         iconSize: [28, 28],
         iconAnchor: [14, 14],
       }),
       diffNone: L.divIcon({
         className: "",
-        html: '<span class="summit-pin summit-pin--diff-none">△</span>',
+        html: '<span class="summit-pin summit-pin--diff-none"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 4a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path></svg></span>',
         iconSize: [28, 28],
         iconAnchor: [14, 14],
       }),

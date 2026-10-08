@@ -5,7 +5,7 @@ Lookup table for all 52 provincial high points (47 unique mountains) in Spain, C
 | Code | Province | Peak Name | Altitude (m) | Mountain Range | Coordinates [Lat, Lng] | Shared Peak ID |
 | :--- | :--- | :--- | :---: | :--- | :---: | :--- |
 | `01` | Álava | Gorbea | 1482.5 | Macizo de Gorbeia | `[43.03, -2.78]` | `gorbea` (with Vizcaya) |
-| `02` | Albacete | Pico de La Atalaya (Las Cabras) | 2083.0 | Sierra de las Cabras | `[38.45, -2.43]` | - |
+| `02` | Albacete | Pico de La Atalaya (Las Cabras) | 2083.0 | Sierra de las Cabras | `[38.0606, -2.3914]` | - |
 | `03` | Alicante | Pico de Aitana | 1557.0 | Sierra de Aitana | `[38.66, -0.27]` | - |
 | `04` | Almería | Chullo | 2611.5 | Sierra Nevada | `[37.095, -3.000]` | - |
 | `05` | Ávila | Pico Almanzor | 2591.0 | Sierra de Gredos | `[40.24, -5.30]` | - |

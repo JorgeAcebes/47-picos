@@ -988,13 +988,14 @@ nav a:hover::after {
   border-color: #245f52 !important;
   font-size: 15px !important;
   font-weight: 700 !important;
-  padding-bottom: 0;
+  padding: 0 !important;
 }
 
 .mode-countries .summit-pin--done {
   background: #8f6cb5 !important;
   border-color: #4a2878 !important;
   color: white !important;
+  padding: 0 !important;
 }
 
 .summit-pin--wishlist {
@@ -1003,16 +1004,14 @@ nav a:hover::after {
   font-size: 16px !important;
   font-weight: 700 !important;
   border-color: #d2a54b !important;
-  padding-bottom: 2px !important;
-  padding-left: 0px !important;
+  padding: 0 !important;
 }
 
 .mode-countries .summit-pin--wishlist {
   background: #ecd9a5 !important;
   color: #a67c29 !important;
   border-color: #d2a54b !important;
-  padding-bottom: 2px !important;
-  padding-left: 0px !important;
+  padding: 0 !important;
 }
 
 /* ── Dynamic map zoom scaling ──────────────── */

@@ -1,7 +1,8 @@
 export async function compressImage(
   file: File | Blob,
   maxWidthPx = 1200,
-  quality = 0.75
+  quality = 0.75,
+  targetFormat: "image/webp" | "image/jpeg" = "image/webp"
 ): Promise<Blob> {
   let bitmap: ImageBitmap | null = null;
   try {
@@ -33,8 +34,8 @@ export async function compressImage(
       file.type === "image/gif" ||
       file.type === "image/svg+xml";
 
-    // Fill white background to prevent transparent pixels from becoming black when exported to JPEG
-    if (isTransparentFormat) {
+    // When exporting to JPEG, fill white background to prevent transparent pixels from becoming black
+    if (targetFormat === "image/jpeg" && isTransparentFormat) {
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, width, height);
     }
@@ -42,15 +43,26 @@ export async function compressImage(
     ctx.drawImage(bitmap, 0, 0, width, height);
 
     return await new Promise((resolve) => {
+      // First attempt target format (default: image/webp)
       canvas.toBlob(
         (blob) => {
-          if (blob) {
+          if (blob && (blob.type === "image/webp" || blob.type === "image/jpeg")) {
             resolve(blob);
           } else {
-            resolve(file); // Fallback to original if blob creation fails
+            // Fallback to JPEG if WebP blob generation is not supported
+            if (isTransparentFormat) {
+              ctx.fillStyle = "#ffffff";
+              ctx.fillRect(0, 0, width, height);
+              ctx.drawImage(bitmap!, 0, 0, width, height);
+            }
+            canvas.toBlob(
+              (fallbackBlob) => resolve(fallbackBlob || file),
+              "image/jpeg",
+              quality
+            );
           }
         },
-        "image/jpeg",
+        targetFormat,
         quality
       );
     });

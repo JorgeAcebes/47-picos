@@ -3,9 +3,32 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 
 export const metadata: Metadata = {
-  title: "Atlas · Márcalo en tu mapa",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://atlas-log.vercel.app"),
+  title: "Atlas",
   description: "Registra cada país del mundo que has visitado, los techos provinciales y tus aventuras.",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180" },
+    ],
+  },
+  openGraph: {
+    title: "Atlas",
+    description: "Registra cada país del mundo que has visitado, los techos provinciales y tus aventuras.",
+    url: "https://atlas-log.vercel.app",
+    siteName: "Atlas",
+    locale: "es_ES",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Atlas",
+    description: "Registra cada país del mundo que has visitado, los techos provinciales y tus aventuras.",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

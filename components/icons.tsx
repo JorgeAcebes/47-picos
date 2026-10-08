@@ -73,14 +73,14 @@ export function getIconComponent(name: string, size: number = 18) {
 export function IconLogo({ className, style }: { className?: string, style?: React.CSSProperties }) {
   return (
     <svg className={className} style={style} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path className="logo-mountain-1" d="M12 52 L36 12 L48 32.75 Z" fill="url(#logoGradGreen)" />
-      <path className="logo-mountain-2" d="M24 60 L44 26 L60 52 Z" fill="url(#logoGradPurple)" />
+      <path className="logo-mountain-1" d="M8 52 L32 12 L44 32 Z" fill="url(#logoGradGreen)" />
+      <path className="logo-mountain-2" d="M20 60 L40.4 26 L56 52 Z" fill="url(#logoGradPurple)" />
       <defs>
-        <linearGradient id="logoGradGreen" x1="12" y1="12" x2="48" y2="52">
+        <linearGradient id="logoGradGreen" x1="8" y1="12" x2="44" y2="52">
           <stop stopColor="#5c9b7d" />
           <stop offset="1" stopColor="#245f52" />
         </linearGradient>
-        <linearGradient id="logoGradPurple" x1="24" y1="26" x2="60" y2="60">
+        <linearGradient id="logoGradPurple" x1="20" y1="26" x2="56" y2="60">
           <stop stopColor="#9570c7" />
           <stop offset="1" stopColor="#5b3a8c" />
         </linearGradient>

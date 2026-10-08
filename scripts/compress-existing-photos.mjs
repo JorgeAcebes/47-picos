@@ -86,7 +86,7 @@ async function run() {
           fit: "inside",
           withoutEnlargement: true,
         })
-        .jpeg({ quality: 75, mozjpeg: true })
+        .webp({ quality: 80, effort: 4 })
         .toBuffer();
 
       const newSize = compressedBuffer.length;
@@ -96,7 +96,7 @@ async function run() {
       const { error: uploadError } = await supabase.storage
         .from("summit-photos")
         .upload(file.name, compressedBuffer, {
-          contentType: "image/jpeg",
+          contentType: "image/webp",
           upsert: true,
         });
 

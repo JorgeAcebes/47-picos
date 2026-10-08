@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import type { Session } from "@supabase/supabase-js";
 import { compressImage } from "@/lib/image-utils";
 import { lockScroll, unlockScroll } from "@/lib/scroll-lock";
+import { DeleteAccountModal } from "./delete-account-modal";
 
 type Profile = {
   id: string;
@@ -43,6 +44,7 @@ export function ProfileSettings({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
     async function loadProfile() {
@@ -131,10 +133,11 @@ export function ProfileSettings({
         return;
       }
       const compressedBlob = await compressImage(avatarFile, 256, 0.85);
-      const path = `${session.user.id}/avatar_${Date.now()}.jpg`;
+      const ext = compressedBlob.type === "image/webp" ? "webp" : "jpg";
+      const path = `${session.user.id}/avatar_${Date.now()}.${ext}`;
       const { error: uploadError } = await supabase.storage
         .from("summit-photos")
-        .upload(path, compressedBlob, { contentType: "image/jpeg", upsert: true });
+        .upload(path, compressedBlob, { contentType: compressedBlob.type || "image/webp", upsert: true });
 
       if (uploadError) {
         setError("Error al subir la foto de perfil: " + uploadError.message);
@@ -197,7 +200,7 @@ export function ProfileSettings({
           overflowY: "auto",
           overscrollBehavior: "contain",
           WebkitOverflowScrolling: "touch",
-          padding: "24px 22px 18px",
+          padding: "20px 20px 16px",
           maxWidth: "420px",
         }}
       >
@@ -205,7 +208,7 @@ export function ProfileSettings({
           className="icon-button"
           aria-label="Cerrar"
           onClick={onClose}
-          style={{ position: "absolute", right: "16px", top: "16px" }}
+          style={{ position: "absolute", right: "12px", top: "12px" }}
         >
           <svg
             viewBox="0 0 24 24"
@@ -220,7 +223,7 @@ export function ProfileSettings({
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         </button>
-        <h2 style={{ margin: "0 0 0.85rem", textAlign: "center", fontSize: "1.35rem" }}>
+        <h2 style={{ margin: "0 0 0.6rem", textAlign: "center", fontSize: "1.25rem" }}>
           Perfil
         </h2>
 
@@ -229,7 +232,7 @@ export function ProfileSettings({
         ) : (
           <form
             onSubmit={saveProfile}
-            style={{ display: "flex", flexDirection: "column", gap: "0.55rem" }}
+            style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}
           >
             {/* Avatar & Username in compact horizontal row */}
             <div style={{ display: "flex", alignItems: "center", gap: "0.85rem" }}>
@@ -588,37 +591,64 @@ export function ProfileSettings({
               </p>
             )}
 
-            <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.25rem" }}>
-              <button
-                type="submit"
-                className="button button--green"
-                disabled={saving}
-                style={{
-                  flex: 1,
-                  padding: "0.5rem 0.85rem",
-                  fontSize: "0.88rem",
-                }}
-              >
-                {saving ? "Guardando..." : "Guardar Perfil"}
-              </button>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.1rem" }}>
               <button
                 type="button"
-                className="button button--outline"
-                onClick={async () => {
-                  await supabase?.auth.signOut();
-                  onClose();
-                }}
+                onClick={() => setShowDeleteModal(true)}
                 style={{
-                  padding: "0.5rem 0.85rem",
-                  fontSize: "0.85rem",
+                  background: "none",
+                  border: "none",
+                  color: "var(--danger, #a34f3d)",
+                  fontSize: "0.78rem",
+                  cursor: "pointer",
+                  padding: "0",
+                  textDecoration: "underline",
+                  opacity: 0.9,
+                  fontWeight: 600
                 }}
               >
-                Cerrar Sesión
+                Eliminar cuenta
               </button>
+
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button
+                  type="button"
+                  className="button button--outline"
+                  onClick={async () => {
+                    await supabase?.auth.signOut();
+                    onClose();
+                  }}
+                  style={{
+                    padding: "0.4rem 0.65rem",
+                    fontSize: "0.82rem",
+                  }}
+                >
+                  Cerrar sesión
+                </button>
+                <button
+                  type="submit"
+                  className="button button--green"
+                  disabled={saving}
+                  style={{
+                    padding: "0.4rem 0.65rem",
+                    fontSize: "0.82rem",
+                  }}
+                >
+                  {saving ? "Guardando..." : "Guardar"}
+                </button>
+              </div>
             </div>
           </form>
         )}
       </section>
+
+      {showDeleteModal && (
+        <DeleteAccountModal
+          isOpen={showDeleteModal}
+          username={username}
+          onClose={() => setShowDeleteModal(false)}
+        />
+      )}
     </div>
   );
 }

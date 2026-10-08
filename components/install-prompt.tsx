@@ -119,14 +119,14 @@ export function InstallPrompt() {
         {/* App icon */}
         <div className="install-prompt-icon">
           <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 52 L36 12 L48 32 Z" fill="url(#ipGreen)"/>
-            <path d="M24 60 L44 26 L60 52 Z" fill="url(#ipPurple)" style={{ mixBlendMode: 'multiply' }}/>
+            <path d="M8 52 L32 12 L44 32 Z" fill="url(#ipGreen)"/>
+            <path d="M20 60 L40.4 26 L56 52 Z" fill="url(#ipPurple)" style={{ mixBlendMode: 'multiply' }}/>
             <defs>
-              <linearGradient id="ipGreen" x1="12" y1="12" x2="48" y2="52">
+              <linearGradient id="ipGreen" x1="8" y1="12" x2="44" y2="52">
                 <stop stopColor="#5c9b7d"/>
                 <stop offset="1" stopColor="#245f52"/>
               </linearGradient>
-              <linearGradient id="ipPurple" x1="24" y1="26" x2="60" y2="60">
+              <linearGradient id="ipPurple" x1="20" y1="26" x2="56" y2="60">
                 <stop stopColor="#9570c7"/>
                 <stop offset="1" stopColor="#5b3a8c"/>
               </linearGradient>

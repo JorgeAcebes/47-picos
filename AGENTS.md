@@ -88,6 +88,11 @@ Una tarea sólo se considera concluida cuando:
 - **Ocultación sin Pérdida de Datos**: Desactivar una modalidad oculta los botones, publicaciones y vistas correspondientes, pero conserva íntegramente los datos y registros del usuario.
 - **Ajustes de Perfil sin Scroll**: El modal de ajustes de perfil debe ser completamente visible sin necesidad de scroll vertical.
 
+### 4.7 Visualización de Fotos y Fechas (`summit-tracker.tsx`, `feed-tab.tsx`)
+- **Sin Fechas en Fotos**: En ningún caso deben mostrarse fechas como subtítulo o pie de foto (ni en las cuadrículas de fotos ni en el visor a pantalla completa/lightbox).
+- **Descripción de Fotos**: Si una foto tiene descripción (`caption`), se muestra dicha descripción (`figcaption`). Si no tiene descripción, no se renderiza texto ni fecha automática de fallback.
+- **Visor de Foto (Lightbox)**: Al abrir una foto en el visor, se muestra el título del lugar o experiencia y, si existe, la descripción personalizada, pero jamás la fecha del registro o de la toma de la foto.
+
 ---
 
 ## 5. Reglas Críticas de Seguridad y Base de Datos

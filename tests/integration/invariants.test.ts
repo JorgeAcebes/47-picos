@@ -155,6 +155,13 @@ describe("Project Critical Invariants (No Regressions)", () => {
       expect(content).toContain("SIGNED_OUT");
     });
 
+    it("Invariant 3.2: AuthDialog must not show 'He olvidado la contraseña' when creating an account (isRegister)", () => {
+      const authDialogPath = path.join(rootDir, "components/auth-dialog.tsx");
+      const content = fs.readFileSync(authDialogPath, "utf-8");
+
+      expect(content).toMatch(/!isRegister\s*&&\s*\(?[\s\S]*?He olvidado la contraseña/);
+    });
+
     it("Invariant 4.1: Layout CSS must retain stable scrollbar gutter to prevent desktop shift", () => {
       const globalsCssPath = path.join(rootDir, "app/globals.css");
       const content = fs.readFileSync(globalsCssPath, "utf-8");
@@ -446,6 +453,36 @@ describe("Project Critical Invariants (No Regressions)", () => {
       const content = fs.readFileSync(globalsCssPath, "utf-8");
 
       expect(content).toMatch(/\.mode-countries\s+\.mountain-art,\s*\r?\n\s*\.mode-experiences\s+\.mountain-art\s*\{[^}]*font-size:\s*160px;/);
+    });
+
+    it("Invariant 11.5: spain-map.tsx must use Lucide React SVG icons for all pins and avoid raw unicode symbols", () => {
+      const spainMapPath = path.join(rootDir, "components/spain-map.tsx");
+      const content = fs.readFileSync(spainMapPath, "utf-8");
+
+      // Must not contain raw unicode characters in markerIcons
+      expect(content).not.toContain("summit-pin summit-pin--done\">✓");
+      expect(content).not.toContain("summit-pin\">△");
+      expect(content).not.toContain("summit-pin summit-pin--wishlist\">★");
+      expect(content).not.toContain("summit-pin summit-pin--diff-only-me\">✓");
+      expect(content).not.toContain("summit-pin summit-pin--diff-both\">⬟");
+      expect(content).not.toContain("summit-pin summit-pin--diff-none\">△");
+
+      // Must contain SVG icons with proper paths
+      expect(content).toContain("M20 6 9 17l-5-5"); // Check
+      expect(content).toContain("M13.73 4a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"); // Triangle
+      expect(content).toContain("M11.525 2.295"); // Star
+      expect(content).toContain("M10.83 2.38"); // Pentagon
+    });
+
+    it("Invariant 11.6: summit-tracker.tsx must not display dates in photo captions (only photo.caption if present) or in the photo lightbox view", () => {
+      const trackerPath = path.join(rootDir, "components/summit-tracker.tsx");
+      const content = fs.readFileSync(trackerPath, "utf-8");
+
+      // Figcaptions must not fallback to formatDate(photo.taken_on)
+      expect(content).not.toContain("formatDate(photo.taken_on)");
+
+      // Lightbox subtitle must only display title and not concatenate photo dates
+      expect(content).not.toContain("formatShortDate(lightboxPhoto.taken_on)");
     });
   });
 });

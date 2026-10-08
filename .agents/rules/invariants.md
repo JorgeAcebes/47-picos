@@ -120,3 +120,11 @@ Este documento reúne todas las reglas no negociables de la aplicación. Cualqui
 2. **Jerarquía de Modalidades**: "Modo experiencias" y "Modo regiones" dependen jerárquicamente del "Modo países". Si "Modo países" está desactivado (`enable_countries: false` o `canShowCountries: false`), el "Modo experiencias" y el "Modo regiones" quedan congelados y no operativos en la interfaz ni en las opciones de perfil.
 3. **Persistencia sin Pérdida de Datos**: Desactivar una modalidad oculta las vistas, botones, publicaciones y registros correspondientes en UI y Feed, pero jamás destruye los datos históricos de ascensos, visitas o experiencias del usuario.
 4. **Dimensiones del Panel de Ajustes**: El modal de ajustes de perfil (`ProfileSettings`) debe permanecer visible sin requerir scroll vertical en la vista principal.
+
+---
+
+## 10. Visualización de Fotos y Fechas (`components/summit-tracker.tsx`, `components/feed-tab.tsx`)
+
+1. **Sin Fechas en Fotos**: En ningún caso deben mostrarse fechas como subtítulo o pie de foto (ni en las cuadrículas de fotos ni en el visor a pantalla completa/lightbox).
+2. **Descripción de Fotos**: Si una foto tiene descripción (`caption`), se muestra dicha descripción (`figcaption`). Si no tiene descripción, no se renderiza texto ni fecha automática de fallback.
+3. **Visor de Foto (Lightbox)**: Al abrir una foto en el visor, se muestra el título del lugar o experiencia y, si existe, la descripción personalizada, pero jamás la fecha del registro o de la toma de la foto.
