@@ -324,32 +324,27 @@ export function RankingTab({
           {/* Filters: Mode selector, then Scope */}
           <div className="ranking-filters-bar">
             {hasBothModes && (
-              <div className="mode-selector" style={{ margin: 0 }}>
+              <div
+                className={`app-mode-switch ${mode === "peaks" ? "app-mode-switch--peaks" : "app-mode-switch--countries"}`}
+                style={{ margin: "0 auto 16px", display: "flex", width: "fit-content" }}
+              >
+                <div className="app-mode-switch__indicator" />
                 <button
-                  className={`mode-tab ranking-mode-tab ${mode === "peaks" ? "mode-tab--active" : ""}`}
+                  className={`app-mode-btn ${mode === "peaks" ? "active" : ""}`}
                   onClick={() => {
                     setMode("peaks");
                     if (typeof window !== "undefined") localStorage.setItem("ranking_mode", "peaks");
                   }}
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mode-tab-icon">
-                    <path d="M8 3l4 8 5-5 2 4H2L8 3z" />
-                    <path d="M4.14 15.08l2.6-3.51L8 13l4-5.5 4 5.5 2.74-2.42L21.86 15.08" />
-                  </svg>
                   47 Picos
                 </button>
                 <button
-                  className={`mode-tab ranking-mode-tab ${mode === "countries" ? "mode-tab--active" : ""}`}
+                  className={`app-mode-btn ${mode === "countries" ? "active" : ""}`}
                   onClick={() => {
                     setMode("countries");
                     if (typeof window !== "undefined") localStorage.setItem("ranking_mode", "countries");
                   }}
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mode-tab-icon">
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M2 12h20" />
-                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z" />
-                  </svg>
                   196 Países
                 </button>
               </div>

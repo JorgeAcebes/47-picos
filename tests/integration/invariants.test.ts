@@ -502,6 +502,38 @@ describe("Project Critical Invariants (No Regressions)", () => {
       expect(content).toContain("e.stopPropagation()");
       expect(content).toMatch(/id="delete-confirmation-input"[\s\S]*?onClick=\{\(e\)\s*=>\s*e\.stopPropagation\(\)\}/);
     });
+
+    it("Invariant 11.9: app/icon.svg, public/icon-192.svg and icon-512.svg must have no background rectangles (transparent logo)", () => {
+      const iconSvg = fs.readFileSync(path.join(rootDir, "app/icon.svg"), "utf-8");
+      const icon192 = fs.readFileSync(path.join(rootDir, "public/icon-192.svg"), "utf-8");
+      const icon512 = fs.readFileSync(path.join(rootDir, "public/icon-512.svg"), "utf-8");
+
+      expect(iconSvg).not.toContain("<rect");
+      expect(icon192).not.toContain("<rect");
+      expect(icon512).not.toContain("<rect");
+    });
+
+    it("Invariant 11.10: Removed banner and eyebrow texts must not be present in components/summit-tracker.tsx", () => {
+      const trackerPath = path.join(rootDir, "components/summit-tracker.tsx");
+      const content = fs.readFileSync(trackerPath, "utf-8");
+
+      expect(content).not.toContain("UN RETO, 196 PAÍSES");
+      expect(content).not.toContain("UN RETO, 47 PICOS");
+      expect(content).not.toContain("UN RETO, EXPERIENCIAS GLOBALES");
+      expect(content).not.toContain("El mapa para registrar cada país del mundo que has visitado.");
+      expect(content).not.toContain("El mapa para conquistar el techo de cada provincia española.");
+      expect(content).not.toContain("El mapa para registrar todas las experiencias de tu vida.");
+      expect(content).not.toContain("EL RETO COMPLETO");
+      expect(content).not.toContain("TU PROGRESO");
+      expect(content).not.toContain("Selecciona cualquier marcador para conocer el pico o registrar una ascensión.");
+      expect(content).not.toContain("Haz clic en cualquier país para ver su información o marcarlo como visitado.");
+      expect(content).not.toContain("Márcalas en tu mapa.");
+      expect(content).toContain("Márcalo en tu mapa.");
+      expect(content).not.toContain("mountain-art");
+      expect(content).not.toContain("challenge-summary");
+      expect(content).not.toContain("Un país por descubrir");
+      expect(content).not.toContain("Un mundo por explorar");
+    });
   });
 });
 

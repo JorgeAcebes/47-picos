@@ -1239,32 +1239,6 @@ export function SummitTracker({
       ? "experiencias registradas"
       : "países visitados";
   const modeUnitSingular = isPeaks ? "cima" : isExp ? "experiencia" : "país";
-  const modeHeroEyebrow = isPeaks
-    ? "UN RETO, 47 PICOS"
-    : isExp
-      ? "UN RETO, EXPERIENCIAS GLOBALES"
-      : "UN RETO, 196 PAÍSES";
-  const modeHeroSubtitle = isPeaks
-    ? "El mapa para conquistar el techo de cada provincia española."
-    : isExp
-      ? "El mapa para registrar todas las experiencias de tu vida."
-      : "El mapa para registrar cada país del mundo que has visitado.";
-  const modeChallengeTitle = isPeaks ? (
-    <>
-      Un país por descubrir, <br />
-      una cima cada vez.
-    </>
-  ) : isExp ? (
-    <>
-      Un mundo por explorar, <br />
-      una experiencia cada vez.
-    </>
-  ) : (
-    <>
-      Un mundo por explorar, <br />
-      un país cada vez.
-    </>
-  );
 
   const modeListEyebrow = isPeaks
     ? "52 Territorios - 47 Picos"
@@ -3580,11 +3554,13 @@ export function SummitTracker({
       setExperiencesMode(false);
     } else {
       if (!canShowCountries) return;
+      if (isPeaks) setCurrentMode("countries");
       setExperiencesMode(true);
     }
   }, [
     canShowCountries,
     experiencesMode,
+    isPeaks,
     selected,
     customExperiences,
     closePanel,
@@ -3621,6 +3597,80 @@ export function SummitTracker({
       window.history.pushState(null, "", target === "peaks" ? "/picos" : "/");
     }
   }
+
+  // Touch swipe gesture (Twitter/X style) to switch between 47 Picos and 196 Países
+  const swipeStartXRef = useRef<number | null>(null);
+  const swipeStartYRef = useRef<number | null>(null);
+
+  const handleSwipeTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      swipeStartXRef.current = e.touches[0].clientX;
+      swipeStartYRef.current = e.touches[0].clientY;
+    }
+  }, []);
+
+  const handleSwipeTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (swipeStartXRef.current === null || swipeStartYRef.current === null) return;
+    const endX = e.changedTouches[0].clientX;
+    const endY = e.changedTouches[0].clientY;
+    const diffX = endX - swipeStartXRef.current;
+    const diffY = endY - swipeStartYRef.current;
+
+    // Minimum swipe distance 35px, predominantly horizontal
+    if (Math.abs(diffX) > 35 && Math.abs(diffX) > Math.abs(diffY) * 1.25) {
+      if (diffX < 0) {
+        // Swipe left -> go to 196 Países
+        if (isPeaks && canShowCountries) {
+          switchMode("countries");
+        }
+      } else {
+        // Swipe right -> go to 47 Picos
+        if (!isPeaks && canShowPeaks) {
+          switchMode("peaks");
+        }
+      }
+    }
+    swipeStartXRef.current = null;
+    swipeStartYRef.current = null;
+  }, [isPeaks, canShowPeaks, canShowCountries]);
+
+  useEffect(() => {
+    const handleGlobalTouchStart = (e: TouchEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest('.leaflet-container, input, textarea, select, .info-panel, .record-dialog, .auth-dialog, button, a')) {
+        return;
+      }
+      if (e.touches.length === 1) {
+        swipeStartXRef.current = e.touches[0].clientX;
+        swipeStartYRef.current = e.touches[0].clientY;
+      }
+    };
+
+    const handleGlobalTouchEnd = (e: TouchEvent) => {
+      if (swipeStartXRef.current === null || swipeStartYRef.current === null) return;
+      const endX = e.changedTouches[0].clientX;
+      const endY = e.changedTouches[0].clientY;
+      const diffX = endX - swipeStartXRef.current;
+      const diffY = endY - swipeStartYRef.current;
+
+      if (Math.abs(diffX) > 40 && Math.abs(diffX) > Math.abs(diffY) * 1.25) {
+        if (diffX < 0) {
+          if (isPeaks && canShowCountries) switchMode("countries");
+        } else {
+          if (!isPeaks && canShowPeaks) switchMode("peaks");
+        }
+      }
+      swipeStartXRef.current = null;
+      swipeStartYRef.current = null;
+    };
+
+    window.addEventListener("touchstart", handleGlobalTouchStart, { passive: true });
+    window.addEventListener("touchend", handleGlobalTouchEnd, { passive: true });
+    return () => {
+      window.removeEventListener("touchstart", handleGlobalTouchStart);
+      window.removeEventListener("touchend", handleGlobalTouchEnd);
+    };
+  }, [isPeaks, canShowPeaks, canShowCountries]);
 
   // Sorted items for the list
   const sortedItems = useMemo(() => {
@@ -3927,8 +3977,23 @@ export function SummitTracker({
           </a>
         )}
 
-        {/* ── Mode selector ──────────────── */}
-        {/* Movido a la sección del mapa */}
+        {hasBothModes && (
+          <div className={`app-mode-switch hide-on-mobile ${isPeaks ? "app-mode-switch--peaks" : "app-mode-switch--countries"}`}>
+            <div className="app-mode-switch__indicator" />
+            <button
+              className={`app-mode-btn ${isPeaks ? "active" : ""}`}
+              onClick={() => switchMode("peaks")}
+            >
+              47 Picos
+            </button>
+            <button
+              className={`app-mode-btn ${!isPeaks ? "active" : ""}`}
+              onClick={() => switchMode("countries")}
+            >
+              196 Países
+            </button>
+          </div>
+        )}
 
         <nav>
           {isReadOnly ? (
@@ -4044,9 +4109,13 @@ export function SummitTracker({
       </header>
 
       {/* ── Hero ────────────────────────── */}
-      <section id="inicio" className="hero">
+      <section
+        id="inicio"
+        className="hero"
+        onTouchStart={handleSwipeTouchStart}
+        onTouchEnd={handleSwipeTouchEnd}
+      >
         <div>
-          <span className="eyebrow">{modeHeroEyebrow}</span>
           <h1>
             {targetProfile ? (
               <>
@@ -4063,7 +4132,7 @@ export function SummitTracker({
               <>
                 Vive experiencias.
                 <br />
-                <em>Márcalas en tu mapa.</em>
+                <em>Márcalo en tu mapa.</em>
               </>
             ) : (
               <>
@@ -4073,10 +4142,8 @@ export function SummitTracker({
               </>
             )}
           </h1>
-          <p>{modeHeroSubtitle}</p>
         </div>
         <aside className="hero-stat" suppressHydrationWarning>
-          <span className="mountain-art" suppressHydrationWarning>{isPeaks ? "△" : "◉"}</span>
           <strong suppressHydrationWarning>
             <span suppressHydrationWarning>{achievedCount}</span>
             <small suppressHydrationWarning> / {totalCount}</small>
@@ -4085,24 +4152,31 @@ export function SummitTracker({
           <div className="progress">
             <span style={{ width: `${completion}%` }} suppressHydrationWarning />
           </div>
-          <b suppressHydrationWarning>{completion}% de tu reto</b>
         </aside>
 
-        {/* ── Mobile stat card ───────────── */}
-        <div className="hero-stat-mobile" suppressHydrationWarning>
-          <div className="hero-stat-mobile__numbers" suppressHydrationWarning>
-            <strong suppressHydrationWarning>{achievedCount}</strong>
-            <span className="hero-stat-mobile__sep"> / </span>
-            <span className="hero-stat-mobile__total" suppressHydrationWarning>{totalCount}</span>
+        {/* ── Mode selector on mobile (debajo de la barra de progreso) ── */}
+        {hasBothModes && (
+          <div
+            className={`app-mode-switch hide-on-desktop ${isPeaks ? "app-mode-switch--peaks" : "app-mode-switch--countries"}`}
+            style={{ marginTop: 10, display: "flex", width: "fit-content" }}
+            onTouchStart={handleSwipeTouchStart}
+            onTouchEnd={handleSwipeTouchEnd}
+          >
+            <div className="app-mode-switch__indicator" />
+            <button
+              className={`app-mode-btn ${isPeaks ? "active" : ""}`}
+              onClick={() => switchMode("peaks")}
+            >
+              47 Picos
+            </button>
+            <button
+              className={`app-mode-btn ${!isPeaks ? "active" : ""}`}
+              onClick={() => switchMode("countries")}
+            >
+              196 Países
+            </button>
           </div>
-          <div className="hero-stat-mobile__right" suppressHydrationWarning>
-            <span className="hero-stat-mobile__label" suppressHydrationWarning>{modeUnit}</span>
-            <div className="progress hero-stat-mobile__progress">
-              <span style={{ width: `${completion}%` }} suppressHydrationWarning />
-            </div>
-            <b className="hero-stat-mobile__pct" suppressHydrationWarning>{completion}%</b>
-          </div>
-        </div>
+        )}
       </section>
 
       {/* ── Config warning ──────────────── */}
@@ -4116,55 +4190,12 @@ export function SummitTracker({
 
       {/* ── Map ─────────────────────────── */}
       <section className="map-section">
-        {/* ── Mode selector ──────────────── */}
-        {hasBothModes && (
-          <div className="mode-selector">
-            <button
-              className={`mode-tab ${isPeaks ? "mode-tab--active" : ""}`}
-              onClick={() => switchMode("peaks")}
-            >
-              <IconMountain className="mode-tab-icon" />
-              47 Picos
-            </button>
-            <button
-              className={`mode-tab ${!isPeaks ? "mode-tab--active" : ""}`}
-              onClick={() => switchMode("countries")}
-            >
-              <IconGlobe className="mode-tab-icon" />
-              196 Países
-            </button>
-          </div>
-        )}
-
         <div id="mapa" className="section-heading map-heading-row">
-          <div>
-            <span className="eyebrow">
-              {isReadOnly ? "SU PROGRESO" : "TU PROGRESO"}
-            </span>
-            <h2>
-              {isPeaks
-                ? isReadOnly
-                  ? "Su mapa de cumbres"
-                  : "Tu mapa de cumbres"
-                : isReadOnly
-                  ? "Su mapa del mundo"
-                  : "Tu mapa del mundo"}
-            </h2>
-            <p>
-              {isPeaks
-                ? isReadOnly
-                  ? "Selecciona cualquier marcador para conocer el pico o ver el registro."
-                  : "Selecciona cualquier marcador para conocer el pico o registrar una ascensión."
-                : isReadOnly
-                  ? "Haz clic en cualquier país para ver su información o ver su registro."
-                  : "Haz clic en cualquier país para ver su información o marcarlo como visitado."}
-            </p>
-          </div>
           <div className="map-legend-area">
             <div className="diff-toggle-wrap">
               {isReadOnly && session && (
                 <button
-                  className={`diff-toggle${diffMode ? " diff-toggle--active" : ""}`}
+                  className={`diff-toggle diff-toggle--compact ${diffMode ? "diff-toggle--active" : ""}`}
                   onClick={() => setDiffMode(!diffMode)}
                   title="Compara tu progreso con el suyo"
                 >
@@ -4184,33 +4215,10 @@ export function SummitTracker({
                   {diffMode ? "Comparando" : "Comparar conmigo"}
                 </button>
               )}
-              {!isPeaks &&
-                canShowCountries &&
-                (experiencesMode || (mounted && myProfile?.enable_experiences)) && (
-                  <button
-                    className={`diff-toggle${experiencesMode ? " diff-toggle--active" : ""}`}
-                    onClick={handleToggleExperiences}
-                    title="Ver experiencias"
-                  >
-                    <svg
-                      className="diff-toggle-icon"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <circle cx="12" cy="12" r="10" />
-                      <circle cx="12" cy="12" r="6" />
-                      <circle cx="12" cy="12" r="2" />
-                    </svg>
-                    Experiencias
-                  </button>
-                )}
+
               {!isPeaks && canShowCountries && (mounted && myProfile?.enable_regions) && (
                 <button
-                  className={`diff-toggle${regionsMode ? " diff-toggle--active" : ""}`}
+                  className={`diff-toggle diff-toggle--compact ${regionsMode ? "diff-toggle--active" : ""}`}
                   onClick={() => setRegionsMode(!regionsMode)}
                   title="Ver divisiones territoriales"
                 >
@@ -4274,6 +4282,31 @@ export function SummitTracker({
                   </i>{" "}
                   {isPeaks ? "Completada" : "Visitado"}
                 </span>
+
+                {!isPeaks &&
+                  canShowCountries &&
+                  (experiencesMode || (mounted && myProfile?.enable_experiences)) && (
+                    <button
+                      className={`diff-toggle diff-toggle--compact ${experiencesMode ? "diff-toggle--active" : ""}`}
+                      onClick={handleToggleExperiences}
+                      title={experiencesMode ? "Ocultar experiencias" : "Ver experiencias"}
+                    >
+                      <svg
+                        className="diff-toggle-icon"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <circle cx="12" cy="12" r="6" />
+                        <circle cx="12" cy="12" r="2" />
+                      </svg>
+                      Experiencias
+                    </button>
+                  )}
               </div>
             )}
           </div>
@@ -4334,14 +4367,6 @@ export function SummitTracker({
               />
             </>
           )}
-        </div>
-      </section>
-
-      {/* ── Challenge summary ───────────── */}
-      <section id="reto" className="challenge-summary">
-        <div>
-          <span className="eyebrow">EL RETO COMPLETO</span>
-          <h2>{modeChallengeTitle}</h2>
         </div>
       </section>
 

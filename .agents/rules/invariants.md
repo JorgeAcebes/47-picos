@@ -135,4 +135,31 @@ Este documento reúne todas las reglas no negociables de la aplicación. Cualqui
 
 1. **Pantalla de Carga sin Abusos (`app/loading.tsx`)**: Una vez abierta una página (ej. Países), los datos quedan guardados y cacheados en memoria. Al navegar entre pestañas (Mapa, Social, Ranking) no debe mostrarse la pantalla de carga para transiciones puntuales o instantáneas. La pantalla de carga completa debe disponer de un retardo (debounce de al menos 700ms) para mostrarse únicamente cuando una carga requiera un tiempo prolongado perceptible.
 2. **Aislamiento en Modal de Eliminar Cuenta (`delete-account-modal.tsx`)**: El diálogo de confirmación debe aislarse completamente del backdrop padre (`ProfileSettings`) y detener la propagación de eventos (`onClick`, `onMouseDown`, `onKeyDown`). El campo de texto de confirmación no debe cerrarse al hacer clic en él ni al escribir en él.
+
+---
+
+## 12. Iconos y Logo de la Aplicación (`app/icon.svg`, `app/favicon.ico`, `public/icon-192.svg`, `public/icon-512.svg`)
+
+1. **Logo sin Fondo en Ventana/Pestaña**: El icono de la aplicación en la ventana/pestaña (favicon, PWA y accesos directos) debe ser transparente, compuesto exclusivamente por los dos triángulos estilizados, sin fondo blanco ni crema.
+
+---
+
+## 13. Textos Simplificados y Estructura en la Portada (`components/summit-tracker.tsx`, `app/globals.css`)
+
+1. **Eliminación de Subtítulos y Eyebrows**:
+   - Eyebrows de Hero eliminados: *"UN RETO, 47 PICOS"*, *"UN RETO, 196 PAÍSES"*, *"UN RETO, EXPERIENCIAS GLOBALES"*.
+   - Subtítulos de Hero eliminados: *"El mapa para conquistar el techo de cada provincia española."*, *"El mapa para registrar todas las experiencias de tu vida."*, *"El mapa para registrar cada país del mundo que has visitado."*.
+   - Eyebrow de Reto eliminado: *"EL RETO COMPLETO"*.
+   - Eyebrow de Mapa eliminado: *"TU PROGRESO"*.
+   - Subtítulos de Mapa eliminados: *"Selecciona cualquier marcador para conocer el pico o registrar una ascensión."*, *"Haz clic en cualquier país para ver su información o marcarlo como visitado."*.
+2. **Lema de Experiencias**:
+   - En el hero de experiencias, se unifica la redacción a *"Márcalo en tu mapa."*.
+3. **Iconos de Fondo en Desktop Suprimidos**:
+   - Se elimina el símbolo unicode de fondo en el ratio del hero (`mountain-art`).
+4. **Banda del Hero Más Estrecha**:
+   - Reducción del padding vertical del hero a 24px (desktop) y 18-20px (tablet/móvil), y `margin: 0` en `h1`.
+5. **Eliminación de Banda Intermedia**:
+   - Eliminación de la sección `.challenge-summary` ("Un país por descubrir, una cima cada vez" / "Un mundo por explorar...").
+
+
 

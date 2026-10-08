@@ -3851,3 +3851,274 @@ textarea:focus {
   }
 }
 
+
+/* ── Minimalist Centered Hero & Stat ── */
+.hero {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  gap: 12px !important;
+  padding: 38px 24px 20px !important;
+}
+
+.hero h1 {
+  font-size: clamp(38px, 4.2vw, 60px) !important;
+  line-height: 0.98 !important;
+  margin: 0 !important;
+}
+
+.hero-stat {
+  border-left: none !important;
+  padding: 0 !important;
+  margin-top: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+}
+
+@media (max-width: 700px) {
+  .hero {
+    padding: 16px 16px 10px !important;
+    gap: 4px !important;
+  }
+  .hero h1 {
+    font-size: 34px !important;
+  }
+  .hero-stat {
+    display: flex !important;
+    margin-top: 2px !important;
+    padding: 0 !important;
+  }
+  .hero-stat strong {
+    font-size: 36px !important;
+  }
+  .hero-stat strong small {
+    font-size: 15px !important;
+  }
+  .hero-stat .progress {
+    width: 140px !important;
+    margin-top: 8px !important;
+  }
+}
+
+/* ── Universal App Mode Switch with Smooth Sliding Indicator ── */
+.app-mode-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.06);
+  padding: 3px;
+  border-radius: 100px;
+  user-select: none;
+  isolation: isolate;
+  min-width: 220px;
+}
+
+.mode-experiences .app-mode-switch {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.app-mode-switch__indicator {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
+  background: #ffffff;
+  border-radius: 100px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.06);
+  transition: transform 0.28s cubic-bezier(0.34, 1.3, 0.64, 1);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.app-mode-switch--peaks .app-mode-switch__indicator {
+  transform: translateX(0);
+}
+
+.app-mode-switch--countries .app-mode-switch__indicator {
+  transform: translateX(100%);
+}
+
+.mode-experiences .app-mode-switch__indicator {
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.app-mode-btn {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  background: transparent !important;
+  border: none !important;
+  padding: 6px 14px;
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.22s ease;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.app-mode-btn.active {
+  color: var(--ink) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.mode-experiences .app-mode-btn {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.mode-experiences .app-mode-btn.active {
+  color: #ffffff !important;
+}
+
+.topbar {
+  position: relative;
+}
+.topbar .app-mode-switch {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+}
+
+/* ── Map Legend Centering & Spacing ── */
+.diff-toggle-wrap:empty {
+  display: none;
+}
+
+.map-section {
+  padding-top: 14px !important;
+  padding-bottom: 24px !important;
+}
+
+.map-heading-row {
+  display: flex !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  margin-bottom: 12px !important;
+  width: 100% !important;
+}
+
+.map-legend-area {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  flex-wrap: wrap !important;
+  width: auto !important;
+  gap: 12px !important;
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}
+
+.map-legend {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 16px !important;
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}
+
+.diff-toggle--compact {
+  padding: 4px 10px !important;
+  font-size: 12px !important;
+}
+.diff-toggle--compact .diff-toggle-icon {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+@media (max-width: 768px) {
+  .map-section {
+    padding-top: 8px !important;
+    padding-bottom: 14px !important;
+  }
+  .map-heading-row {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    text-align: left !important;
+    gap: 8px !important;
+    margin-bottom: 10px !important;
+  }
+
+  .map-legend-area {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    flex-wrap: wrap !important;
+    width: 100% !important;
+    gap: 10px !important;
+    margin-left: 0 !important;
+    margin-right: auto !important;
+  }
+  .map-legend {
+    justify-content: flex-start !important;
+    width: 100% !important;
+    gap: 10px !important;
+    margin-left: 0 !important;
+    margin-right: auto !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .map-legend {
+    gap: 8px !important;
+    font-size: 11px !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    width: 100% !important;
+    padding-bottom: 2px !important;
+    scrollbar-width: none !important;
+  }
+  .map-legend::-webkit-scrollbar {
+    display: none !important;
+  }
+  .map-legend span {
+    gap: 4px !important;
+    flex-shrink: 0 !important;
+  }
+  .map-legend .diff-toggle {
+    flex-shrink: 0 !important;
+  }
+  .diff-toggle--compact {
+    padding: 3px 8px !important;
+    font-size: 11px !important;
+    flex-shrink: 0 !important;
+  }
+}
+
+/* ── Peak List Spacing & Search Alignment ── */
+.peak-list-section {
+  padding-top: 24px !important;
+}
+.peak-list-section .section-heading {
+  margin-bottom: 16px !important;
+  gap: 12px !important;
+}
+.peak-list-section .section-heading h2 {
+  margin-bottom: 4px !important;
+}
+.peak-list-section .section-heading p {
+  margin-bottom: 0 !important;
+}
+
+@media (max-width: 768px) {
+  .peak-list-section {
+    padding-top: 14px !important;
+  }
+  .peak-list-section .section-heading {
+    margin-bottom: 12px !important;
+    gap: 8px !important;
+  }
+}

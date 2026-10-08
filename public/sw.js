@@ -1,4 +1,4 @@
-const CACHE_NAME = 'atlas-cache-v3';
+const CACHE_NAME = 'atlas-cache-v4';
 
 // Recursos estáticos iniciales a cachear durante instalación (Stale-While-Revalidate)
 // NO precacheamos '/' para que el HTML nunca quede congelado
