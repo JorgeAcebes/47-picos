@@ -27,7 +27,7 @@ export default function Loading() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: "var(--paper, #faf8f1)",
+        backgroundColor: "#ffffff",
         color: "var(--muted, #62716b)",
         fontFamily: "'DM Sans', sans-serif",
         gap: "1.25rem",
@@ -41,20 +41,29 @@ export default function Loading() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          borderRadius: "50%",
-          backgroundColor: "rgba(36, 95, 82, 0.08)",
+          backgroundColor: "transparent",
           animation: "atlasPulse 1.6s ease-in-out infinite",
         }}
       >
         <svg
-          width="36"
-          height="36"
+          width="48"
+          height="48"
           viewBox="0 0 64 64"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
-          <path d="M12 52 L36 12 L48 32 Z" fill="#245f52" />
-          <path d="M24 60 L44 26 L60 52 Z" fill="#5b3a8c" opacity="0.85" />
+          <path d="M8 52 L32 12 L44 32 Z" fill="url(#loadingGradGreen)" />
+          <path d="M20 60 L40.4 26 L56 52 Z" fill="url(#loadingGradPurple)" style={{ mixBlendMode: "multiply" }} />
+          <defs>
+            <linearGradient id="loadingGradGreen" x1="8" y1="12" x2="44" y2="52">
+              <stop stopColor="#5c9b7d" />
+              <stop offset="1" stopColor="#245f52" />
+            </linearGradient>
+            <linearGradient id="loadingGradPurple" x1="20" y1="26" x2="56" y2="60">
+              <stop stopColor="#9570c7" />
+              <stop offset="1" stopColor="#5b3a8c" />
+            </linearGradient>
+          </defs>
         </svg>
       </div>
 

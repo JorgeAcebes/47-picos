@@ -3672,6 +3672,38 @@ export function SummitTracker({
     };
   }, [isPeaks, canShowPeaks, canShowCountries]);
 
+  const scrollToMap = useCallback((e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+    const mapaEl = document.getElementById("mapa");
+    if (mapaEl) {
+      const topbar = document.querySelector(".topbar") as HTMLElement | null;
+      const topbarHeight = topbar ? topbar.getBoundingClientRect().height : 76;
+      const mapaTop = mapaEl.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({
+        top: Math.max(0, Math.round(mapaTop - topbarHeight - 6)),
+        behavior: "smooth",
+      });
+    }
+    if (window.location.hash !== "#mapa") {
+      window.history.pushState(null, "", "#mapa");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const checkMapHash = () => {
+      if (window.location.hash === "#mapa") {
+        setTimeout(() => {
+          scrollToMap();
+        }, 150);
+      }
+    };
+    window.addEventListener("hashchange", checkMapHash);
+    return () => window.removeEventListener("hashchange", checkMapHash);
+  }, [scrollToMap]);
+
   // Sorted items for the list
   const sortedItems = useMemo(() => {
     if (isPeaks) {
@@ -3967,6 +3999,16 @@ export function SummitTracker({
               if (onNavigate) {
                 e.preventDefault();
                 onNavigate(isPeaks ? "/picos" : "/");
+                return;
+              }
+              e.preventDefault();
+              window.scrollTo({ top: 0, behavior: "smooth" });
+              if (window.location.hash) {
+                window.history.pushState(
+                  null,
+                  "",
+                  window.location.pathname + window.location.search,
+                );
               }
             }}
           >
@@ -4021,7 +4063,9 @@ export function SummitTracker({
                   if (onNavigate) {
                     e.preventDefault();
                     onNavigate(isPeaks ? "/picos" : "/");
+                    return;
                   }
+                  scrollToMap(e);
                 }}
               >
                 Mapa
@@ -4115,44 +4159,46 @@ export function SummitTracker({
         onTouchStart={handleSwipeTouchStart}
         onTouchEnd={handleSwipeTouchEnd}
       >
-        <div>
-          <h1>
-            {targetProfile ? (
-              <>
-                El mapa de <br />
-                <em>@{targetProfile.username}</em>
-              </>
-            ) : isPeaks ? (
-              <>
-                Sube alto.
-                <br />
-                <em>Déjalo escrito.</em>
-              </>
-            ) : experiencesMode ? (
-              <>
-                Vive experiencias.
-                <br />
-                <em>Márcalo en tu mapa.</em>
-              </>
-            ) : (
-              <>
-                Explora el mundo.
-                <br />
-                <em>Márcalo en tu mapa.</em>
-              </>
-            )}
-          </h1>
-        </div>
-        <aside className="hero-stat" suppressHydrationWarning>
-          <strong suppressHydrationWarning>
-            <span suppressHydrationWarning>{achievedCount}</span>
-            <small suppressHydrationWarning> / {totalCount}</small>
-          </strong>
-          <span suppressHydrationWarning>{modeUnit}</span>
-          <div className="progress">
-            <span style={{ width: `${completion}%` }} suppressHydrationWarning />
+        <div className="hero-main">
+          <div className="hero-title-wrap">
+            <h1>
+              {targetProfile ? (
+                <>
+                  El mapa de <br />
+                  <em>@{targetProfile.username}</em>
+                </>
+              ) : isPeaks ? (
+                <>
+                  Sube alto.
+                  <br />
+                  <em>Déjalo escrito.</em>
+                </>
+              ) : experiencesMode ? (
+                <>
+                  Vive experiencias.
+                  <br />
+                  <em>Márcalo en tu mapa.</em>
+                </>
+              ) : (
+                <>
+                  Explora el mundo.
+                  <br />
+                  <em>Márcalo en tu mapa.</em>
+                </>
+              )}
+            </h1>
           </div>
-        </aside>
+          <aside className="hero-stat" suppressHydrationWarning>
+            <strong suppressHydrationWarning>
+              <span suppressHydrationWarning>{achievedCount}</span>
+              <small suppressHydrationWarning> / {totalCount}</small>
+            </strong>
+            <span suppressHydrationWarning>{modeUnit}</span>
+            <div className="progress">
+              <span style={{ width: `${completion}%` }} suppressHydrationWarning />
+            </div>
+          </aside>
+        </div>
 
         {/* ── Mode selector on mobile (debajo de la barra de progreso) ── */}
         {hasBothModes && (
@@ -4192,6 +4238,51 @@ export function SummitTracker({
       <section className="map-section">
         <div id="mapa" className="section-heading map-heading-row">
           <div className="map-legend-area">
+            {diffMode ? (
+              <div className="diff-legend">
+                <span>
+                  <i className="legend-diff-dot legend-diff-dot--only-me" />{" "}
+                  Solo tú
+                </span>
+                <span>
+                  <i className="legend-diff-dot legend-diff-dot--only-them" />{" "}
+                  Solo @{targetProfile?.username}
+                </span>
+                <span>
+                  <i className="legend-diff-dot legend-diff-dot--both" /> Ambos
+                </span>
+                <span>
+                  <i className="legend-diff-dot legend-diff-dot--none" />{" "}
+                  Ninguno
+                </span>
+              </div>
+            ) : (
+              <div className="map-legend">
+                <span>
+                  <i className="legend-pin">
+                    {isPeaks ? (
+                      <Triangle size={10} strokeWidth={2.2} />
+                    ) : (
+                      <Diamond size={10} strokeWidth={2.2} />
+                    )}
+                  </i>{" "}
+                  Pendiente
+                </span>
+                <span>
+                  <i className="legend-wishlist">
+                    <Star size={10} fill="currentColor" strokeWidth={1} />
+                  </i>{" "}
+                  Quiero ir
+                </span>
+                <span>
+                  <i className="legend-done">
+                    <Check size={11} strokeWidth={2.5} />
+                  </i>{" "}
+                  {isPeaks ? "Completada" : "Visitado"}
+                </span>
+              </div>
+            )}
+
             <div className="diff-toggle-wrap">
               {isReadOnly && session && (
                 <button
@@ -4238,77 +4329,32 @@ export function SummitTracker({
                   Regiones
                 </button>
               )}
-            </div>
-            {diffMode && (
-              <div className="diff-legend">
-                <span>
-                  <i className="legend-diff-dot legend-diff-dot--only-me" />{" "}
-                  Solo tú
-                </span>
-                <span>
-                  <i className="legend-diff-dot legend-diff-dot--only-them" />{" "}
-                  Solo @{targetProfile?.username}
-                </span>
-                <span>
-                  <i className="legend-diff-dot legend-diff-dot--both" /> Ambos
-                </span>
-                <span>
-                  <i className="legend-diff-dot legend-diff-dot--none" />{" "}
-                  Ninguno
-                </span>
-              </div>
-            )}
-            {!diffMode && (
-              <div className="map-legend">
-                <span>
-                  <i className="legend-pin">
-                    {isPeaks ? (
-                      <Triangle size={10} strokeWidth={2.2} />
-                    ) : (
-                      <Diamond size={10} strokeWidth={2.2} />
-                    )}
-                  </i>{" "}
-                  Pendiente
-                </span>
-                <span>
-                  <i className="legend-wishlist">
-                    <Star size={10} fill="currentColor" strokeWidth={1} />
-                  </i>{" "}
-                  Quiero ir
-                </span>
-                <span>
-                  <i className="legend-done">
-                    <Check size={11} strokeWidth={2.5} />
-                  </i>{" "}
-                  {isPeaks ? "Completada" : "Visitado"}
-                </span>
 
-                {!isPeaks &&
-                  canShowCountries &&
-                  (experiencesMode || (mounted && myProfile?.enable_experiences)) && (
-                    <button
-                      className={`diff-toggle diff-toggle--compact ${experiencesMode ? "diff-toggle--active" : ""}`}
-                      onClick={handleToggleExperiences}
-                      title={experiencesMode ? "Ocultar experiencias" : "Ver experiencias"}
+              {!isPeaks &&
+                canShowCountries &&
+                (experiencesMode || (mounted && myProfile?.enable_experiences)) && (
+                  <button
+                    className={`diff-toggle diff-toggle--compact ${experiencesMode ? "diff-toggle--active" : ""}`}
+                    onClick={handleToggleExperiences}
+                    title={experiencesMode ? "Ocultar experiencias" : "Ver experiencias"}
+                  >
+                    <svg
+                      className="diff-toggle-icon"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                     >
-                      <svg
-                        className="diff-toggle-icon"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <circle cx="12" cy="12" r="10" />
-                        <circle cx="12" cy="12" r="6" />
-                        <circle cx="12" cy="12" r="2" />
-                      </svg>
-                      Experiencias
-                    </button>
-                  )}
-              </div>
-            )}
+                      <circle cx="12" cy="12" r="10" />
+                      <circle cx="12" cy="12" r="6" />
+                      <circle cx="12" cy="12" r="2" />
+                    </svg>
+                    Experiencias
+                  </button>
+                )}
+            </div>
           </div>
         </div>
         <div

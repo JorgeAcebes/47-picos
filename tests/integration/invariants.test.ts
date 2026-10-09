@@ -534,6 +534,38 @@ describe("Project Critical Invariants (No Regressions)", () => {
       expect(content).not.toContain("Un país por descubrir");
       expect(content).not.toContain("Un mundo por explorar");
     });
+
+    it("Invariant 11.11: Browser window icon must be prominent (~85%+ viewBox) while PWA icons are preserved via manifest.json", () => {
+      const iconSvg = fs.readFileSync(path.join(rootDir, "app/icon.svg"), "utf-8");
+      expect(iconSvg).not.toContain("<rect");
+      expect(iconSvg).not.toContain("scale(0.7)");
+      expect(iconSvg).toContain('viewBox="0 0 56 56"');
+
+      const manifest = fs.readFileSync(path.join(rootDir, "public/manifest.json"), "utf-8");
+      expect(manifest).toContain('icon-192.png');
+      expect(manifest).toContain('icon-512.png');
+
+      const layout = fs.readFileSync(path.join(rootDir, "app/layout.tsx"), "utf-8");
+      expect(layout).toContain('icon.svg');
+      expect(layout).toContain('favicon.ico');
+      expect(layout).toContain('apple-touch-icon.png');
+    });
+
+    it("Invariant 11.12: Topbar must remain sticky and map navigation must support scrollToMap without breaking other tabs", () => {
+      const globalsCss = fs.readFileSync(path.join(rootDir, "app/globals.css"), "utf-8").replace(/\r\n/g, "\n");
+      expect(globalsCss).toContain(".topbar {\n  position: sticky;");
+      expect(globalsCss).not.toContain(".topbar {\n  position: relative;");
+
+      const trackerContent = fs.readFileSync(path.join(rootDir, "components/summit-tracker.tsx"), "utf-8");
+      expect(trackerContent).toContain("scrollToMap");
+      expect(trackerContent).toContain("scrollToMap(e)");
+
+      const socialContent = fs.readFileSync(path.join(rootDir, "components/social-tab.tsx"), "utf-8");
+      expect(socialContent).toContain('<Link href={mapLink} prefetch={true} className="topbar-nav-link topbar-nav-link--mapa">Mapa</Link>');
+
+      const rankingContent = fs.readFileSync(path.join(rootDir, "components/ranking-tab.tsx"), "utf-8");
+      expect(rankingContent).toContain('<Link href={mapLink} prefetch={true} className="topbar-nav-link topbar-nav-link--mapa">Mapa</Link>');
+    });
   });
 });
 

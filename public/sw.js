@@ -1,4 +1,4 @@
-const CACHE_NAME = 'atlas-cache-v4';
+const CACHE_NAME = 'atlas-cache-v6';
 
 // Recursos estáticos iniciales a cachear durante instalación (Stale-While-Revalidate)
 // NO precacheamos '/' para que el HTML nunca quede congelado
@@ -6,6 +6,8 @@ const PRECACHE_URLS = [
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
+  '/apple-touch-icon.png',
+  '/icon.svg',
   '/icon-192.svg',
   '/icon-512.svg',
   '/world-regions.topo.json' // Precache the big topojson

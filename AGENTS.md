@@ -97,14 +97,22 @@ Una tarea sólo se considera concluida cuando:
 - **Pantalla de Carga sin Abusos**: Una vez abierta una página (ej. Países), los datos quedan guardados y cacheados en memoria. Al navegar entre pestañas (Mapa, Social, Ranking) no debe mostrarse la pantalla de carga para transiciones puntuales o instantáneas. La pantalla de carga completa debe disponer de un retardo (debounce de al menos 700ms) para mostrarse únicamente cuando una carga requiera un tiempo prolongado perceptible.
 - **Aislamiento en Modal de Eliminar Cuenta**: El diálogo de confirmación debe aislarse completamente del backdrop padre (`ProfileSettings`) y detener la propagación de eventos (`onClick`, `onMouseDown`, `onKeyDown`). El campo de texto de confirmación no debe cerrarse al hacer clic en él ni al escribir en él.
 
-### 4.9 Iconos y Logo de la Aplicación (`app/icon.svg`, `app/favicon.ico`, `public/icon-192.svg`, `public/icon-512.svg`)
+### 4.9 Iconos y Logo de la Aplicación (`app/icon.svg`, `app/favicon.ico`, `public/icon-192.svg`, `public/icon-512.svg`, `public/apple-touch-icon.png`)
 - **Logo sin Fondo en Ventana/Pestaña**: El icono de la aplicación en la ventana/pestaña (favicon, PWA y accesos directos) debe ser transparente, compuesto exclusivamente por los dos triángulos estilizados, sin fondo blanco ni crema.
+- **Tamaño Óptimo en Pestaña vs PWA**: El icono de la ventana del navegador (`app/icon.svg` y `app/favicon.ico`) debe aprovechar el espacio visual de la pestaña (~85%+ de ocupación centrado) para verse grande y nítido. Los iconos de instalación PWA (`public/icon-192.png`, `public/icon-512.png`, `public/apple-touch-icon.png`) conservan su escala protegida (~52.5%) para adaptarse a las máscaras y bordes de los sistemas operativos móviles y de escritorio sin verse modificados.
 
 ### 4.10 Textos Simplificados y Estructura en la Portada (`components/summit-tracker.tsx`, `app/globals.css`)
 - **Eliminación de Subtítulos y Eyebrows Innecesarios**: Se suprimen los lemas ("UN RETO...", "El mapa para..."), "EL RETO COMPLETO", "TU PROGRESO" y los textos explicativos redundantes de selección de mapa ("Selecciona cualquier marcador...", "Haz clic en cualquier país..."). En el hero de experiencias, el lema se unifica a *"Márcalo en tu mapa."*.
 - **Iconos de Fondo en Desktop Suprimidos**: Se eliminan los símbolos unicode decorativos detrás del ratio de progreso (`mountain-art`).
 - **Bandas del Hero Más Estrechas**: El padding vertical de `.hero` se reduce a 24px (escritorio) y 18-20px (tablet/móvil) con `margin: 0` en `h1`.
 - **Eliminación de Banda Intermedia**: Se elimina la sección `.challenge-summary` ("Un país por descubrir, una cima cada vez" / "Un mundo por explorar..."), enlazando directamente el mapa con el listado.
+
+### 4.11 Navegación y Desplazamiento a la Vista de Mapa (`summit-tracker.tsx`, `app/globals.css`)
+- **Cabecera Fija (`position: sticky`)**: `.topbar` debe conservar en todo momento `position: sticky; top: 0; z-index: 20;` para permanecer anclada al hacer scroll. El contenedor `.app-mode-switch` se centra absolutamente sin degradar la cabecera a `position: relative`.
+- **Comportamiento del Enlace «Mapa»**:
+  - Desde otras pestañas (Social, Ranking, Perfil): el enlace «Mapa» (`topbar-nav-link--mapa`) navega a la página principal de forma normal (`/` o `/picos`), cargando la cabecera y el hero en la parte superior sin forzar ningún scroll.
+  - Estando ya en la página principal: pulsar en «Mapa» ejecuta `scrollToMap`, desplazando la vista suavemente hasta alinear la leyenda (`#mapa`) inmediatamente debajo de la cabecera fija y mostrando el mapa por debajo, ocultando el hero superior.
+  - Pulsar en el logotipo «Atlas» (`brand`) desplaza la vista suavemente arriba del todo (`scrollY: 0`).
 
 ---
 

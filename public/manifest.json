@@ -4,7 +4,7 @@
   "description": "El mapa para registrar cada país del mundo que has visitado y conquistar los 47 picos de España.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#faf8f1",
+  "background_color": "#ffffff",
   "theme_color": "#245f52",
   "orientation": "portrait-primary",
   "icons": [

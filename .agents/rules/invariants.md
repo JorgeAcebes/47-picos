@@ -138,9 +138,10 @@ Este documento reúne todas las reglas no negociables de la aplicación. Cualqui
 
 ---
 
-## 12. Iconos y Logo de la Aplicación (`app/icon.svg`, `app/favicon.ico`, `public/icon-192.svg`, `public/icon-512.svg`)
+## 12. Iconos y Logo de la Aplicación (`app/icon.svg`, `app/favicon.ico`, `public/icon-192.svg`, `public/icon-512.svg`, `public/apple-touch-icon.png`)
 
 1. **Logo sin Fondo en Ventana/Pestaña**: El icono de la aplicación en la ventana/pestaña (favicon, PWA y accesos directos) debe ser transparente, compuesto exclusivamente por los dos triángulos estilizados, sin fondo blanco ni crema.
+2. **Tamaño Óptimo en Pestaña vs PWA**: El icono de la ventana del navegador (`app/icon.svg` y `app/favicon.ico`) debe aprovechar el espacio visual de la pestaña (~85%+ de ocupación centrado) para verse grande y nítido. Los iconos de instalación PWA (`public/icon-192.png`, `public/icon-512.png`, `public/apple-touch-icon.png`) conservan su escala protegida (~52.5%) para adaptarse a las máscaras y bordes de los sistemas operativos móviles y de escritorio sin verse modificados.
 
 ---
 
@@ -160,6 +161,16 @@ Este documento reúne todas las reglas no negociables de la aplicación. Cualqui
    - Reducción del padding vertical del hero a 24px (desktop) y 18-20px (tablet/móvil), y `margin: 0` en `h1`.
 5. **Eliminación de Banda Intermedia**:
    - Eliminación de la sección `.challenge-summary` ("Un país por descubrir, una cima cada vez" / "Un mundo por explorar...").
+
+---
+
+## 14. Navegación y Desplazamiento a la Vista de Mapa (`components/summit-tracker.tsx`, `app/globals.css`)
+
+1. **Cabecera Fija (`position: sticky`)**: `.topbar` debe conservar en todo momento `position: sticky; top: 0; z-index: 20;` para permanecer anclada al hacer scroll. El contenedor `.app-mode-switch` se centra absolutamente sin degradar la cabecera a `position: relative`.
+2. **Comportamiento del Enlace «Mapa»**:
+   - Desde otras pestañas (Social, Ranking, Perfil): el enlace «Mapa» (`topbar-nav-link--mapa`) navega a la página principal de forma normal (`/` o `/picos`), cargando la cabecera y el hero en la parte superior sin forzar ningún scroll.
+   - Estando ya en la página principal: pulsar en «Mapa» ejecuta `scrollToMap`, desplazando la vista suavemente hasta alinear la leyenda (`#mapa`) inmediatamente debajo de la cabecera fija y mostrando el mapa por debajo, ocultando el hero superior.
+   - Pulsar en el logotipo «Atlas» (`brand`) desplaza la vista suavemente arriba del todo (`scrollY: 0`).
 
 
 
